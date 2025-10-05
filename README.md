@@ -1,6 +1,13 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Food For Free
 
-## Getting Started
+This GitHub repository contains the code behind [Food For Free]([url](https://foodforfree.org/))'s recipient partner portal.
+Project Manager (PM): Riddhi Sahni; Technical Lead (TL): Benjamin Li
+
+Please follow the instructions in the README for development.
+
+## 1. Install Prerequisites
+
+Ensure you have Git and Node.js installed on your computer.
 
 First, run the development server:
 
