@@ -11,14 +11,14 @@ This GitHub repository contains the code behind [Food For Free](https://foodforf
 
 Make sure you have the following installed:
 
-* **Node.js** (LTS recommended) → [Download here](https://nodejs.org/en/download)
+* **Node.js** (LTS recommended) → [Download here](https://nodejs.org/en/download)  
   Verify installation:
 
   ```bash
   node -v
   npm -v
   ```
-* **Git** → [Download here](https://git-scm.com/downloads)
+* **Git** → [Download here](https://git-scm.com/downloads)  
   Verify installation:
 
   ```bash
@@ -48,12 +48,27 @@ npm install
 
 ## 4. Stay Up To Date
 
-Before starting development for each sprint, make sure you pull the latest changes and install new dependencies:
+Before starting development for each sprint, make sure you are working from the most recent version of `main`.
 
+**1. Start on `main` and update it:**
+```bash
+git checkout main
+git pull origin main
+```
+
+**2. Create your code branch from the fresh `main`:**
+```bash
+git checkout -b sprintnumber/feature-name
+```
+
+**3. Work on your feature.**
+Commit and push as usual.
+
+**4. If `main` changes while you’re working (because someone else merged first), update your branch:**
 ```bash
 git pull origin main
-npm install
 ```
+(run this while staying on your branch)
 
 ---
 
