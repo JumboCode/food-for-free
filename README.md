@@ -61,7 +61,8 @@ git pull origin main
 git checkout -b sprintnumber/feature-name
 ```
 
-**3. Work on your feature.**
+**3. Work on your feature.**  
+
 Commit and push as usual.
 
 **4. If `main` changes while you’re working (because someone else merged first), update your branch:**
