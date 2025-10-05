@@ -2,7 +2,7 @@
 
 This GitHub repository contains the code behind [Food For Free](https://foodforfree.org/)'s recipient partner portal.
 
-**Project Manager (PM):** Riddhi Sahni
+**Project Manager (PM):** Riddhi Sahni  
 **Technical Lead (TL):** Benjamin Li
 
 ---
