@@ -100,19 +100,21 @@ You can edit the app by modifying `app/page.tsx`. The page auto-updates as you e
   ```
 * Commit and push your branch, then open a Pull Request (PR) for review.
 
-### Branch Naming Convention
+## Branch Naming Convention
 
 Branches should follow this format:
 
-`<sprintnumber>/<feature-name>`  
+`<sprintnumber>/<feature-name>`
 
-**Sprint Number:** the sprint number (starting at 0 for the first week's sprint, then incrementing).  
-**Feature name:** short, descriptive, and use dashes between words.
+- **Sprint number:** Always 2 digits (starting at `00` for the first sprint, then incrementing).
+- **Feature name:** Short, descriptive, and use dashes between words.
 
-**Examples:**  
-`git checkout -b "0/add-weather-button"`
-`git checkout -b "1/create-login-page"`
-
+### Examples
+```bash
+git checkout -b "00/add-weather-button"
+git checkout -b "01/create-login-page"
+git checkout -b "02/setup-database-schema"
+```
 *Note: Specifying -b causes a new branch to be created. You only need to run this when first creating the branch; when checking out to an existing branch the -b flag does not need to be included.*
 
 ---
