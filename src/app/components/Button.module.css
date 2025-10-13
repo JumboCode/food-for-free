@@ -1,0 +1,14 @@
+.button {
+  background-color: #6030FF;       /* Nice blue background */
+  color: white;                    /* White text */
+  padding: 12px 24px;              /* Some space inside the button */
+  border: none;                   /* Remove default border */
+  border-radius: 8px;             /* Rounded corners */
+  font-size: 1rem;                /* Easy to read font size */
+  cursor: pointer;                /* Mouse cursor becomes a hand */
+  transition: background-color 0.2s ease; /* Smooth hover effect */
+}
+
+.button:hover {
+  background-color: #A282FF;     /* Darker blue when hovered */
+}
