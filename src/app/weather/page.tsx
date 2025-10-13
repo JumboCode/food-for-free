@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import Button from './components/Button';
+import Button from '../components/Button';
 
 export default function WeatherPage() {
     const [weather, setWeather] = useState('');
@@ -26,7 +26,7 @@ export default function WeatherPage() {
           ${rainChance}% chance of rain.`
             );
         } catch (any) {
-            setWeather(`Failed to fetch: ${'unknown error'}`);
+            setWeather(`Failed to fetch`);
         }
     };
 
