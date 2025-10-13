@@ -1,8 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Food For Free
 
-## Getting Started
+This GitHub repository contains the code behind [Food For Free](https://foodforfree.org/)'s recipient partner portal.
 
-First, run the development server:
+**Project Manager (PM):** Riddhi Sahni  
+**Technical Lead (TL):** Benjamin Li
+
+---
+
+## 1. Install Prerequisites
+
+Make sure you have the following installed:
+
+* **Node.js** (LTS recommended) → [Download here](https://nodejs.org/en/download)  
+  Verify installation:
+
+  ```bash
+  node -v
+  npm -v
+  ```
+* **Git** → [Download here](https://git-scm.com/downloads)  
+  Verify installation:
+
+  ```bash
+  git --version
+  ```
+
+---
+
+## 2. Clone the Repository
+
+```bash
+git clone https://github.com/JumboCode/food-for-free.git
+cd food-for-free
+```
+
+---
+
+## 3. Install Dependencies
+
+Inside the project folder:
+
+```bash
+npm install
+```
+
+---
+
+## 4. Stay Up To Date
+
+Before starting development for each sprint, make sure you are working from the most recent version of `main`.
+
+**1. Start on `main` and update it:**
+```bash
+git checkout main
+git pull origin main
+```
+
+**2. Create your code branch from the fresh `main`:**
+```bash
+git checkout -b sprintnumber/feature-name
+```
+
+**3. Work on your feature.**  
+
+Commit and push as usual.
+
+**4. If `main` changes while you’re working (because someone else merged first), update your branch:**
+```bash
+git pull origin main
+```
+(run this while staying on your branch)
+
+---
+
+## 5. Start the Development Server
 
 ```bash
 npm run dev
@@ -14,23 +85,51 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can edit the app by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
+
+## 6. Workflow Notes
+
+* Always `git pull` before making changes.
+* Create a new branch for your work:
+
+  ```bash
+  git checkout -b <branch-name>
+  ```
+* Commit and push your branch, then open a Pull Request (PR) for review.
+
+## Branch Naming Convention
+
+Branches should follow this format:
+
+`<sprintnumber>/<feature-name>`
+
+- **Sprint number:** Always 2 digits (starting at `00` for the first sprint, then incrementing).
+- **Feature name:** Short, descriptive, and use dashes between words.
+
+### Examples
+```bash
+git checkout -b "00/add-weather-button"
+git checkout -b "01/create-login-page"
+git checkout -b "02/setup-database-schema"
+```
+*Note: Specifying -b causes a new branch to be created. You only need to run this when first creating the branch; when checking out to an existing branch the -b flag does not need to be included.*
+
+---
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+* [Node.js Docs](https://nodejs.org/docs)
+* [Git Docs](https://git-scm.com/doc)
+* [Next.js Docs](https://nextjs.org/docs)
+* [Interactive Next.js Tutorial](https://nextjs.org/learn)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+We use [Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) for deployment.
+See [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for details.
