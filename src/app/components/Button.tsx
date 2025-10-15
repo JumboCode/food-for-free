@@ -4,11 +4,20 @@ import React from "react";
 
 // TODO: add what the button takes in
 type ButtonProps = {
-  
+  label: string;
+  onClick: () => void;
+  className?: string;
 };
 
-export default function Button({ /* add to this */ }: ButtonProps) {
+export default function Button({ label, onClick}: ButtonProps) {
   return (
-    // TODO: create the button
+    <button
+      type="button"
+      onClick= {() => {
+        void onClick();
+      }}
+      >
+        {label}
+      </button>
   );
 }
