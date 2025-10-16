@@ -31,17 +31,17 @@ export default function NotePage() {
         <Note text={currNote} onChange={(val) => setCurrNote(val)} />
 
         </div>
-        {/* save button */}
+        {/* save button  CHANGE THIS TAILWIND TO STYLESHEET?*/}
        <button
-        className="Save" style={{
+        className="SAVE hover:bg-gray-300" style={{
         border: "black 1px solid",
         borderRadius: "8px",
         padding: "5px 5px",
         width: "60px",
        }}
        onClick={() => addNote(currNote)}>Save</button>
-        {/* clear button */}
-       <button className="Clear" style={{
+        {/* clear button. CHANGE THIS TAILWIND TO STYLESHEET?*/}
+       <button className="CLEAR hover:bg-gray-300" style={{
         border: "black 1px solid",
         borderRadius: "8px",
         padding: "5px 5px",
