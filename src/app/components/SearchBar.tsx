@@ -10,20 +10,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
     const [filteredResults, setFilteredResults] = useState<string[]>([]);
     const [showDropdown, setShowDropDown] = useState<boolean>(false);
 
-    // Handle search input changes
+    // handle search input changes
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         setSearchInput(value);
     }
 
-    // Handle input focus - show dropdown
+    // show dropdown when you click on it
     const handleFocus = () => {
         setShowDropDown(true);
     }
 
-    // Handle input blur - hide dropdown
+    // closes options when you click away
     const handleBlur = () => {
-        // Delay to allow clicking on dropdown items
         setTimeout(() => {
             setShowDropDown(false);
         }, 200);
@@ -31,10 +30,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
 
     useEffect(() => {
         if (searchInput.trim() === '') {
-            // Show all organizations when search is empty
             setFilteredResults(organizations);
         } else {
-            // Filter organizations based on search input
             const results = organizations.filter(org => 
                 org.toLowerCase().includes(searchInput.toLowerCase())
             );
