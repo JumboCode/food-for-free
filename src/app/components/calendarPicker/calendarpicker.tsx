@@ -62,7 +62,10 @@ export function MyCalendar() {
     };
 
     const handleDone = () => {
-        setIsDialogOpen(false);
+        // setIsDialogOpen(false);
+        toggleDialog();
+        //
+        // if (dialogRef.current && dialogRef.current.open) dialogRef.current.close();
     };
 
     return (
@@ -116,6 +119,11 @@ export function MyCalendar() {
                 aria-modal
                 aria-labelledby={headerId}
                 onClose={() => setIsDialogOpen(false)}
+                // Close dialog when clicking backdrop
+                onClick={e => {
+                    // if (e.target === e.currentTarget) setIsDialogOpen(false);
+                    if (e.target === e.currentTarget) toggleDialog();
+                }}
                 style={{
                     padding: '2rem',
                     borderRadius: '12px',
