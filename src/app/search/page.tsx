@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { useState } from "react";
 import SearchBar from "../components/SearchBar";
 
 const partners: string[] = [ "Whole Foods", "Somerville Food Pantry", "Cambridge Community Center" ];
