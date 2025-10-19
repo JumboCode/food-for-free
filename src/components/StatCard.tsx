@@ -13,8 +13,8 @@ interface StatCardProps {
 
 export function StatCard({ title, statistics }: StatCardProps) {
     return (
-        <Card className="w-full max-w-sm">
-            <CardHeader>
+        <Card className="w-full max-w-sm gap-2">
+            <CardHeader className="negative-margin-bottom-2">
                 <CardTitle className="text-xl font-bold">{title}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-1">
