@@ -1,35 +1,43 @@
 'use client';
-import { useState } from 'react';
-import Note from '../components/notes';
 
-export default function NotePage() {
+import React, { useState } from 'react';
+
+export default function Note() {
     const [notes, setNotes] = useState<string[]>([]);
     const [currNote, setCurrNote] = useState<string>('');
 
-    // Add a note function
-    const addNote = (note: string) => {
-        // append string to current note
+    const addNote = () => {
+        if (currNote.trim() === '') return;
         setNotes([...notes, currNote]);
     };
 
-    // clear the current note and the saved notes
-    const clearNote = () => {
+    const clearNotes = () => {
         setCurrNote('');
         setNotes([]);
     };
 
     return (
         <div style={{ margin: '20px' }}>
-            {/* header */}
+            {/* Header */}
             <h1 style={{ fontFamily: 'Arial, sans-serif', fontSize: '24px' }}>Notes:</h1>
 
-            {/* note component */}
+            {/* Text area */}
             <div className="flex flex-col mb-4">
-                <Note text={currNote} onChange={val => setCurrNote(val)} />
+                <textarea
+                    value={currNote}
+                    onChange={e => setCurrNote(e.target.value)}
+                    className="p-2 border border-gray-300 resize-none"
+                    placeholder="Type your note here..."
+                    style={{
+                        fontFamily: 'Arial, sans-serif',
+                        width: '30vw',
+                        height: '30vh',
+                    }}
+                />
             </div>
 
-            {/* buttons */}
-            <div className="flex gap-2">
+            {/* Buttons */}
+            <div className="flex gap-2 mb-4">
                 <button
                     className="hover:bg-gray-300"
                     style={{
@@ -38,7 +46,7 @@ export default function NotePage() {
                         padding: '5px 5px',
                         width: '60px',
                     }}
-                    onClick={() => addNote(currNote)}
+                    onClick={addNote}
                 >
                     Save
                 </button>
@@ -51,11 +59,22 @@ export default function NotePage() {
                         padding: '5px 5px',
                         width: '60px',
                     }}
-                    onClick={() => clearNote()}
+                    onClick={clearNotes}
                 >
                     Clear
                 </button>
             </div>
+
+            {/* Display saved notes */}
+            {notes.length > 0 && (
+                <ul className="list-disc pl-5">
+                    {notes.map((note, i) => (
+                        <li key={i} className="mb-1">
+                            {note}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }

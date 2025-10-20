@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 
 type SearchBarProps = {
-    organizations: string[]
-}
+    organizations: string[];
+};
 
 const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
     const [searchInput, setSearchInput] = useState<string>('');
@@ -14,36 +14,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         setSearchInput(value);
-    }
+    };
 
     // show dropdown when you click on it
     const handleFocus = () => {
         setShowDropDown(true);
-    }
+    };
 
     // closes options when you click away
     const handleBlur = () => {
         setTimeout(() => {
             setShowDropDown(false);
         }, 200);
-    }
+    };
 
     useEffect(() => {
         if (searchInput.trim() === '') {
             setFilteredResults(organizations);
         } else {
-            const results = organizations.filter(org => 
+            const results = organizations.filter(org =>
                 org.toLowerCase().includes(searchInput.toLowerCase())
             );
             setFilteredResults(results);
         }
     }, [searchInput, organizations]);
-    
+
     return (
         <div className="w-full max-w-lg mx-auto p-6">
             {/*search bar*/}
             <div className="relative">
-                <input 
+                <input
                     type="text"
                     placeholder="Search"
                     value={searchInput}
@@ -56,10 +56,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
                 {showDropdown && filteredResults.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                         {filteredResults.map((org, index) => (
-                            <div 
+                            <div
                                 key={index}
                                 className={`px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-700 ${
-                                    index !== filteredResults.length - 1 ? 'border-b border-gray-100' : ''
+                                    index !== filteredResults.length - 1
+                                        ? 'border-b border-gray-100'
+                                        : ''
                                 }`}
                             >
                                 {org}
