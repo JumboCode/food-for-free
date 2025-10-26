@@ -31,7 +31,7 @@ export default function DeliveryDetailModal({
     return (
         <div
             id="delivery-detail-scrim"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
             aria-modal
             role="dialog"
         >
@@ -45,9 +45,9 @@ export default function DeliveryDetailModal({
           sm:max-w-[200vw]
           md:max-w-[700px]
           lg:max-w-[850px]
-          rounded-2xl
-          bg-white
-          shadow-xl
+          rounded-3xl
+          bg-[#fafaf8]
+          shadow-2xl
           ring-1
           ring-black/5
           transition-all
@@ -55,20 +55,20 @@ export default function DeliveryDetailModal({
         "
             >
                 {/* Header */}
-                <div className="relative border-b border-neutral-200/70 px-6 sm:px-8 py-4">
+                <div className="relative px-6 sm:px-8 py-4 bg-[#fafaf8] rounded-t-3xl shadow-md">
                     {/* Close button */}
                     <button
                         aria-label="Close"
                         onClick={onClose}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-neutral-100 active:bg-neutral-200"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-[#FFFBEA] active:bg-[#FFFBEA]"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="currentColor"
+                            stroke="#D19B5B"
                             strokeWidth="2"
-                            className="h-5 w-5 text-amber-700"
+                            className="h-5 w-5"
                         >
                             <path
                                 strokeLinecap="round"
@@ -77,7 +77,7 @@ export default function DeliveryDetailModal({
                             />
                         </svg>
                     </button>
-                    <h2 className="text-center text-xl sm:text-2xl font-semibold text-green-800">
+                    <h2 className="text-center text-2xl font-semibold text-[#2E6B3B]">
                         Delivery Detail
                     </h2>
                 </div>
@@ -89,40 +89,49 @@ export default function DeliveryDetailModal({
                         <div className="lg:col-span-6 space-y-8">
                             {/* Partner */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-700">
+                                <label className="block text-sm font-medium text-[#6B6B6B]">
                                     Partner:
                                 </label>
                                 <input
                                     value={partner}
                                     readOnly
-                                    className="w-full rounded-lg border border-neutral-300 bg-neutral-100 px-4 py-2 text-neutral-800 cursor-default"
+                                    className="w-full rounded-xl border border-[#E5E5E5] bg-[#fafaf8] px-4 py-2 text-neutral-800 cursor-default"
                                 />
                             </div>
 
-                            {/* Food Rescue Program */}
+                            {/* Food Rescue Program as separate tags */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-700">
+                                <label className="block text-sm font-medium text-[#6B6B6B]">
                                     Food Rescue Program:
                                 </label>
-                                <input
-                                    value={program}
-                                    readOnly
-                                    className="w-full rounded-lg border border-neutral-300 bg-neutral-100 px-4 py-2 text-neutral-800 cursor-default"
-                                />
+                                <div className="flex gap-2 flex-wrap mt-1">
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-[#2E6B3B] text-sm font-medium shadow-sm hover:bg-[#f3eacb] transition-colors"
+                                    >
+                                        Property 1
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-[#2E6B3B] text-sm font-medium shadow-sm hover:bg-[#f3eacb] transition-colors"
+                                    >
+                                        Property 2
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Weight */}
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-neutral-700">
+                                <label className="block text-sm font-medium text-[#6B6B6B]">
                                     Weight
                                 </label>
                                 <div className="relative">
                                     <input
                                         value={weight}
                                         readOnly
-                                        className="w-full rounded-lg border border-neutral-300 bg-neutral-100 pr-12 pl-4 py-2 text-neutral-800 cursor-default"
+                                        className="w-full rounded-xl border border-[#E5E5E5] bg-[#fafaf8] pr-12 pl-4 py-2 text-neutral-800 cursor-default"
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-600">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6B6B6B]">
                                         lbs
                                     </span>
                                 </div>
@@ -131,7 +140,7 @@ export default function DeliveryDetailModal({
 
                         {/* Notes */}
                         <div className="lg:col-span-6">
-                            <div className="rounded-xl border border-neutral-300 bg-neutral-50/60 p-3 sm:p-4 lg:p-5">
+                            <div className="rounded-2xl border border-[#E5E5E5] bg-[#fafaf8] p-3 sm:p-4 lg:p-5">
                                 <Note />
                             </div>
                         </div>
