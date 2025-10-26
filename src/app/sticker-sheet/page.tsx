@@ -6,6 +6,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import SearchBar from '../../components/ui/SearchBar';
 import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
+import FileUploadButton from '@/components/FileUploadButton';
 
 const partners: string[] = ['Whole Foods', 'Somerville Food Pantry', 'Cambridge Community Center'];
 
@@ -43,6 +44,12 @@ export default function CalendarPage() {
                     },
                 ]}
             />
+            <h1 className="mb-10"></h1>
+
+            {/* excel upload for testing */}
+            <h2 className="text-xl font-semibold mb-2">Upload Excel</h2>
+            <FileUploadButton />
+
             <h1 className="mb-10"></h1>
             <h1 className="text-2xl font-bold mb-4">Note Sheet</h1>
             <Note />
