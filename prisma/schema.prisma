@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model YOUR_MESSAGE_NAME {
+model ChangeMe {
   id        Int      @id @default(autoincrement())
   text      String
   createdAt DateTime @default(now())
