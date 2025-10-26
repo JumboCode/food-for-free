@@ -105,9 +105,9 @@ You can edit the app by modifying `app/page.tsx`. The page auto-updates as you e
 
 Branches should follow this format:
 
-`<issuenumber>/<feature-name>`
+`<sprintnumber>/<feature-name>`
 
-- **Issue number:** Always 2 digits (starting at `00` for the first GitHub issue, then incrementing).
+- **Sprint number:** Always 2 digits (starting at `00` for the first week's sprint, then incrementing).
 - **Feature name:** Short, descriptive, and use dashes between words.
 
 ### Examples
