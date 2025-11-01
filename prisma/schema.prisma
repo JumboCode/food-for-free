@@ -7,18 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model BenjiMessage {
-  id        Int      @id @default(autoincrement())
-  text      String
-  createdAt DateTime @default(now())
-}
-
-model TessJustinMessage {
-  id        Int      @id @default(autoincrement())
-  text      String
-  createdAt DateTime @default(now())
-}
-
 model SophieJuliaMessage {
   id        Int      @id @default(autoincrement())
   text      String
