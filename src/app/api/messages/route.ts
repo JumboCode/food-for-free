@@ -31,8 +31,13 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
+<<<<<<< HEAD
     const items = await prisma.yuvitSaraMessage.findMany({
       orderBy: { createdAt: "desc" },
+=======
+    const items = await prisma.message.findMany({
+      orderBy: { createdAt: 'desc' },
+>>>>>>> main
       take: 5,
     });
 
