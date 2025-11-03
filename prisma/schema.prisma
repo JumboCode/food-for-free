@@ -12,3 +12,9 @@ model YOUR_MESSAGE_NAME {
   text      String
   createdAt DateTime @default(now())
 }
+
+model YuvitSaraMessage {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+}
