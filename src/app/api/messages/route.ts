@@ -1,7 +1,7 @@
 // app/api/messages/route.ts
 
 import { NextResponse } from 'next/server';
-import prisma from '../../../../lib/prisma';
+import prisma from '../../../lib/prisma';
 
 export async function POST(req: Request) {
     try {
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'text is required' }, { status: 400 });
         }
 
-        const created = await prisma.sophieJuliaMessage.create({
+        const created = await prisma.SophieJuliaMessage.create({
             data: { text: text.trim() },
         });
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 export async function GET() {
     try {
         // Fetch past 5 messages
-        const items = await prisma.sophieJuliaMessage.findMany({
+        const items = await prisma.SophieJuliaMessage.findMany({
             orderBy: { createdAt: 'desc' },
             take: 5,
         });

@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ChangeMe {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+}
+
 model SophieJuliaMessage {
   id        Int      @id @default(autoincrement())
   text      String
