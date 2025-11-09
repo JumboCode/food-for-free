@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ChangeMe {
+model AleaAngoMessage {
   id        Int      @id @default(autoincrement())
   text      String
   createdAt DateTime @default(now())
