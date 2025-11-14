@@ -7,6 +7,7 @@ import SearchBar from '../../components/ui/SearchBar';
 import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
 import FileUploadButton from '@/components/FileUploadButton';
+import SideNavBar from '@/components/ui/SideNavbar';
 
 const partners: string[] = ['Whole Foods', 'Somerville Food Pantry', 'Cambridge Community Center'];
 
@@ -53,6 +54,11 @@ export default function CalendarPage() {
             <h1 className="mb-10"></h1>
             <h1 className="text-2xl font-bold mb-4">Note Sheet</h1>
             <Note />
+
+            <h2 className="mb-10">SideNavBar</h2>
+            <div>
+                <SideNavBar />
+            </div>
         </div>
     );
 }
