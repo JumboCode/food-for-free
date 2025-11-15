@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
+import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
 import { StatCard } from '@/components/ui/StatCard';
 import SearchBar from '../../components/ui/SearchBar';
 import { Package, Users, UserCheck } from 'lucide-react';
@@ -45,6 +46,12 @@ export default function CalendarPage() {
                     },
                 ]}
             />
+            <h1 className="mb-10"></h1>
+
+            {/* Monthly Donations Chart */}
+            <h1 className="text-2xl font-bold">Monthly Donations Chart</h1>
+            <h1 className="mb-5"></h1>
+            <PoundsByMonthChart />
             <h1 className="mb-10"></h1>
 
             {/* excel upload for testing */}
