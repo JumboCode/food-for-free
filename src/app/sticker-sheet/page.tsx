@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
+import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
 import { StatCard } from '@/components/ui/StatCard';
 import SearchBar from '../../components/ui/SearchBar';
 import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
 import FileUploadButton from '@/components/FileUploadButton';
 import SideNavBar from '@/components/ui/SideNavbar';
+import CustomActiveShapePieChart from '@/components/ui/FoodTypesDonutChart';
 
 const partners: string[] = ['Whole Foods', 'Somerville Food Pantry', 'Cambridge Community Center'];
 
@@ -47,6 +49,12 @@ export default function CalendarPage() {
             />
             <h1 className="mb-10"></h1>
 
+            {/* Monthly Donations Chart */}
+            <h1 className="text-2xl font-bold">Monthly Donations Chart</h1>
+            <h1 className="mb-5"></h1>
+            <PoundsByMonthChart />
+            <h1 className="mb-10"></h1>
+
             {/* excel upload for testing */}
             <h2 className="text-xl font-semibold mb-2">Upload Excel</h2>
             <FileUploadButton />
@@ -59,6 +67,8 @@ export default function CalendarPage() {
             <div>
                 <SideNavBar />
             </div>
+            <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
+            <CustomActiveShapePieChart />
         </div>
     );
 }
