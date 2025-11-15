@@ -18,7 +18,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
     items = [
         { label: 'Overview', href: '/overview', icon: <ChartLine className="h-5 w-5" /> },
         { label: 'Distribution', href: '/distribution', icon: <Gift className="h-5 w-5" /> },
-        // { label: 'Admin', href: '/admin', icon: <Users className="h-5 w-5" /> },
+        { label: 'Admin', href: '/admin', icon: <Users className="h-5 w-5" /> },
         { label: 'Account', href: '/account', icon: <CircleUser className="h-5 w-5" /> },
         { label: 'Sticker Sheet', href: '/sticker-sheet', icon: <Gift className="h-5 w-5" /> },
     ],
