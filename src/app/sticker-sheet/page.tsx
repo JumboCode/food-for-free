@@ -11,7 +11,28 @@ import FileUploadButton from '@/components/FileUploadButton';
 import SideNavBar from '@/components/ui/SideNavbar';
 import CustomActiveShapePieChart from '@/components/ui/FoodTypesDonutChart';
 
-const partners: string[] = ['Whole Foods', 'Somerville Food Pantry', 'Cambridge Community Center'];
+import { PartnerCardProps } from '../../components/ui/PartnerCard';
+
+const partners: PartnerCardProps[] = [
+    {
+        id: 1,
+        name: 'Whole Foods',
+        location: 'Somerville, MA',
+        type: 'Grocery Store'
+    },
+    {
+        id: 2,
+        name: 'Somerville Food Pantry',
+        location: 'Somerville, MA',
+        type: 'Food Pantry'
+    },
+    {
+        id: 3,
+        name: 'Cambridge Community Center',
+        location: 'Cambridge, MA',
+        type: 'Community Center'
+    }
+];
 
 export default function CalendarPage() {
     return (

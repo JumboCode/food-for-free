@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight} from 'lucide-react';
+
+import PartnerCard from './PartnerCard';
+
+type PartnerCardType = {
+    id: number;
+    name: string;
+    location: string;
+    type: string;
+}
 
 type SearchBarProps = {
-    organizations: string[];
+    organizations: PartnerCardType[];
 };
 
+// TODO: customized specifically for partner cards ... may need to adjust for other types of cards
 const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
     const [searchInput, setSearchInput] = useState<string>('');
-    const [filteredResults, setFilteredResults] = useState<string[]>([]);
-    const [showDropdown, setShowDropDown] = useState<boolean>(false);
+    const [filteredResults, setFilteredResults] = useState<PartnerCardType[]>([]);
 
     // handle search input changes
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,24 +25,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
         setSearchInput(value);
     };
 
-    // show dropdown when you click on it
-    const handleFocus = () => {
-        setShowDropDown(true);
-    };
-
-    // closes options when you click away
-    const handleBlur = () => {
-        setTimeout(() => {
-            setShowDropDown(false);
-        }, 200);
-    };
-
     useEffect(() => {
         if (searchInput.trim() === '') {
             setFilteredResults(organizations);
         } else {
             const results = organizations.filter(org =>
-                org.toLowerCase().includes(searchInput.toLowerCase())
+                org.name.toLowerCase().includes(searchInput.toLowerCase())
             );
             setFilteredResults(results);
         }
@@ -49,26 +46,21 @@ const SearchBar: React.FC<SearchBarProps> = ({ organizations }) => {
                     value={searchInput}
                     className="w-full px-4 py-3 pr-12 text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     onChange={handleSearchChange}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
                 />
                 <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                {showDropdown && filteredResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                        {filteredResults.map((org, index) => (
-                            <div
-                                key={index}
-                                className={`px-4 py-3 hover:bg-gray-100 cursor-pointer text-gray-700 ${
-                                    index !== filteredResults.length - 1
-                                        ? 'border-b border-gray-100'
-                                        : ''
-                                }`}
-                            >
-                                {org}
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {filteredResults.map((org, index) => (
+                        <div key={index}>
+                            <PartnerCard 
+                                key={org.id}
+                                id={org.id}
+                                name={org.name}
+                                location={org.location}
+                                type={org.type}
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
