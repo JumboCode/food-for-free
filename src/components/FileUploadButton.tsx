@@ -13,12 +13,44 @@ export default function FileUploadButton() {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [parsedData, setParsedData] = useState<Record<string, unknown>[]>([]);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError(null);
         const file = e.target.files?.[0];
         if (!file) return;
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const firstSheetName = workbook.SheetNames[0];
+        const firstSheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+        const cleanedRows = rows
+            .map(row => {
+                // Create a new cleaned row object
+                const cleanedRow: Record<string, unknown> = {};
+
+                for (const [key, value] of Object.entries(row)) {
+                    if (typeof value === 'string') {
+                        // Trim whitespace from strings
+                        const trimmed = value.trim();
+                        // Convert empty strings to null
+                        cleanedRow[key] = trimmed === '' ? null : trimmed;
+                    } else {
+                        // Keep non-string values as-is (numbers, booleans, null, etc.)
+                        cleanedRow[key] = value;
+                    }
+                }
+
+                return cleanedRow;
+            })
+            .filter(row => {
+                // Ignore rows where ALL values are null
+                return Object.values(row).some(value => value !== null);
+            });
+
+        setFileInfo({ name: file.name, rowsCount: cleanedRows.length });
+        setParsedData(cleanedRows);
 
         // basic client-side validation for extension
         const allowed = ['.xls', '.xlsx'];
