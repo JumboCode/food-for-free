@@ -22,9 +22,10 @@ export default function DestinationsPage() {
     return (
         <main className="mx-auto flex max-w-3xl flex-col gap-6 py-10">
             <header className="space-y-1">
-                <h1 className="text-2xl font-semibold">Clean Rescue Numbers </h1>
+                <h1 className="text-2xl font-semibold">Destination Explorer</h1>
                 <p className="text-sm text-muted-foreground">
-                    Upload a <code>Rescue Numbers.xls</code> (or .xlsx / .csv) file.
+                    Upload a <code>Rescue Numbers.xls</code> (or .xlsx / .csv) file to see all
+                    unique destinations. Rows with no destination are grouped under
                     <span className="font-medium"> “No Destination”</span>.
                 </p>
             </header>
@@ -32,6 +33,13 @@ export default function DestinationsPage() {
             <FileUploadButton onDataParsed={handleDataParsed} />
 
             <UniqueDestinationsDisplay destinations={destinations} />
+
+            {/* Optional debug info while you’re building */}
+            {process.env.NODE_ENV === 'development' && records.length > 0 && (
+                <pre className="mt-4 max-h-64 overflow-auto rounded-md bg-slate-950/90 p-3 text-xs text-slate-100">
+                    {JSON.stringify(records.slice(0, 5), null, 2)}
+                </pre>
+            )}
         </main>
     );
 }
