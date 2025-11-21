@@ -1,44 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 
-interface DeliverySummaryRowProps {
-    date: string | Date;
+export type DeliverySummaryRow = {
+    date: Date;
     totalPounds: number;
-    id: string | number;
-    onClick: (id: string | number) => void;
-}
+    id: number;
+    onClick?: () => void;
 
-const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
-    date,
-    totalPounds,
-    id,
-    onClick,
-}) => {
-    const formattedDate = new Date(date).toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit',
-    });
+    //If using this card for something else, change props here
+};
 
-    const backgroundColor = 'bg-green-50';
-    const hoverColor = 'hover:bg-orange-100';
+const DeliverySummaryRow: React.FC<DeliverySummaryRow> = ({ date, totalPounds, id }) => {
+    const [showPopup, setShowPopup] = useState<boolean>(false);
+
+    const openPopup = () => {
+        setShowPopup(true);
+    };
+
+    const closePopup = () => {
+        setShowPopup(false);
+    };
 
     return (
-        <div
-            className={`${backgroundColor} ${hoverColor} cursor-pointer flex justify-between items-center px-4 py-3`}
-            onClick={() => onClick(id)}
-        >
-            {' '}
-            <div className="flex flex-col">
-                {' '}
-                <span className="text-sm font-medium text-gray-900 flex-1">
-                    {formattedDate}
-                </span>{' '}
-            </div>{' '}
-            <div className="flex-1 items-center space-x-2">
-                {' '}
-                <span className="text-center text-sm text-gray-700">{totalPounds} lbs</span>{' '}
-            </div>{' '}
-        </div>
+        <>
+            {/*Card info goes here*/}
+            <div
+                onClick={openPopup}
+                className="flex items-center justify-between px-6 py-4 bg-[#B7D7BD] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
+            >
+                <div className="flex items-center gap-4">{date.toLocaleDateString()}</div>
+                <span className="font-medium">{totalPounds}lbs</span>
+                <ChevronRight className="h-5 w-5" />
+            </div>
+
+            {/*Popup info goes here*/}
+            {showPopup && (
+                <div
+                    className="fixed inset-0 flex items-center justify-center z-50"
+                    style={{ backgroundColor: 'rgba(37, 150, 190)' }}
+                    onClick={closePopup}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl p-8 w-[90vw] h-[90vh] max-w-6xl"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/*Popup content here*/}
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
