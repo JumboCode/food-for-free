@@ -7,7 +7,7 @@ import SearchBar from '../../components/ui/SearchBar';
 import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
 import FileUploadButton from '@/components/FileUploadButton';
-
+import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
 const partners: string[] = ['Whole Foods', 'Somerville Food Pantry', 'Cambridge Community Center'];
 
 export default function CalendarPage() {
@@ -53,6 +53,14 @@ export default function CalendarPage() {
             <h1 className="mb-10"></h1>
             <h1 className="text-2xl font-bold mb-4">Note Sheet</h1>
             <Note />
+
+            <h1 className="mb-10">Delivery summary row</h1>
+            <DeliverySummaryRow
+                date={new Date()}
+                totalPounds={100}
+                id="1"
+                onClick={id => console.log(id)}
+            />
         </div>
     );
 }
