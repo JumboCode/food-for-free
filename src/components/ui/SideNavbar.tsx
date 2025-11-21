@@ -27,14 +27,14 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
 
     return (
         // actual sidebar component
-        <aside className="fixed left-0 bg-white h-screen top-0 w-16 sm:w-56 flex flex-col ">
+        <aside className="fixed left-0  bg-white h-screen top-0 w-16 sm:w-56 flex flex-col ">
             {/* top logo portion */}
             <div className="left-0 h-20 flex top-0">
                 {/* labels */}
                 <h2 className="hidden sm:block px-7 pt-7 text-lg font-semibold mb-4 font-bold">
                     Food For Free
                 </h2>
-                <h3 className=" hidden sm:block fixed top-14 text-gray-400 px-7 text-sm">
+                <h3 className=" sm:block fixed top-14 text-gray-400 px-7 text-sm">
                     Partner Portal
                 </h3>
             </div>
