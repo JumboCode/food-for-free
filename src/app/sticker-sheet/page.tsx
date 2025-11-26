@@ -9,7 +9,7 @@ import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
 import FileUploadButton from '@/components/FileUploadButton';
 import SideNavBar from '@/components/ui/SideNavbar';
-import CustomActiveShapePieChart from '@/components/ui/FoodTypesDonutChart';
+import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 
 import { PartnerCardProps } from '../../components/ui/PartnerCard';
 
@@ -18,20 +18,20 @@ const partners: PartnerCardProps[] = [
         id: 1,
         name: 'Whole Foods',
         location: 'Somerville, MA',
-        type: 'Grocery Store'
+        type: 'Grocery Store',
     },
     {
         id: 2,
         name: 'Somerville Food Pantry',
         location: 'Somerville, MA',
-        type: 'Food Pantry'
+        type: 'Food Pantry',
     },
     {
         id: 3,
         name: 'Cambridge Community Center',
         location: 'Cambridge, MA',
-        type: 'Community Center'
-    }
+        type: 'Community Center',
+    },
 ];
 
 export default function CalendarPage() {
@@ -48,26 +48,8 @@ export default function CalendarPage() {
 
             <h1 className="text-2xl font-bold">Summary Dashboard</h1>
             <h1 className="mb-10"></h1>
-            <StatCard
-                title="Summary Dashboard"
-                statistics={[
-                    {
-                        label: 'Total Pounds Distributed',
-                        value: '2,847',
-                        icon: <Package className="h-5 w-5" />,
-                    },
-                    {
-                        label: 'Total Partners',
-                        value: '23',
-                        icon: <Users className="h-5 w-5" />,
-                    },
-                    {
-                        label: 'Active Volunteers',
-                        value: '156',
-                        icon: <UserCheck className="h-5 w-5" />,
-                    },
-                ]}
-            />
+            <StatCard label="Total Delivered" value="725" unit="lbs" />
+            <StatCard label="Deliveries Completed" value="25" />
             <h1 className="mb-10"></h1>
 
             {/* Monthly Donations Chart */}
@@ -89,7 +71,7 @@ export default function CalendarPage() {
                 <SideNavBar />
             </div>
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
-            <CustomActiveShapePieChart />
+            <FoodTypesDonutChart />
         </div>
     );
 }

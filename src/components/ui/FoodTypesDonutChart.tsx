@@ -32,7 +32,7 @@ const renderActiveShape = (props: SectorProps) => {
     );
 };
 
-export default function CustomActiveShapePieChart() {
+export function FoodTypesDonutChart() {
     return (
         <Card className="w-full max-w-[600px] p-4">
             <CardHeader>
