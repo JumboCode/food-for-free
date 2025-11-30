@@ -1,54 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronRight } from 'lucide-react';
 
-export type DeliverySummaryRow = {
+export type DeliverySummaryRowProps = {
     date: Date;
     totalPounds: number;
     id: number;
     onClick?: () => void;
-
-    //If using this card for something else, change props here
 };
 
-const DeliverySummaryRow: React.FC<DeliverySummaryRow> = ({ date, totalPounds, id }) => {
-    const [showPopup, setShowPopup] = useState<boolean>(false);
-
-    const openPopup = () => {
-        setShowPopup(true);
-    };
-
-    const closePopup = () => {
-        setShowPopup(false);
-    };
-
+const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
+    date,
+    totalPounds,
+    id,
+    onClick,
+}) => {
     return (
-        <>
-            {/*Card info goes here*/}
-            <div
-                onClick={openPopup}
-                className="flex items-center justify-between px-6 py-4 bg-[#B7D7BD] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
-            >
-                <div className="flex items-center gap-4">{date.toLocaleDateString()}</div>
-                <span className="font-medium">{totalPounds}lbs</span>
-                <ChevronRight className="h-5 w-5" />
+        <div
+            onClick={onClick}
+            className="flex items-center justify-between px-6 py-4 bg-[#B7D7BD] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
+        >
+            <div className="flex items-center gap-4">
+                {date.toLocaleDateString()}
             </div>
-
-            {/*Popup info goes here*/}
-            {showPopup && (
-                <div
-                    className="fixed inset-0 flex items-center justify-center z-50"
-                    style={{ backgroundColor: 'rgba(37, 150, 190)' }}
-                    onClick={closePopup}
-                >
-                    <div
-                        className="bg-white rounded-lg shadow-xl p-8 w-[90vw] h-[90vh] max-w-6xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/*Popup content here*/}
-                    </div>
-                </div>
-            )}
-        </>
+            <span className="font-medium">{totalPounds}lbs</span>
+            <ChevronRight className="h-5 w-5" />
+        </div>
     );
 };
 

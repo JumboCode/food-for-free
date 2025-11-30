@@ -9,12 +9,10 @@ import { Package, Users, UserCheck } from 'lucide-react';
 import Note from '../../components/ui/Notes';
 import FileUploadButton from '@/components/FileUploadButton';
 import SideNavBar from '@/components/ui/SideNavbar';
-import CustomActiveShapePieChart from '@/components/ui/FoodTypesDonutChart';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
 import { Card, CardContent } from '@/components/ui/card';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
-
 import { PartnerCardProps } from '../../components/ui/PartnerCard';
 import DeliverySummary from '../../components/ui/DeliverySummary';
 const partners: PartnerCardProps[] = [
@@ -42,15 +40,7 @@ const deliveries = [
     { id: 2, date: new Date('2025-11-05'), totalPounds: 95 },
     { id: 3, date: new Date('2025-11-10'), totalPounds: 150 },
 ];
-export default function CalendarPage() {
-    return (
-        <div>
-            <h1 className="text-2xl font-bold mb-">Calendar Component</h1>
-            <MyCalendar />
-            <h1 className="mb-10"></h1>
 
-            <h1 className="text-2xl font-bold mb-">Partner Search</h1>
-];
 
 // Delivery popup sample data
 const sampleDeliveryData = {
@@ -146,7 +136,7 @@ export default function CalendarPage() {
             </section>
             <section>
                 <h1 className="text-2xl font-bold mb-4">Donut Chart</h1>
-                <CustomActiveShapePieChart />
+                <FoodTypesDonutChart />
             </section>
             <DeliveryDetailPopup
                 isOpen={isDeliveryPopupOpen}
@@ -178,7 +168,7 @@ export default function CalendarPage() {
                 <SideNavBar />
             </div>
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
-            <CustomActiveShapePieChart />
+            <FoodTypesDonutChart />
 
             <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} />
 
