@@ -12,6 +12,7 @@ import SideNavBar from '@/components/ui/SideNavbar';
 import CustomActiveShapePieChart from '@/components/ui/FoodTypesDonutChart';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
 import { Card, CardContent } from '@/components/ui/card';
+import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 
 import { PartnerCardProps } from '../../components/ui/PartnerCard';
 
@@ -137,6 +138,32 @@ export default function CalendarPage() {
                 onClose={() => setIsDeliveryPopupOpen(false)}
                 {...sampleDeliveryData}
             />
+            <h1 className="text-2xl font-bold">Summary Dashboard</h1>
+            <h1 className="mb-10"></h1>
+            <StatCard label="Total Delivered" value="725" unit="lbs" />
+            <StatCard label="Deliveries Completed" value="25" />
+            <h1 className="mb-10"></h1>
+
+            {/* Monthly Donations Chart */}
+            <h1 className="text-2xl font-bold">Monthly Donations Chart</h1>
+            <h1 className="mb-5"></h1>
+            <PoundsByMonthChart />
+            <h1 className="mb-10"></h1>
+
+            {/* excel upload for testing */}
+            <h2 className="text-xl font-semibold mb-2">Upload Excel</h2>
+            <FileUploadButton />
+
+            <h1 className="mb-10"></h1>
+            <h1 className="text-2xl font-bold mb-4">Note Sheet</h1>
+            <Note />
+
+            <h2 className="mb-10">SideNavBar</h2>
+            <div>
+                <SideNavBar />
+            </div>
+            <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
+            <FoodTypesDonutChart />
         </div>
     );
 }
