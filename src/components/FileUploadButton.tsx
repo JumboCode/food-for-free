@@ -12,41 +12,80 @@ type FileInfo = {
 export default function FileUploadButton() {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
+
+    const normalizeRows = (rows: any[]) => {
+        return rows.map((r) => ({
+            product: r["Product"],
+            inventoryType: r["Inventory Type"],
+            amount: r["Amount"],
+            units: r["Units"],
+            weightLbs: r["Weight (lbs)"],
+            source: r["Source"],
+            destination: r["Destination"],
+            date: r["Date"],
+        }));
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError(null);
+        setSuccess(null);
+
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // basic client-side validation for extension
         const allowed = ['.xls', '.xlsx'];
         const lower = file.name.toLowerCase();
         if (!allowed.some(ext => lower.endsWith(ext))) {
-            setError('Please select an .xls or .xlsx file');
+            setError('Please upload an .xls or .xlsx file.');
             setFileInfo(null);
             return;
         }
 
         try {
             setLoading(true);
+
+            // Read Excel
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
-            const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(firstSheet, {
-                defval: null,
+
+            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+
+            const normalized = normalizeRows(rawRows);
+
+            setFileInfo({ name: file.name, rowsCount: normalized.length });
+
+            // Upload
+            setUploading(true);
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    sheetName: firstSheetName,
+                    records: normalized,
+                }),
             });
 
-            setFileInfo({ name: file.name, rowsCount: rows.length });
-        } catch (err) {
+            const json = await res.json();
+            if (!res.ok) {
+                console.error("Server error:", json);
+                throw new Error(json.error || 'Upload failed');
+            }
+
+            setSuccess(`Uploaded ${json.count} rows successfully!`);
+        } catch (err: any) {
             console.error(err);
-            setError('Failed to parse file');
+            setError(err.message || 'Failed to upload file.');
             setFileInfo(null);
         } finally {
             setLoading(false);
-            // clear the file input so the same file can be re-selected if needed
+            setUploading(false);
             if (e.target) e.target.value = '';
         }
     };
@@ -66,19 +105,21 @@ export default function FileUploadButton() {
                 <Button type="button" onClick={() => inputRef.current?.click()}>
                     Choose Excel file
                 </Button>
-                {loading && <div className="text-sm text-muted-foreground">Parsing file…</div>}
+                {(loading || uploading) && (
+                    <div className="text-sm text-muted-foreground">
+                        {loading ? 'Parsing…' : 'Uploading…'}
+                    </div>
+                )}
             </div>
 
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
                 {error && <div className="text-sm text-red-600">{error}</div>}
+                {success && <div className="text-sm text-green-600">{success}</div>}
+
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div>
-                            <strong>File name:</strong> {fileInfo.name}
-                        </div>
-                        <div>
-                            <strong>Rows:</strong> {fileInfo.rowsCount}
-                        </div>
+                        <div><strong>File name:</strong> {fileInfo.name}</div>
+                        <div><strong>Rows:</strong> {fileInfo.rowsCount}</div>
                     </div>
                 )}
             </div>
