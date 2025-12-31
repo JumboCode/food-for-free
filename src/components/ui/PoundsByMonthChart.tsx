@@ -73,7 +73,7 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
                         />
                         <Bar
                             dataKey="pounds"
-                            fill="#86EFAC"
+                            fill="#B7D7BD"
                             radius={[8, 8, 0, 0]}
                             isAnimationActive={true}
                         />
