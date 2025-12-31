@@ -7,6 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  role      Role     @default(PARTNER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  partner   Partner? @relation("UserPartner", fields: [partnerId], references: [id])
+  partnerId String?
+}
+
+model Partner {
+  id               String   @id @default(cuid())
+  organizationName String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  users            User[]   @relation("UserPartner")
+}
+
+enum Role {
+  ADMIN
+  PARTNER
+}
 model UploadedSheet {
   id        String            @id @default(uuid())
   fileName  String
