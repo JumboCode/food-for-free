@@ -20,12 +20,12 @@ model User {
 }
 
 model Partner {
-  id               String   @id @default(cuid())
-  organizationName String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  users            User[]   @relation("UserPartner")
+  id                   String   @id @default(cuid())
+  organizationName     String
+  clerkOrganizationId  String   @unique // links to Clerk Organization
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  users                User[]   @relation("UserPartner")
 }
 
 enum Role {
