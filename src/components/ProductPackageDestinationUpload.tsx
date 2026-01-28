@@ -13,7 +13,16 @@ type ProductPackageDestinationUploadProps = {
     onUploadSuccess?: () => void;
 };
 
-export default function ProductPackageDestinationUpload({ onUploadSuccess }: ProductPackageDestinationUploadProps) {
+interface ProductPackageDestinationRow {
+    'Product Package: Product Package Name': string;
+    'Product Package ID 18': string | number;
+    'Pantry Visit Where Distributed: Household Name': string;
+    'Pantry Visit Where Distributed: Household ID 18': string | number;
+}
+
+export default function ProductPackageDestinationUpload({
+    onUploadSuccess,
+}: ProductPackageDestinationUploadProps) {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -21,12 +30,12 @@ export default function ProductPackageDestinationUpload({ onUploadSuccess }: Pro
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: any[]) => {
-        return rows.map((r) => ({
-            productPackageName: r["Product Package: Product Package Name"],
-            productPackageId18: r["Product Package ID 18"]?.toString(),
-            householdName: r["Pantry Visit Where Distributed: Household Name"],
-            householdId18: r["Pantry Visit Where Distributed: Household ID 18"]?.toString(),
+    const normalizeRows = (rows: ProductPackageDestinationRow[]) => {
+        return rows.map(r => ({
+            productPackageName: r['Product Package: Product Package Name'],
+            productPackageId18: r['Product Package ID 18']?.toString() || null,
+            householdName: r['Pantry Visit Where Distributed: Household Name'],
+            householdId18: r['Pantry Visit Where Distributed: Household ID 18']?.toString() || null,
         }));
     };
 
@@ -54,7 +63,9 @@ export default function ProductPackageDestinationUpload({ onUploadSuccess }: Pro
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+            const rawRows = XLSX.utils.sheet_to_json<ProductPackageDestinationRow>(firstSheet, {
+                defval: null,
+            });
 
             const normalized = normalizeRows(rawRows);
 
@@ -73,13 +84,13 @@ export default function ProductPackageDestinationUpload({ onUploadSuccess }: Pro
 
             const json = await res.json();
             if (!res.ok) {
-                console.error("Server error:", json);
+                console.error('Server error:', json);
                 throw new Error(json.error || 'Upload failed');
             }
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
             onUploadSuccess?.();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setError(err.message || 'Failed to upload file.');
             setFileInfo(null);
@@ -118,8 +129,12 @@ export default function ProductPackageDestinationUpload({ onUploadSuccess }: Pro
 
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div><strong>File name:</strong> {fileInfo.name}</div>
-                        <div><strong>Rows:</strong> {fileInfo.rowsCount}</div>
+                        <div>
+                            <strong>File name:</strong> {fileInfo.name}
+                        </div>
+                        <div>
+                            <strong>Rows:</strong> {fileInfo.rowsCount}
+                        </div>
                     </div>
                 )}
             </div>

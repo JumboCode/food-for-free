@@ -13,6 +13,18 @@ type PackagesByItemUploadProps = {
     onUploadSuccess?: () => void;
 };
 
+interface PackagesByItemRow {
+    'Product Package: Product Package Name': string;
+    'Pantry Product: Product': string;
+    'Lot: Source: Account Name'?: string;
+    'Lot: Food Rescue Program'?: string;
+    'Distribution Record: Amount'?: number | string;
+    'Pantry Product: Weight (in pounds)'?: number | string;
+    'Distribution Record: Cost'?: number | string;
+    'Distribution Record: Product Inventory Record ID 18': string | number;
+    'Product Package ID 18': string | number;
+}
+
 export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItemUploadProps) {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
@@ -21,17 +33,27 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: any[]) => {
-        return rows.map((r) => ({
-            productPackageName: r["Product Package: Product Package Name"],
-            pantryProductName: r["Pantry Product: Product"],
-            lotSourceAccountName: r["Lot: Source: Account Name"],
-            lotFoodRescueProgram: r["Lot: Food Rescue Program"],
-            distributionAmount: r["Distribution Record: Amount"] ? parseInt(r["Distribution Record: Amount"]) : null,
-            pantryProductWeightLbs: r["Pantry Product: Weight (in pounds)"] ? parseFloat(r["Pantry Product: Weight (in pounds)"]) : null,
-            distributionCost: r["Distribution Record: Cost"] ? parseFloat(r["Distribution Record: Cost"]) : null,
-            productInventoryRecordId18: r["Distribution Record: Product Inventory Record ID 18"]?.toString(),
-            productPackageId18: r["Product Package ID 18"]?.toString(),
+    const normalizeRows = (rows: PackagesByItemRow[]) => {
+        return rows.map(r => ({
+            productPackageName: r['Product Package: Product Package Name'],
+            pantryProductName: r['Pantry Product: Product'],
+            lotSourceAccountName: r['Lot: Source: Account Name'] || null,
+            lotFoodRescueProgram: r['Lot: Food Rescue Program'] || null,
+            distributionAmount:
+                r['Distribution Record: Amount'] != null
+                    ? parseInt(r['Distribution Record: Amount'].toString())
+                    : null,
+            pantryProductWeightLbs:
+                r['Pantry Product: Weight (in pounds)'] != null
+                    ? parseFloat(r['Pantry Product: Weight (in pounds)'].toString())
+                    : null,
+            distributionCost:
+                r['Distribution Record: Cost'] != null
+                    ? parseFloat(r['Distribution Record: Cost'].toString())
+                    : null,
+            productInventoryRecordId18:
+                r['Distribution Record: Product Inventory Record ID 18']?.toString() || null,
+            productPackageId18: r['Product Package ID 18']?.toString() || null,
         }));
     };
 
@@ -59,7 +81,9 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+            const rawRows = XLSX.utils.sheet_to_json<PackagesByItemRow>(firstSheet, {
+                defval: null,
+            });
 
             const normalized = normalizeRows(rawRows);
 
@@ -78,13 +102,13 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
 
             const json = await res.json();
             if (!res.ok) {
-                console.error("Server error:", json);
+                console.error('Server error:', json);
                 throw new Error(json.error || 'Upload failed');
             }
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
             onUploadSuccess?.();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setError(err.message || 'Failed to upload file.');
             setFileInfo(null);
@@ -123,8 +147,12 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
 
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div><strong>File name:</strong> {fileInfo.name}</div>
-                        <div><strong>Rows:</strong> {fileInfo.rowsCount}</div>
+                        <div>
+                            <strong>File name:</strong> {fileInfo.name}
+                        </div>
+                        <div>
+                            <strong>Rows:</strong> {fileInfo.rowsCount}
+                        </div>
                     </div>
                 )}
             </div>

@@ -12,8 +12,22 @@ type FileInfo = {
 type InventoryTransactionUploadProps = {
     onUploadSuccess?: () => void;
 };
+interface InventoryTransactionRow {
+    Date: string | number;
+    Location: string;
+    'Pantry Product: Product': string;
+    'Inventory Type'?: string;
+    Amount?: number;
+    'Product Units for Display'?: string;
+    'Weight (in pounds)'?: number;
+    Source?: string;
+    Destination?: string;
+    'Product Inventory Record ID 18': string | number;
+}
 
-export default function InventoryTransactionUpload({ onUploadSuccess }: InventoryTransactionUploadProps) {
+export default function InventoryTransactionUpload({
+    onUploadSuccess,
+}: InventoryTransactionUploadProps) {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -21,18 +35,21 @@ export default function InventoryTransactionUpload({ onUploadSuccess }: Inventor
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: any[]) => {
-        return rows.map((r) => ({
-            date: r["Date"] ? new Date(r["Date"]).toISOString() : null,
-            location: r["Location"],
-            pantryProductName: r["Pantry Product: Product"],
-            inventoryType: r["Inventory Type"],
-            amount: r["Amount"] ? parseInt(r["Amount"]) : null,
-            productUnitsForDisplay: r["Product Units for Display"],
-            weightLbs: r["Weight (in pounds)"] ? parseFloat(r["Weight (in pounds)"]) : null,
-            source: r["Source"],
-            destination: r["Destination"],
-            productInventoryRecordId18: r["Product Inventory Record ID 18"]?.toString(),
+    const normalizeRows = (rows: InventoryTransactionRow[]) => {
+        return rows.map(r => ({
+            date: r.Date ? new Date(r.Date).toISOString() : null,
+            location: r.Location,
+            pantryProductName: r['Pantry Product: Product'],
+            inventoryType: r['Inventory Type'] || null,
+            amount: r.Amount != null ? parseInt(r.Amount.toString()) : null,
+            productUnitsForDisplay: r['Product Units for Display'] || null,
+            weightLbs:
+                r['Weight (in pounds)'] != null
+                    ? parseFloat(r['Weight (in pounds)'].toString())
+                    : null,
+            source: r.Source || null,
+            destination: r.Destination || null,
+            productInventoryRecordId18: r['Product Inventory Record ID 18']?.toString() || null,
         }));
     };
 
@@ -60,7 +77,9 @@ export default function InventoryTransactionUpload({ onUploadSuccess }: Inventor
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { defval: null });
+            const rawRows = XLSX.utils.sheet_to_json<InventoryTransactionRow>(firstSheet, {
+                defval: null,
+            });
 
             const normalized = normalizeRows(rawRows);
 
@@ -79,13 +98,13 @@ export default function InventoryTransactionUpload({ onUploadSuccess }: Inventor
 
             const json = await res.json();
             if (!res.ok) {
-                console.error("Server error:", json);
+                console.error('Server error:', json);
                 throw new Error(json.error || 'Upload failed');
             }
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
             onUploadSuccess?.();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setError(err.message || 'Failed to upload file.');
             setFileInfo(null);
@@ -124,8 +143,12 @@ export default function InventoryTransactionUpload({ onUploadSuccess }: Inventor
 
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div><strong>File name:</strong> {fileInfo.name}</div>
-                        <div><strong>Rows:</strong> {fileInfo.rowsCount}</div>
+                        <div>
+                            <strong>File name:</strong> {fileInfo.name}
+                        </div>
+                        <div>
+                            <strong>Rows:</strong> {fileInfo.rowsCount}
+                        </div>
                     </div>
                 )}
             </div>
