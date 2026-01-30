@@ -12,11 +12,12 @@ export default function PoundsPage() {
         async function load() {
             try {
                 const res = await fetch('/api/pounds-by-month');
-                if (!res.ok) throw new Error("Failed to fetch pounds data");
+                if (!res.ok) throw new Error('Failed to fetch pounds data');
                 const json = await res.json();
                 setData(json);
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                setError(message);
             } finally {
                 setLoading(false);
             }

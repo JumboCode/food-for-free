@@ -41,7 +41,6 @@ const deliveries = [
     { id: 3, date: new Date('2025-11-10'), totalPounds: 150 },
 ];
 
-
 // Delivery popup sample data
 const sampleDeliveryData = {
     date: '11/16/2025',
@@ -75,26 +74,23 @@ export default function CalendarPage() {
             </section>
             <section>
                 <h1 className="text-2xl font-bold mb-4">Summary Dashboard</h1>
-                <StatCard
-                    title="Summary Dashboard"
-                    statistics={[
-                        {
-                            label: 'Total Pounds Distributed',
-                            value: '2,847',
-                            icon: <Package className="h-5 w-5" />,
-                        },
-                        {
-                            label: 'Total Partners',
-                            value: '23',
-                            icon: <Users className="h-5 w-5" />,
-                        },
-                        {
-                            label: 'Active Volunteers',
-                            value: '156',
-                            icon: <UserCheck className="h-5 w-5" />,
-                        },
-                    ]}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <StatCard
+                        label="Total Pounds Distributed"
+                        value="2,847"
+                        icon={<Package className="h-5 w-5" />}
+                    />
+                    <StatCard
+                        label="Total Partners"
+                        value="23"
+                        icon={<Users className="h-5 w-5" />}
+                    />
+                    <StatCard
+                        label="Active Volunteers"
+                        value="156"
+                        icon={<UserCheck className="h-5 w-5" />}
+                    />
+                </div>
             </section>
             <section>
                 <h1 className="text-2xl font-bold mb-4">Delivery Detail Popup</h1>
