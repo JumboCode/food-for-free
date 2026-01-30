@@ -1,10 +1,9 @@
 'use client';
-
-import React from 'react';
-
+import React, { useRef } from 'react';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
+import { DownloadPDFButton } from '@/components/ui/DownloadPDFButton';
 
 interface OrganizationInfo {
     organizationName: string;
@@ -14,25 +13,32 @@ const OverviewPage: React.FC<OrganizationInfo> = ({
     organizationName = 'Organization Name',
     description = "Overview of your organization's deliveries and analystics.",
 }) => {
+    const exportRef = useRef<HTMLDivElement>(null);
+
     return (
         <div className="p-4 sm:p-6 lg:p-10 bg-[#FAF9F7] min-h-screen space-y-6">
-            <h1 className="text-2xl sm:text-3xl font-bold pb-2">
-                {organizationName}: Statistics Overview
-            </h1>
-            <p className="pb-6 sm:pb-10">{description}</p>
+            <div ref={exportRef}>
+                <div className="flex justify-between items-start gap-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold pb-2">
+                        {organizationName}: Statistics Overview
+                    </h1>
+                    <DownloadPDFButton targetRef={exportRef} fileName="overview.pdf" />
+                </div>
+                <p className="pb-6 sm:pb-10">{description}</p>
 
-            <div className="w-full overflow-x-auto">
-                <PoundsByMonthChart />
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className="w-full lg:flex-1">
-                    <FoodTypesDonutChart />
+                <div className="w-full overflow-x-auto">
+                    <PoundsByMonthChart />
                 </div>
 
-                <div className="flex flex-col gap-6 w-full lg:w-120">
-                    <StatCard label="Total Delivered" value="725" unit="lbs" />
-                    <StatCard label="Deliveries Completed" value="25" />
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="w-full lg:flex-1">
+                        <FoodTypesDonutChart />
+                    </div>
+
+                    <div className="flex flex-col gap-6 w-full lg:w-120">
+                        <StatCard label="Total Delivered" value="725" unit="lbs" />
+                        <StatCard label="Deliveries Completed" value="25" />
+                    </div>
                 </div>
             </div>
         </div>
