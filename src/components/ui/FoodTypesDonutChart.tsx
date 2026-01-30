@@ -5,13 +5,24 @@ import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps 
 import { Card, CardHeader, CardTitle, CardFooter, CardContent } from '@/components/ui/card';
 import { Apple } from 'lucide-react';
 
-// Sample data
-const data = [
+// Sample data for when no data is provided
+const DEFAULT_DATA = [
     { label: 'High Protein', value: 120, color: '#F9DC70' },
-    { label: 'High Protein', value: 220, color: '#6CAEE6' },
-    { label: 'High Protein', value: 320, color: '#A1C5B0' },
-    { label: 'High Protein', value: 420, color: '#E7A54E' },
+    { label: 'Vegetables', value: 220, color: '#6CAEE6' },
+    { label: 'Dairy', value: 320, color: '#A1C5B0' },
+    { label: 'Grains', value: 420, color: '#E7A54E' },
 ];
+
+export interface FoodTypeData {
+    label: string;
+    value: number;
+    color: string;
+}
+
+interface FoodTypesDonutChartProps {
+    data?: FoodTypeData[];
+    title?: string;
+}
 
 // Hovering logic
 const renderActiveShape = (props: SectorProps) => {
@@ -32,11 +43,14 @@ const renderActiveShape = (props: SectorProps) => {
     );
 };
 
-export function FoodTypesDonutChart() {
+export function FoodTypesDonutChart({
+    data = DEFAULT_DATA,
+    title = 'Food Types Donated',
+}: FoodTypesDonutChartProps) {
     return (
         <Card className="w-full max-w-[600px] p-4">
             <CardHeader>
-                <CardTitle className="whitespace-nowrap mt-3">Food Types Donated</CardTitle>
+                <CardTitle className="whitespace-nowrap mt-3">{title}</CardTitle>
             </CardHeader>
 
             <CardContent className="flex items-center gap-8">
