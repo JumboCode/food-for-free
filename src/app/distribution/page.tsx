@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
+import { MyCalendar } from '@/components/ui/CalendarPicker';
 
 type Delivery = {
     id: number;
@@ -86,25 +87,27 @@ const DistributionPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Distribution</h1>
                 <p className="text-gray-600 mb-6">Full list of deliveries for your organization.</p>
 
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                    <div className="flex-1">
-                        <div className="relative max-w-3xl">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-64 md:w-56">
                             <input
                                 aria-label="Search deliveries"
-                                placeholder="Search deliveries by date, id, or pounds..."
+                                placeholder="Search deliveries..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full px-4 py-3 pr-12 text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-green-200 focus:border-transparent"
+                                className="w-full px-2 py-1 pr-9 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-green-200 focus:border-transparent"
                             />
-                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
+                        <MyCalendar compact />
+
                         <button className="inline-flex items-center gap-2 bg-[#E6F6EF] hover:bg-[#DFF0E6] text-[#227A4E] px-4 py-2 rounded-md border border-[#D9EFE0] shadow-sm">
                             Filter
                         </button>
                     </div>
+
+                    <div className="flex-1" />
                 </div>
 
                 <div className="border border-gray-200 rounded-lg overflow-hidden">

@@ -4,7 +4,7 @@ import { format, parse, isValid } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
-export function MyCalendar() {
+export function MyCalendar({ compact = false }: { compact?: boolean }) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
     const [month, setMonth] = useState(new Date());
@@ -78,10 +78,12 @@ export function MyCalendar() {
     const handleDone = () => toggleDialog();
 
     return (
-        <div className="flex flex-col items-center mt-8">
-            <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
-                Date Range:
-            </label>
+        <div className={compact ? 'flex items-center gap-2' : 'flex flex-col items-center mt-8'}>
+            {!compact && (
+                <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
+                    Date Range:
+                </label>
+            )}
 
             <input
                 id="date-input"
@@ -89,12 +91,20 @@ export function MyCalendar() {
                 value={inputValue}
                 placeholder="MM/dd/yyyy - MM/dd/yyyy"
                 onChange={handleInputChange}
-                className="text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center"
+                className={
+                    compact
+                        ? 'text-sm px-3 py-1 mb-0 w-48 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400'
+                        : 'text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center'
+                }
             />
 
             <button
                 onClick={toggleDialog}
-                className="text-lg px-4 py-2 mb-4 bg-blue-100 hover:bg-blue-200 rounded-md"
+                className={
+                    compact
+                        ? 'inline-flex items-center gap-1 bg-[#E6F6EF] hover:bg-[#DFF0E6] text-[#227A4E] px-3 py-1 rounded-md border border-[#D9EFE0] shadow-sm'
+                        : 'text-lg px-4 py-2 mb-4 bg-blue-100 hover:bg-blue-200 rounded-md'
+                }
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
@@ -102,11 +112,13 @@ export function MyCalendar() {
                 📆
             </button>
 
-            <p className="text-base mb-4 text-gray-700">
-                {selectedRange?.from && selectedRange?.to
-                    ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
-                    : 'Please pick a date range'}
-            </p>
+            {!compact && (
+                <p className="text-base mb-4 text-gray-700">
+                    {selectedRange?.from && selectedRange?.to
+                        ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
+                        : 'Please pick a date range'}
+                </p>
+            )}
 
             <dialog
                 ref={dialogRef}
