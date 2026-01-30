@@ -4,11 +4,22 @@ import { format, parse, isValid } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
-export function MyCalendar() {
+interface MyCalendarProps {
+    selectedRange?: { start: Date; end: Date };
+    onRangeChange?: (range: { start: Date; end: Date }) => void;
+}
+
+export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCalendarProps = {}) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
     const [month, setMonth] = useState(new Date());
-    const [selectedRange, setSelectedRange] = useState<DateRange>();
+
+    // Convert external range format to DateRange format
+    const initialRange: DateRange | undefined = externalRange
+        ? { from: externalRange.start, to: externalRange.end }
+        : undefined;
+
+    const [selectedRange, setSelectedRange] = useState<DateRange>(initialRange);
     const [inputValue, setInputValue] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -34,11 +45,15 @@ export function MyCalendar() {
 
     const handleDayPickerSelect = (range: DateRange | undefined) => {
         setSelectedRange(range);
-        if (range?.from && range?.to)
+        if (range?.from && range?.to) {
             setInputValue(
                 `${format(range.from, 'MM/dd/yyyy')} - ${format(range.to, 'MM/dd/yyyy')}`
             );
-        else if (range?.from) setInputValue(format(range.from, 'MM/dd/yyyy'));
+            // Notify parent component if callback is provided
+            if (onRangeChange) {
+                onRangeChange({ start: range.from, end: range.to });
+            }
+        } else if (range?.from) setInputValue(format(range.from, 'MM/dd/yyyy'));
         else setInputValue('');
     };
 
@@ -78,8 +93,8 @@ export function MyCalendar() {
     const handleDone = () => toggleDialog();
 
     return (
-        <div className="flex flex-col items-center mt-8">
-            <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
+        <div className="flex flex-col items-center">
+            {/* <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
                 Date Range:
             </label>
 
@@ -90,23 +105,23 @@ export function MyCalendar() {
                 placeholder="MM/dd/yyyy - MM/dd/yyyy"
                 onChange={handleInputChange}
                 className="text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center"
-            />
+            /> */}
 
             <button
                 onClick={toggleDialog}
-                className="text-lg px-4 py-2 mb-4 bg-blue-100 hover:bg-blue-200 rounded-md"
+                className="px-4 py-2 bg-[#A7C7E7] hover:bg-[#8FB5D9] text-white rounded-lg flex items-center gap-2 font-medium"
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
             >
-                📆
+                Date Range 📅
             </button>
 
-            <p className="text-base mb-4 text-gray-700">
+            {/* <p className="text-base mb-4 text-gray-700">
                 {selectedRange?.from && selectedRange?.to
                     ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
                     : 'Please pick a date range'}
-            </p>
+            </p> */}
 
             <dialog
                 ref={dialogRef}
