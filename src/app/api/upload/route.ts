@@ -279,22 +279,22 @@ export async function POST(req: Request) {
                     { status: 400 }
                 );
         }
-    } catch (err: unknown) {
+    } catch (err: any) {
         console.error('Upload error:', err);
 
-        // if (err.code === "P2002") {
-        //   return NextResponse.json(
-        //     { success: false, error: "Duplicate record detected. Some records may already exist." },
-        //     { status: 409 }
-        //   );
-        // }
+        if (err.code === "P2002") {
+          return NextResponse.json(
+            { success: false, error: "Duplicate record detected. Some records may already exist." },
+            { status: 409 }
+          );
+        }
 
-        // if (err.code === "P2003") {
-        //   return NextResponse.json(
-        //     { success: false, error: "Foreign key constraint failed. Ensure related records exist first." },
-        //     { status: 400 }
-        //   );
-        // }
+        if (err.code === "P2003") {
+          return NextResponse.json(
+            { success: false, error: "Foreign key constraint failed. Ensure related records exist first." },
+            { status: 400 }
+          );
+        }
 
         return NextResponse.json(
             { success: false, error: err.message || 'Upload failed' },

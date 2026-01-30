@@ -173,7 +173,7 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
             <FoodTypesDonutChart />
 
-            <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} />
+            {/* <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} /> */}
 
             <DeliverySummary
                 deliveries={deliveries}
