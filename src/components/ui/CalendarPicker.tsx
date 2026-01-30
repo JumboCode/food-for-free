@@ -88,6 +88,13 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
     const handleClear = () => {
         setSelectedRange(undefined);
         setInputValue('');
+        // Notify parent component to reset to default range
+        if (onRangeChange) {
+            onRangeChange({
+                start: new Date('2025-01-01'),
+                end: new Date('2025-12-31'),
+            });
+        }
     };
 
     const handleDone = () => toggleDialog();
