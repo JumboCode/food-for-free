@@ -23,15 +23,11 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
     // Check if user is admin
+    // Uses dedicated /api/admin/check endpoint for cleaner admin status checking
     useEffect(() => {
-        fetch('/api/admin/invitations')
-            .then(res => {
-                if (res.status === 403) {
-                    setIsAdmin(false);
-                } else if (res.ok) {
-                    setIsAdmin(true);
-                }
-            })
+        fetch('/api/admin/check')
+            .then(res => res.json())
+            .then(data => setIsAdmin(data.isAdmin || false))
             .catch(() => setIsAdmin(false));
     }, []);
 

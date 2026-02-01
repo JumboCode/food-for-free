@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { format, parse, isValid } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
+import { Calendar } from 'lucide-react';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
 interface MyCalendarProps {
@@ -19,9 +20,21 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
         ? { from: externalRange.start, to: externalRange.end }
         : undefined;
 
-    const [selectedRange, setSelectedRange] = useState<DateRange>(initialRange);
+    const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(initialRange);
     const [inputValue, setInputValue] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    // Sync internal state when external range changes (e.g., from quick filters)
+    useEffect(() => {
+        if (externalRange) {
+            const newRange: DateRange = { from: externalRange.start, to: externalRange.end };
+            setSelectedRange(newRange);
+            setInputValue(
+                `${format(externalRange.start, 'MM/dd/yyyy')} - ${format(externalRange.end, 'MM/dd/yyyy')}`
+            );
+            setMonth(externalRange.start);
+        }
+    }, [externalRange]);
 
     const toggleDialog = () => {
         const dialog = dialogRef.current;
@@ -116,12 +129,15 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
 
             <button
                 onClick={toggleDialog}
-                className="px-4 py-2 bg-[#A7C7E7] hover:bg-[#8FB5D9] text-white rounded-lg flex items-center gap-2 font-medium"
+                className="px-3 py-2 bg-[#5DB6E6] hover:bg-[#4A9FCC] text-white rounded-lg flex items-center gap-2 font-medium"
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
             >
-                Date Range 📅
+                <Calendar className="w-4 h-4" />
+                {selectedRange?.from && selectedRange?.to
+                    ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(selectedRange.to, 'MM/dd/yyyy')}`
+                    : 'Date Range'}
             </button>
 
             {/* <p className="text-base mb-4 text-gray-700">

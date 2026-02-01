@@ -39,7 +39,6 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                 </h3>
             </div>
 
-            <h3 className="hidden sm:inline text-lightgray px-7 text-md font-medium mb-2">Pages</h3>
             {/* navigation */}
             <nav className="flex flex-col space-y-2">
                 {items.map(item => {
