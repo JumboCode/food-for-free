@@ -11,19 +11,20 @@ This GitHub repository contains the code behind [Food For Free](https://foodforf
 
 Make sure you have the following installed:
 
-* **Node.js** (LTS recommended) → [Download here](https://nodejs.org/en/download)  
+- **Node.js** (LTS recommended) → [Download here](https://nodejs.org/en/download)  
   Verify installation:
 
-  ```bash
-  node -v
-  npm -v
-  ```
-* **Git** → [Download here](https://git-scm.com/downloads)  
+    ```bash
+    node -v
+    npm -v
+    ```
+
+- **Git** → [Download here](https://git-scm.com/downloads)  
   Verify installation:
 
-  ```bash
-  git --version
-  ```
+    ```bash
+    git --version
+    ```
 
 ---
 
@@ -51,24 +52,28 @@ npm install
 Before starting development for each sprint, make sure you are working from the most recent version of `main`.
 
 **1. Start on `main` and update it:**
+
 ```bash
 git checkout main
 git pull origin main
 ```
 
 **2. Create your code branch from the fresh `main`:**
+
 ```bash
 git checkout -b sprintnumber/feature-name
 ```
 
-**3. Work on your feature.**  
+**3. Work on your feature.**
 
 Commit and push as usual.
 
 **4. If `main` changes while you’re working (because someone else merged first), update your branch:**
+
 ```bash
 git pull origin main
 ```
+
 (run this while staying on your branch)
 
 ---
@@ -93,13 +98,14 @@ You can edit the app by modifying `app/page.tsx`. The page auto-updates as you e
 
 ## 6. Workflow Notes
 
-* Always `git pull` before making changes.
-* Create a new branch for your work:
+- Always `git pull` before making changes.
+- Create a new branch for your work:
 
-  ```bash
-  git checkout -b <branch-name>
-  ```
-* Commit and push your branch, then open a Pull Request (PR) for review.
+    ```bash
+    git checkout -b <branch-name>
+    ```
+
+- Commit and push your branch, then open a Pull Request (PR) for review.
 
 ## Branch Naming Convention
 
@@ -111,21 +117,23 @@ Branches should follow this format:
 - **Feature name:** Short, descriptive, and use dashes between words.
 
 ### Examples
+
 ```bash
 git checkout -b "00/add-weather-button"
 git checkout -b "01/create-login-page"
 git checkout -b "02/setup-database-schema"
 ```
-*Note: Specifying -b causes a new branch to be created. You only need to run this when first creating the branch; when checking out to an existing branch the -b flag does not need to be included.*
+
+_Note: Specifying -b causes a new branch to be created. You only need to run this when first creating the branch; when checking out to an existing branch the -b flag does not need to be included._
 
 ---
 
 ## Learn More
 
-* [Node.js Docs](https://nodejs.org/docs)
-* [Git Docs](https://git-scm.com/doc)
-* [Next.js Docs](https://nextjs.org/docs)
-* [Interactive Next.js Tutorial](https://nextjs.org/learn)
+- [Node.js Docs](https://nodejs.org/docs)
+- [Git Docs](https://git-scm.com/doc)
+- [Next.js Docs](https://nextjs.org/docs)
+- [Interactive Next.js Tutorial](https://nextjs.org/learn)
 
 ---
 
