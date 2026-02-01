@@ -57,7 +57,7 @@ const OverviewPage = () => {
 
             {/* Delivery Summary */}
             <div className="w-full bg-white rounded-xl shadow p-6">
-                <DeliverySummary deliveries={deliveries} historyLink="IDK" />
+                <DeliverySummary deliveries={deliveries} historyLink="distribution" />
             </div>
         </div>
     );

@@ -168,10 +168,7 @@ export default function CalendarPage() {
 
             <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} />
 
-            <DeliverySummary
-                deliveries={deliveries}
-                historyLink="IDK" // Replace with your actual route
-            />
+            <DeliverySummary deliveries={deliveries} historyLink="distribution" />
             <FoodTypesDonutChart />
         </div>
     );
