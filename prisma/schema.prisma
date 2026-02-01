@@ -14,99 +14,82 @@ model User {
   role      Role     @default(PARTNER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  partner   Partner? @relation("UserPartner", fields: [partnerId], references: [id])
   partnerId String?
+  partner   Partner? @relation("UserPartner", fields: [partnerId], references: [id])
 }
 
 model Partner {
   id                  String   @id @default(cuid())
   organizationName    String
-  clerkOrganizationId String   @unique // links to Clerk Organization
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  clerkOrganizationId String   @unique
   users               User[]   @relation("UserPartner")
+}
+
+model UploadedSheet {
+  id        String            @id @default(uuid())
+  fileName  String
+  sheetName String
+  createdAt DateTime          @default(now())
+  records   InventoryRecord[]
+}
+
+model InventoryRecord {
+  id              String         @id @default(uuid())
+  product         String
+  inventoryType   String?
+  amount          Int?
+  units           String?
+  weightLbs       Float?
+  source          String?
+  destination     String?
+  createdAt       DateTime       @default(now())
+  uploadedSheetId String?
+  date            DateTime?
+  uploadedSheet   UploadedSheet? @relation(fields: [uploadedSheetId], references: [id])
+}
+
+model InventoryTransaction {
+  id                         Int              @id @default(autoincrement())
+  date                       DateTime
+  location                   String
+  pantryProductName          String
+  inventoryType              String
+  amount                     Int
+  productUnitsForDisplay     String?
+  weightLbs                  Float?
+  source                     String?
+  destination                String?
+  productInventoryRecordId18 String           @unique
+  packages                   PackagesByItem[]
+}
+
+model PackagesByItem {
+  id                         Int                       @id @default(autoincrement())
+  productPackageName         String?
+  pantryProductName          String?
+  lotSourceAccountName       String?
+  lotFoodRescueProgram       String?
+  distributionAmount         Int?
+  pantryProductWeightLbs     Float?
+  distributionCost           Float?
+  productInventoryRecordId18 String
+  productPackageId18         String
+  inventoryTransaction       InventoryTransaction      @relation(fields: [productInventoryRecordId18], references: [productInventoryRecordId18])
+  packageDestination         ProductPackageDestination @relation(fields: [productPackageId18], references: [productPackageId18])
+}
+
+model ProductPackageDestination {
+  id                 Int              @id @default(autoincrement())
+  productPackageName String
+  productPackageId18 String           @unique
+  householdName      String
+  householdId18      String
+  packages           PackagesByItem[]
 }
 
 enum Role {
   ADMIN
   PARTNER
-}
-
-model UploadedSheet {
-  id        String   @id @default(uuid())
-  fileName  String
-  sheetName String
-  createdAt DateTime @default(now())
-
-  // all inventory records created from this upload
-  records InventoryRecord[]
-}
-
-model InventoryRecord {
-  id String @id @default(uuid())
-
-  product       String
-  inventoryType String?
-  amount        Int?
-  units         String?
-  weightLbs     Float?
-  source        String?
-  destination   String?
-  date          DateTime?
-
-  uploadedSheetId String?
-  uploadedSheet   UploadedSheet? @relation(fields: [uploadedSheetId], references: [id])
-
-  createdAt DateTime @default(now())
-}
-
-model InventoryTransaction {
-  id Int @id @default(autoincrement())
-
-  date                   DateTime
-  location               String
-  pantryProductName      String
-  inventoryType          String
-  amount                 Int
-  productUnitsForDisplay String?
-  weightLbs              Float?
-  source                 String?
-  destination            String?
-
-  productInventoryRecordId18 String @unique
-
-  packages PackagesByItem[]
-}
-
-model PackagesByItem {
-  id Int @id @default(autoincrement())
-
-  productPackageName   String?
-  pantryProductName    String?
-  lotSourceAccountName String?
-  lotFoodRescueProgram String?
-
-  distributionAmount     Int?
-  pantryProductWeightLbs Float?
-  distributionCost       Float?
-
-  productInventoryRecordId18 String
-  productPackageId18         String
-
-  inventoryTransaction InventoryTransaction @relation(fields: [productInventoryRecordId18], references: [productInventoryRecordId18])
-
-  packageDestination ProductPackageDestination? @relation(fields: [productPackageId18], references: [productPackageId18])
-}
-
-model ProductPackageDestination {
-  id Int @id @default(autoincrement())
-
-  productPackageName String
-  productPackageId18 String @unique
-
-  householdName String
-  householdId18 String
-
-  packages PackagesByItem[]
 }

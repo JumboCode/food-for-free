@@ -12,18 +12,6 @@ type FileInfo = {
 type InventoryTransactionUploadProps = {
     onUploadSuccess?: () => void;
 };
-interface InventoryTransactionRow {
-    Date: string | number;
-    Location: string;
-    'Pantry Product: Product': string;
-    'Inventory Type'?: string;
-    Amount?: number;
-    'Product Units for Display'?: string;
-    'Weight (in pounds)'?: number;
-    Source?: string;
-    Destination?: string;
-    'Product Inventory Record ID 18': string | number;
-}
 
 export default function InventoryTransactionUpload({
     onUploadSuccess,
@@ -35,22 +23,107 @@ export default function InventoryTransactionUpload({
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: InventoryTransactionRow[]) => {
-        return rows.map(r => ({
-            date: r.Date ? new Date(r.Date).toISOString() : null,
-            location: r.Location,
-            pantryProductName: r['Pantry Product: Product'],
-            inventoryType: r['Inventory Type'] || null,
-            amount: r.Amount != null ? parseInt(r.Amount.toString()) : null,
-            productUnitsForDisplay: r['Product Units for Display'] || null,
-            weightLbs:
-                r['Weight (in pounds)'] != null
-                    ? parseFloat(r['Weight (in pounds)'].toString())
-                    : null,
-            source: r.Source || null,
-            destination: r.Destination || null,
-            productInventoryRecordId18: r['Product Inventory Record ID 18']?.toString() || null,
-        }));
+    const normalizeRows = (rows: any[]) => {
+        return rows
+            .map((r, index) => {
+                // Handle date - can be Excel date string
+                const rawDate = r['Date  ↓'] || r['Date'];
+                let date: string | number | null = null;
+                if (rawDate != null) {
+                    if (typeof rawDate === 'number') {
+                        // Excel serial number
+                        date = rawDate;
+                    } else {
+                        // Try to parse as date string
+                        const parsed = new Date(rawDate);
+                        if (!isNaN(parsed.getTime())) {
+                            date = parsed.toISOString();
+                        } else {
+                            // Keep as string if can't parse
+                            date = rawDate;
+                        }
+                    }
+                }
+
+                // Get location (handle column name with arrow)
+                const location = r['Location  ↑'] || r['Location'];
+
+                // Get pantry product name
+                const pantryProductName = r['Pantry Product: Product'];
+
+                // Get inventory type
+                const inventoryType = r['Inventory Type'];
+
+                // Get amount
+                const rawAmount = r['Amount'];
+                let amount: number | null = null;
+                if (rawAmount != null) {
+                    const parsed = Number(rawAmount);
+                    if (!isNaN(parsed)) {
+                        amount = Math.round(parsed);
+                    }
+                }
+
+                // Get product units
+                const productUnitsForDisplay = r['Product Units for Display'];
+
+                // Get weight
+                const rawWeight = r['Weight (in pounds)'];
+                let weightLbs: number | null = null;
+                if (rawWeight != null) {
+                    const parsed = parseFloat(String(rawWeight));
+                    if (!isNaN(parsed)) {
+                        weightLbs = parsed;
+                    }
+                }
+
+                // Get source and destination
+                const source = r['Source'];
+                const destination = r['Destination'];
+
+                // Get product inventory record ID
+                const productInventoryRecordId18Raw = r['Product Inventory Record ID 18'];
+                const productInventoryRecordId18 = productInventoryRecordId18Raw 
+                    ? String(productInventoryRecordId18Raw).trim() 
+                    : null;
+
+                // Debug logging for first few rows
+                if (index < 3) {
+                    console.log(`Row ${index}:`, {
+                        date,
+                        location,
+                        pantryProductName,
+                        inventoryType,
+                        amount,
+                        productInventoryRecordId18,
+                    });
+                }
+
+                return {
+                    date,
+                    location: location || null,
+                    pantryProductName: pantryProductName || null,
+                    inventoryType: inventoryType || null,
+                    amount,
+                    productUnitsForDisplay: productUnitsForDisplay || null,
+                    weightLbs,
+                    source: source || null,
+                    destination: destination || null,
+                    productInventoryRecordId18,
+                };
+            })
+            .filter(r => {
+                // Pre-filter to only valid records
+                const isValid = (
+                    r.date != null &&
+                    r.location &&
+                    r.pantryProductName &&
+                    r.inventoryType &&
+                    r.amount != null &&
+                    r.productInventoryRecordId18
+                );
+                return isValid;
+            });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,11 +150,41 @@ export default function InventoryTransactionUpload({
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json<InventoryTransactionRow>(firstSheet, {
+            // IMPORTANT: Skip the first row (range option) to use row 2 as headers
+            // The Excel file has a title row, then the actual column headers
+            const dataRows = XLSX.utils.sheet_to_json(firstSheet, {
                 defval: null,
+                range: 1, // Start reading from row 2 (0-indexed, so row index 1)
             });
 
-            const normalized = normalizeRows(rawRows);
+            console.log('Total rows read:', dataRows.length);
+            if (dataRows.length > 0) {
+                console.log('Available columns:', Object.keys(dataRows[0] as Record<string, any>));
+                console.log('First row data:', dataRows[0]);
+            }
+
+            const normalized = normalizeRows(dataRows);
+
+            console.log('Valid records after filtering:', normalized.length);
+
+            if (normalized.length === 0) {
+                // Provide helpful error message
+                const sampleRow = dataRows[0] as any;
+                const availableColumns = Object.keys(sampleRow || {});
+                
+                throw new Error(
+                    `No valid records found. ` +
+                    `Found ${dataRows.length} total rows in the file.\n\n` +
+                    `Available columns: ${availableColumns.join(', ')}\n\n` +
+                    `Required columns:\n` +
+                    `  - Date (or 'Date  ↓')\n` +
+                    `  - Location (or 'Location  ↑')\n` +
+                    `  - Pantry Product: Product\n` +
+                    `  - Inventory Type\n` +
+                    `  - Amount\n` +
+                    `  - Product Inventory Record ID 18`
+                );
+            }
 
             setFileInfo({ name: file.name, rowsCount: normalized.length });
 
@@ -99,14 +202,16 @@ export default function InventoryTransactionUpload({
             const json = await res.json();
             if (!res.ok) {
                 console.error('Server error:', json);
+                console.error('Response status:', res.status);
                 throw new Error(json.error || 'Upload failed');
             }
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
             onUploadSuccess?.();
         } catch (err: unknown) {
-            console.error(err);
-            setError(err.message || 'Failed to upload file.');
+            console.error('Upload error:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Failed to upload file.';
+            setError(errorMessage);
             setFileInfo(null);
         } finally {
             setLoading(false);
@@ -138,7 +243,12 @@ export default function InventoryTransactionUpload({
             </div>
 
             <div className="mt-3 space-y-2">
-                {error && <div className="text-sm text-red-600">{error}</div>}
+                {error && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3 max-h-96 overflow-y-auto">
+                        <div className="font-semibold mb-2">Error:</div>
+                        <pre className="whitespace-pre-wrap text-xs">{error}</pre>
+                    </div>
+                )}
                 {success && <div className="text-sm text-green-600">{success}</div>}
 
                 {fileInfo && (

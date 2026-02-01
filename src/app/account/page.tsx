@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { PoundsByMonthChart, PoundsData } from '@/components/ui/PoundsByMonthChart';
+import FileUploadButton from '@/components/FileUploadButton';
 
 export default function PoundsPage() {
     const [data, setData] = useState<PoundsData[]>([]);
@@ -29,6 +30,12 @@ export default function PoundsPage() {
 
     return (
         <div className="p-6">
+            <FileUploadButton
+                endpoint="/api/upload-pounds-data"
+                onSuccess={(newData: PoundsData[]) => setData(newData)}
+            >
+                Upload Pounds Data
+            </FileUploadButton>
             <PoundsByMonthChart data={data} title="Puffin: Pounds Donated By Month" />
         </div>
     );

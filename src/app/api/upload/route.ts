@@ -102,7 +102,8 @@ export async function POST(req: Request) {
                 });
 
                 const formattedRecords = (records as InventoryRecordRow[]).map(r => {
-                    const rawDate = getField(r, 'Date', 'date');
+                    const row = r as unknown as Record<string, unknown>;
+                    const rawDate = getField(row, 'Date', 'date');
                     let parsedDate: Date | null = null;
 
                     if (rawDate != null) {
@@ -112,14 +113,14 @@ export async function POST(req: Request) {
                     }
 
                     return {
-                        product: (getField(r, 'Product', 'product') as string) ?? '',
+                        product: (getField(row, 'Product', 'product') as string) ?? '',
                         inventoryType:
-                            (getField(r, 'Inventory Type', 'inventoryType') as string) ?? null,
-                        amount: Number(getField(r, 'Amount', 'amount')) || null,
-                        units: (getField(r, 'Units', 'units') as string) ?? null,
-                        weightLbs: Number(getField(r, 'Weight (lbs)', 'weightLbs')) || null,
-                        source: (getField(r, 'Source', 'source') as string) ?? null,
-                        destination: (getField(r, 'Destination', 'destination') as string) ?? null,
+                            (getField(row, 'Inventory Type', 'inventoryType') as string) ?? null,
+                        amount: Number(getField(row, 'Amount', 'amount')) || null,
+                        units: (getField(row, 'Units', 'units') as string) ?? null,
+                        weightLbs: Number(getField(row, 'Weight (lbs)', 'weightLbs')) || null,
+                        source: (getField(row, 'Source', 'source') as string) ?? null,
+                        destination: (getField(row, 'Destination', 'destination') as string) ?? null,
                         date: parsedDate,
                         uploadedSheetId: uploadedSheet.id,
                     };
@@ -145,39 +146,51 @@ export async function POST(req: Request) {
                         let parsedDate: Date | null = null;
 
                         if (rawDate != null) {
-                            parsedDate = !isNaN(Number(rawDate))
-                                ? excelSerialToJSDate(Number(rawDate))
-                                : new Date(rawDate as string);
+                            if (typeof rawDate === 'number') {
+                                // Excel serial number
+                                parsedDate = excelSerialToJSDate(rawDate);
+                            } else if (typeof rawDate === 'string') {
+                                // ISO string or other date string
+                                parsedDate = new Date(rawDate);
+                                // Validate the date
+                                if (isNaN(parsedDate.getTime())) {
+                                    parsedDate = null;
+                                }
+                            }
                         }
 
                         return {
                             date: parsedDate,
-                            location: r.location,
-                            pantryProductName: r.pantryProductName,
-                            inventoryType: r.inventoryType,
-                            amount: r.amount,
+                            location: r.location || null,
+                            pantryProductName: r.pantryProductName || null,
+                            inventoryType: r.inventoryType || null,
+                            amount: r.amount != null ? Number(r.amount) : null,
                             productUnitsForDisplay: r.productUnitsForDisplay || null,
-                            weightLbs: r.weightLbs || null,
+                            weightLbs: r.weightLbs != null ? Number(r.weightLbs) : null,
                             source: r.source || null,
                             destination: r.destination || null,
-                            productInventoryRecordId18: r.productInventoryRecordId18.toString(),
+                            productInventoryRecordId18: r.productInventoryRecordId18 != null 
+                                ? String(r.productInventoryRecordId18).trim() 
+                                : null,
                         };
                     })
                     .filter(
                         r =>
                             r.productInventoryRecordId18 &&
                             r.date &&
+                            !isNaN(r.date.getTime()) &&
                             r.location &&
                             r.pantryProductName &&
                             r.inventoryType &&
-                            r.amount !== null
+                            r.amount != null &&
+                            !isNaN(r.amount)
                     );
 
                 if (validTransactions.length === 0) {
                     return NextResponse.json(
                         {
                             success: false,
-                            error: 'No valid InventoryTransaction records found. Check required fields.',
+                            error: 'No valid InventoryTransaction records found. Check required fields: date, location, pantryProductName, inventoryType, amount, productInventoryRecordId18',
                         },
                         { status: 400 }
                     );
@@ -281,6 +294,11 @@ export async function POST(req: Request) {
         }
     } catch (err: any) {
         console.error('Upload error:', err);
+        console.error('Error details:', {
+            code: err.code,
+            message: err.message,
+            meta: err.meta,
+        });
 
         if (err.code === "P2002") {
           return NextResponse.json(
@@ -297,7 +315,11 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(
-            { success: false, error: err.message || 'Upload failed' },
+            { 
+                success: false, 
+                error: err.message || 'Upload failed',
+                details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            },
             { status: 500 }
         );
     }
