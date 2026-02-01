@@ -1,12 +1,5 @@
 import { type Metadata } from 'next';
-import {
-    ClerkProvider,
-    SignInButton,
-    SignUpButton,
-    SignedIn,
-    SignedOut,
-    UserButton,
-} from '@clerk/nextjs';
+import HeaderLoader from '@/components/HeaderLoader';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import SideNavBar from '@/components/ui/SideNavbar';

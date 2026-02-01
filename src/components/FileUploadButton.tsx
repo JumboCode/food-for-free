@@ -17,17 +17,20 @@ export default function FileUploadButton() {
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: any[]) => {
-        return rows.map(r => ({
-            product: r['Product'],
-            inventoryType: r['Inventory Type'],
-            amount: r['Amount'],
-            units: r['Units'],
-            weightLbs: r['Weight (lbs)'],
-            source: r['Source'],
-            destination: r['Destination'],
-            date: r['Date'],
-        }));
+    const normalizeRows = (rows: unknown[]) => {
+        return rows.map(r => {
+            const rec = r as Record<string, unknown>;
+            return {
+                product: rec['Product'] ?? rec['product'] ?? null,
+                inventoryType: rec['Inventory Type'] ?? rec['inventoryType'] ?? null,
+                amount: rec['Amount'] ?? null,
+                units: rec['Units'] ?? rec['units'] ?? null,
+                weightLbs: rec['Weight (lbs)'] ?? rec['weightLbs'] ?? null,
+                source: rec['Source'] ?? rec['source'] ?? null,
+                destination: rec['Destination'] ?? rec['destination'] ?? null,
+                date: rec['Date'] ?? null,
+            };
+        });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

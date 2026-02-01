@@ -23,7 +23,11 @@ function getField(obj: any, ...keys: string[]): any {
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const body = (await req.json()) as {
+            fileName?: string;
+            sheetName?: string;
+            records?: unknown[];
+        };
         const { fileName, sheetName, records } = body;
 
         if (!fileName || !sheetName || !records) {
@@ -37,28 +41,33 @@ export async function POST(req: Request) {
             data: { fileName, sheetName },
         });
 
-        const formattedRecords = records.map((r: any) => {
+        const safeRecords = Array.isArray(records) ? records : [];
+        const formattedRecords = safeRecords.map(r => {
             // ------ DATE HANDLING ------
-            let rawDate = getField(r, 'Date', 'date');
+            const rawDate = getField(r as Record<string, unknown>, 'Date', 'date');
             let parsedDate: Date | null = null;
 
             if (rawDate != null) {
-                if (!isNaN(Number(rawDate))) {
+                const rawDateStr = String(rawDate);
+                if (!isNaN(Number(rawDateStr))) {
                     // Excel serial
-                    parsedDate = excelSerialToJSDate(Number(rawDate));
+                    parsedDate = excelSerialToJSDate(Number(rawDateStr));
                 } else {
-                    parsedDate = new Date(rawDate);
+                    parsedDate = new Date(rawDateStr);
                 }
             }
 
+            const get = (k1: string, k2?: string) =>
+                getField(r as Record<string, unknown>, k1, ...(k2 ? [k2] : []));
+
             return {
-                product: getField(r, 'Product', 'product') ?? '',
-                inventoryType: getField(r, 'Inventory Type', 'inventoryType') ?? null,
-                amount: Number(getField(r, 'Amount', 'amount')) || null,
-                units: getField(r, 'Units', 'units') ?? null,
-                weightLbs: Number(getField(r, 'Weight (lbs)', 'weightLbs')) || null,
-                source: getField(r, 'Source', 'source') ?? null,
-                destination: getField(r, 'Destination', 'destination') ?? null,
+                product: (get('Product', 'product') as string) ?? '',
+                inventoryType: (get('Inventory Type', 'inventoryType') as string) ?? null,
+                amount: Number(get('Amount', 'amount') as unknown) || null,
+                units: (get('Units', 'units') as string) ?? null,
+                weightLbs: Number(get('Weight (lbs)', 'weightLbs') as unknown) || null,
+                source: (get('Source', 'source') as string) ?? null,
+                destination: (get('Destination', 'destination') as string) ?? null,
                 date: parsedDate,
                 uploadedSheetId: uploadedSheet.id,
             };
