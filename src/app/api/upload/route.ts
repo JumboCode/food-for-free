@@ -8,16 +8,15 @@ function excelSerialToJSDate(serial: number) {
 }
 
 // Case-insensitive key lookup
-function getField(obj: Record<string, unknown>, ...keys: string[]): unknown {
+function getField(obj: any, ...keys: string[]): any {
     for (const key of keys) {
         // exact match
-        if ((obj as Record<string, unknown>)[key] !== undefined)
-            return (obj as Record<string, unknown>)[key];
+        if (obj[key] !== undefined) return obj[key];
 
         // case-insensitive match
         const lowerKey = key.toLowerCase();
         const foundKey = Object.keys(obj).find(k => k.toLowerCase() === lowerKey);
-        if (foundKey !== undefined) return (obj as Record<string, unknown>)[foundKey];
+        if (foundKey !== undefined) return obj[foundKey];
     }
     return undefined;
 }
@@ -85,11 +84,10 @@ export async function POST(req: Request) {
             uploadedSheetId: uploadedSheet.id,
             count: formattedRecords.length,
         });
-    } catch (err: unknown) {
+    } catch (err: any) {
         console.error('Upload error:', err);
-        const message = err instanceof Error ? err.message : String(err);
         return NextResponse.json(
-            { success: false, error: message || 'Upload failed' },
+            { success: false, error: err.message || 'Upload failed' },
             { status: 500 }
         );
     }

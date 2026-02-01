@@ -15,9 +15,8 @@ export default function PoundsPage() {
                 if (!res.ok) throw new Error('Failed to fetch pounds data');
                 const json = await res.json();
                 setData(json);
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : String(err);
-                setError(message);
+            } catch (err: any) {
+                setError(err.message);
             } finally {
                 setLoading(false);
             }

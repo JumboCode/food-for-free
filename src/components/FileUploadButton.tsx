@@ -82,10 +82,9 @@ export default function FileUploadButton() {
             }
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
-        } catch (err: unknown) {
+        } catch (err: any) {
             console.error(err);
-            const message = err instanceof Error ? err.message : String(err);
-            setError(message || 'Failed to upload file.');
+            setError(err.message || 'Failed to upload file.');
             setFileInfo(null);
         } finally {
             setLoading(false);

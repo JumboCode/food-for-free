@@ -42,9 +42,11 @@ export async function GET() {
         }));
 
         return NextResponse.json(chartData);
-    } catch (err: unknown) {
+    } catch (err: any) {
         console.error('Analytics Error:', err);
-        const message = err instanceof Error ? err.message : String(err);
-        return NextResponse.json({ error: message || 'Failed to load analytics' }, { status: 500 });
+        return NextResponse.json(
+            { error: err.message || 'Failed to load analytics' },
+            { status: 500 }
+        );
     }
 }
