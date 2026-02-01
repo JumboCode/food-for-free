@@ -675,7 +675,7 @@ const OverviewPage: React.FC<OrganizationInfo> = ({
 
             {/* Delivery Summary */}
             <div className="w-full bg-white rounded-xl shadow p-6">
-                <DeliverySummary deliveries={deliverySummaryData} historyLink="IDK" />
+                <DeliverySummary deliveries={deliverySummaryData} historyLink="distribution" />
             </div>
         </div>
     );
