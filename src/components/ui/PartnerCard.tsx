@@ -45,11 +45,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({
                 <ChevronRight className="h-5 w-5" />
             </div>
 
-<<<<<<< HEAD
             {/* Popup info goes here */}
-=======
-            {/*Popup info goes here*/}
->>>>>>> 836b1f155e29b36b1e3f8f430b40dfde3fb2696a
             {showPopup && (
                 <div
                     className="fixed inset-0 flex items-center justify-center z-50"
