@@ -6,14 +6,28 @@ export type PartnerCardProps = {
     name: string;
     location: string;
     type: string;
+    disableClick?: boolean;
+    onSelect?: (name: string) => void; // Add this
     //If using this card for something else, change props here
 };
 
-const PartnerCard: React.FC<PartnerCardProps> = ({ name, id, location, type }) => {
+const PartnerCard: React.FC<PartnerCardProps> = ({
+    name,
+    id,
+    location,
+    type,
+    disableClick = false,
+    onSelect,
+}) => {
     const [showPopup, setShowPopup] = useState<boolean>(false);
 
     const openPopup = () => {
-        setShowPopup(true);
+        if (!disableClick) {
+            setShowPopup(true);
+        } else if (onSelect) {
+            // If click is disabled but we have onSelect, call it
+            onSelect(name);
+        }
     };
 
     const closePopup = () => {
@@ -31,7 +45,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ name, id, location, type }) =
                 <ChevronRight className="h-5 w-5" />
             </div>
 
-            {/*Popup info goes here*/}
+            {/* Popup info goes here */}
             {showPopup && (
                 <div
                     className="fixed inset-0 flex items-center justify-center z-50"

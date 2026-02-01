@@ -2,15 +2,39 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { format, parse, isValid } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
+import { Calendar } from 'lucide-react';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
-export function MyCalendar({ compact = false }: { compact?: boolean }) {
+interface MyCalendarProps {
+    selectedRange?: { start: Date; end: Date };
+    onRangeChange?: (range: { start: Date; end: Date }) => void;
+}
+
+export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCalendarProps = {}) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
     const [month, setMonth] = useState(new Date());
-    const [selectedRange, setSelectedRange] = useState<DateRange>();
+
+    // Convert external range format to DateRange format
+    const initialRange: DateRange | undefined = externalRange
+        ? { from: externalRange.start, to: externalRange.end }
+        : undefined;
+
+    const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(initialRange);
     const [inputValue, setInputValue] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    // Sync internal state when external range changes (e.g., from quick filters)
+    useEffect(() => {
+        if (externalRange) {
+            const newRange: DateRange = { from: externalRange.start, to: externalRange.end };
+            setSelectedRange(newRange);
+            setInputValue(
+                `${format(externalRange.start, 'MM/dd/yyyy')} - ${format(externalRange.end, 'MM/dd/yyyy')}`
+            );
+            setMonth(externalRange.start);
+        }
+    }, [externalRange]);
 
     const toggleDialog = () => {
         const dialog = dialogRef.current;
@@ -34,11 +58,15 @@ export function MyCalendar({ compact = false }: { compact?: boolean }) {
 
     const handleDayPickerSelect = (range: DateRange | undefined) => {
         setSelectedRange(range);
-        if (range?.from && range?.to)
+        if (range?.from && range?.to) {
             setInputValue(
                 `${format(range.from, 'MM/dd/yyyy')} - ${format(range.to, 'MM/dd/yyyy')}`
             );
-        else if (range?.from) setInputValue(format(range.from, 'MM/dd/yyyy'));
+            // Notify parent component if callback is provided
+            if (onRangeChange) {
+                onRangeChange({ start: range.from, end: range.to });
+            }
+        } else if (range?.from) setInputValue(format(range.from, 'MM/dd/yyyy'));
         else setInputValue('');
     };
 
@@ -73,17 +101,22 @@ export function MyCalendar({ compact = false }: { compact?: boolean }) {
     const handleClear = () => {
         setSelectedRange(undefined);
         setInputValue('');
+        // Notify parent component to reset to default range
+        if (onRangeChange) {
+            onRangeChange({
+                start: new Date('2025-01-01'),
+                end: new Date('2025-12-31'),
+            });
+        }
     };
 
     const handleDone = () => toggleDialog();
 
     return (
-        <div className={compact ? 'flex items-center gap-2' : 'flex flex-col items-center mt-8'}>
-            {!compact && (
-                <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
-                    Date Range:
-                </label>
-            )}
+        <div className="flex flex-col items-center">
+            {/* <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
+                Date Range:
+            </label>
 
             <input
                 id="date-input"
@@ -91,34 +124,27 @@ export function MyCalendar({ compact = false }: { compact?: boolean }) {
                 value={inputValue}
                 placeholder="MM/dd/yyyy - MM/dd/yyyy"
                 onChange={handleInputChange}
-                className={
-                    compact
-                        ? 'text-sm px-3 py-1 mb-0 w-48 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400'
-                        : 'text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center'
-                }
-            />
+                className="text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center"
+            /> */}
 
             <button
                 onClick={toggleDialog}
-                className={
-                    compact
-                        ? 'inline-flex items-center gap-1 bg-[#E6F6EF] hover:bg-[#DFF0E6] text-[#227A4E] px-3 py-1 rounded-md border border-[#D9EFE0] shadow-sm'
-                        : 'text-lg px-4 py-2 mb-4 bg-blue-100 hover:bg-blue-200 rounded-md'
-                }
+                className="px-3 py-2 bg-[#5DB6E6] hover:bg-[#4A9FCC] text-white rounded-lg flex items-center gap-2 font-medium"
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
             >
-                📆
+                <Calendar className="w-4 h-4" />
+                {selectedRange?.from && selectedRange?.to
+                    ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(selectedRange.to, 'MM/dd/yyyy')}`
+                    : 'Date Range'}
             </button>
 
-            {!compact && (
-                <p className="text-base mb-4 text-gray-700">
-                    {selectedRange?.from && selectedRange?.to
-                        ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
-                        : 'Please pick a date range'}
-                </p>
-            )}
+            {/* <p className="text-base mb-4 text-gray-700">
+                {selectedRange?.from && selectedRange?.to
+                    ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
+                    : 'Please pick a date range'}
+            </p> */}
 
             <dialog
                 ref={dialogRef}
