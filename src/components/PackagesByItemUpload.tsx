@@ -13,19 +13,9 @@ type PackagesByItemUploadProps = {
     onUploadSuccess?: () => void;
 };
 
-interface PackagesByItemRow {
-    'Product Package: Product Package Name': string;
-    'Pantry Product: Product': string;
-    'Lot: Source: Account Name'?: string;
-    'Lot: Food Rescue Program'?: string;
-    'Distribution Record: Amount'?: number | string;
-    'Pantry Product: Weight (in pounds)'?: number | string;
-    'Distribution Record: Cost'?: number | string;
-    'Distribution Record: Product Inventory Record ID 18': string | number;
-    'Product Package ID 18': string | number;
-}
-
-export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItemUploadProps) {
+export default function PackagesByItemUpload({
+    onUploadSuccess,
+}: PackagesByItemUploadProps) {
     const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -33,28 +23,73 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: PackagesByItemRow[]) => {
-        return rows.map(r => ({
-            productPackageName: r['Product Package: Product Package Name'],
-            pantryProductName: r['Pantry Product: Product'],
-            lotSourceAccountName: r['Lot: Source: Account Name'] || null,
-            lotFoodRescueProgram: r['Lot: Food Rescue Program'] || null,
-            distributionAmount:
-                r['Distribution Record: Amount'] != null
-                    ? parseInt(r['Distribution Record: Amount'].toString())
-                    : null,
-            pantryProductWeightLbs:
-                r['Pantry Product: Weight (in pounds)'] != null
-                    ? parseFloat(r['Pantry Product: Weight (in pounds)'].toString())
-                    : null,
-            distributionCost:
-                r['Distribution Record: Cost'] != null
-                    ? parseFloat(r['Distribution Record: Cost'].toString())
-                    : null,
-            productInventoryRecordId18:
-                r['Distribution Record: Product Inventory Record ID 18']?.toString() || null,
-            productPackageId18: r['Product Package ID 18']?.toString() || null,
-        }));
+    const normalizeRows = (rows: any[]) => {
+        return rows
+            .map((r, index) => {
+                // String fields
+                const productPackageName = r['Product Package Name'] || r['Product Package: Product Package Name  ↑'];
+                const pantryProductName = r['Pantry Product Name'] || r['Pantry Product: Product  ↑'];
+                const lotSourceAccountName = r['Lot Source Account Name'] || r['Lot: Source: Account Name'];
+                const lotFoodRescueProgram = r['Lot Food Rescue Program'] || r['Lot: Food Rescue Program'];
+                
+                // Int field distributionAmount
+                const rawDistAmount = r['Distribution Amount'] || r['Distribution Record: Amount'];
+                let distributionAmount: number | null = null;
+                if (rawDistAmount != null) {
+                    const parsed = parseInt(String(rawDistAmount), 10);
+                    if (!isNaN(parsed)) distributionAmount = parsed;
+                }
+
+                // Float field pantryProductWeightLbs
+                const rawWeight = r['Pantry Product Weight Lbs'] || r['Pantry Product: Weight (in pounds)'];
+                let pantryProductWeightLbs: number | null = null;
+                if (rawWeight != null) {
+                    const parsed = parseFloat(String(rawWeight));
+                    if (!isNaN(parsed)) pantryProductWeightLbs = parsed;
+                }
+
+                // Float field distributionCost
+                const rawCost = r['Distribution Cost'] || r['Distribution Record: Cost'];
+                let distributionCost: number | null = null;
+                if (rawCost != null) {
+                    const parsed = parseFloat(String(rawCost));
+                    if (!isNaN(parsed)) distributionCost = parsed;
+                }
+
+                // Required String ID fields
+                const productInventoryRecordId18 = r['Distribution Record: Product Inventory Record ID 18'] 
+                    ? String(r['Distribution Record: Product Inventory Record ID 18']).trim() 
+                    : null;
+                const productPackageId18 = r['Product Package ID 18']
+                    ? String(r['Product Package ID 18']).trim()
+                    : null;
+
+                // Debug logging for first few rows 
+                if (index < 3) {
+                    console.log(`Row ${index} (PackagesByItem):`, {
+                        productPackageName,
+                        distributionAmount,
+                        productInventoryRecordId18,
+                        productPackageId18
+                    });
+                }
+
+                return {
+                    productPackageName: productPackageName || null,
+                    pantryProductName: pantryProductName || null,
+                    lotSourceAccountName: lotSourceAccountName || null,
+                    lotFoodRescueProgram: lotFoodRescueProgram || null,
+                    distributionAmount,
+                    pantryProductWeightLbs,
+                    distributionCost,
+                    productInventoryRecordId18,
+                    productPackageId18,
+                };
+            })
+            .filter(r => {
+                //Check for all required fields
+                return r.productInventoryRecordId18 && r.productPackageId18;
+            });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +98,7 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
 
         const file = e.target.files?.[0];
         if (!file) return;
-
+        // file type 
         const allowed = ['.xls', '.xlsx'];
         const lower = file.name.toLowerCase();
         if (!allowed.some(ext => lower.endsWith(ext))) {
@@ -75,42 +110,49 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
         try {
             setLoading(true);
 
-            // Read Excel
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json<PackagesByItemRow>(firstSheet, {
+            // range: 1 skips the title row and uses the second row as headers
+            const dataRows = XLSX.utils.sheet_to_json(firstSheet, {
                 defval: null,
+                range: 1, 
             });
 
-            const normalized = normalizeRows(rawRows);
+            const normalized = normalizeRows(dataRows);
+
+            if (normalized.length === 0) {
+                const sampleRow = dataRows[0] as any;
+                const availableColumns = Object.keys(sampleRow || {});
+                
+                throw new Error(
+                    `No valid records found. Required columns: 'Product Inventory Record ID 18' and 'Product Package ID 18'.\n\n` +
+                    `Detected Columns: ${availableColumns.join(', ')}`
+                );
+            }
 
             setFileInfo({ name: file.name, rowsCount: normalized.length });
 
-            // Upload
             setUploading(true);
             const res = await fetch('/api/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'PackagesByItem',
+                    model: 'PackagesByItem', 
                     records: normalized,
                 }),
             });
 
             const json = await res.json();
-            if (!res.ok) {
-                console.error('Server error:', json);
-                throw new Error(json.error || 'Upload failed');
-            }
+            if (!res.ok) throw new Error(json.error || 'Upload failed');
 
             setSuccess(`Uploaded ${json.count} rows successfully!`);
             onUploadSuccess?.();
         } catch (err: unknown) {
-            console.error(err);
-            setError(err.message || 'Failed to upload file.');
+            console.error('Upload error:', err);
+            setError(err instanceof Error ? err.message : 'Failed to upload file.');
             setFileInfo(null);
         } finally {
             setLoading(false);
@@ -132,7 +174,7 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
 
             <div className="flex items-center gap-4">
                 <Button type="button" onClick={() => inputRef.current?.click()}>
-                    Choose Excel file
+                    Choose Excel File
                 </Button>
                 {(loading || uploading) && (
                     <div className="text-sm text-muted-foreground">
@@ -142,17 +184,18 @@ export default function PackagesByItemUpload({ onUploadSuccess }: PackagesByItem
             </div>
 
             <div className="mt-3 space-y-2">
-                {error && <div className="text-sm text-red-600">{error}</div>}
+                {error && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3 max-h-96 overflow-y-auto">
+                        <div className="font-semibold mb-2">Error:</div>
+                        <pre className="whitespace-pre-wrap text-xs">{error}</pre>
+                    </div>
+                )}
                 {success && <div className="text-sm text-green-600">{success}</div>}
 
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div>
-                            <strong>File name:</strong> {fileInfo.name}
-                        </div>
-                        <div>
-                            <strong>Rows:</strong> {fileInfo.rowsCount}
-                        </div>
+                        <div><strong>File:</strong> {fileInfo.name}</div>
+                        <div><strong>Valid Rows found:</strong> {fileInfo.rowsCount}</div>
                     </div>
                 )}
             </div>

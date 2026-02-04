@@ -13,13 +13,6 @@ type ProductPackageDestinationUploadProps = {
     onUploadSuccess?: () => void;
 };
 
-interface ProductPackageDestinationRow {
-    'Product Package: Product Package Name': string;
-    'Product Package ID 18': string | number;
-    'Pantry Visit Where Distributed: Household Name': string;
-    'Pantry Visit Where Distributed: Household ID 18': string | number;
-}
-
 export default function ProductPackageDestinationUpload({
     onUploadSuccess,
 }: ProductPackageDestinationUploadProps) {
@@ -30,13 +23,41 @@ export default function ProductPackageDestinationUpload({
     const [success, setSuccess] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const normalizeRows = (rows: ProductPackageDestinationRow[]) => {
-        return rows.map(r => ({
-            productPackageName: r['Product Package: Product Package Name'],
-            productPackageId18: r['Product Package ID 18']?.toString() || null,
-            householdName: r['Pantry Visit Where Distributed: Household Name'],
-            householdId18: r['Pantry Visit Where Distributed: Household ID 18']?.toString() || null,
-        }));
+    const normalizeRows = (rows: any[]) => {
+        return rows
+            .map((r, index) => {
+                // Get all fields (all strings)
+                const productPackageName = r['Product Package Name'] || r['Product Package: Product Package Name  ↑'];
+                const productPackageId18 = r['Product Package ID 18'];
+                const householdName = r['Household Name'] || r['Pantry Visit Where Distributed: Household Name'];
+                const householdId18 = r['Household ID 18'] || r['Pantry Visit Where Distributed: Household ID 18'];
+
+                // Debug logging for the first few rows
+                if (index < 3) {
+                    console.log(`Row ${index} (Destination):`, {
+                        productPackageName,
+                        productPackageId18,
+                        householdName,
+                        householdId18
+                    });
+                }
+
+                return {
+                    productPackageName: productPackageName ? String(productPackageName).trim() : null,
+                    productPackageId18: productPackageId18 ? String(productPackageId18).trim() : null,
+                    householdName: householdName ? String(householdName).trim() : null,
+                    householdId18: householdId18 ? String(householdId18).trim() : null,
+                };
+            })
+            .filter(r => {
+                // Check for all required fields
+                return (
+                    r.productPackageName &&
+                    r.productPackageId18 &&
+                    r.householdName &&
+                    r.householdId18
+                );
+            });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +66,7 @@ export default function ProductPackageDestinationUpload({
 
         const file = e.target.files?.[0];
         if (!file) return;
-
+        // file type 
         const allowed = ['.xls', '.xlsx'];
         const lower = file.name.toLowerCase();
         if (!allowed.some(ext => lower.endsWith(ext))) {
@@ -57,42 +78,49 @@ export default function ProductPackageDestinationUpload({
         try {
             setLoading(true);
 
-            // Read Excel
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
 
-            const rawRows = XLSX.utils.sheet_to_json<ProductPackageDestinationRow>(firstSheet, {
+            // SKIP THE FIRST ROW: 1 skips the title row and use second row as headers
+            const dataRows = XLSX.utils.sheet_to_json(firstSheet, {
                 defval: null,
+                range: 1, 
             });
+            // normaliza da rows 
+            const normalized = normalizeRows(dataRows);
 
-            const normalized = normalizeRows(rawRows);
+            if (normalized.length === 0) {
+                const sampleRow = dataRows[0] as any;
+                const availableColumns = Object.keys(sampleRow || {});
+                
+                throw new Error(
+                    `No valid records found. Required: 'Product Package Name', 'Product Package ID 18', 'Household Name', 'Household ID 18'.\n\n` +
+                    `Detected Columns: ${availableColumns.join(', ')}`
+                );
+            }
 
             setFileInfo({ name: file.name, rowsCount: normalized.length });
 
-            // Upload
             setUploading(true);
             const res = await fetch('/api/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'ProductPackageDestination',
+                    model: 'ProductPackageDestination', 
                     records: normalized,
                 }),
             });
 
             const json = await res.json();
-            if (!res.ok) {
-                console.error('Server error:', json);
-                throw new Error(json.error || 'Upload failed');
-            }
+            if (!res.ok) throw new Error(json.error || 'Upload failed');
 
-            setSuccess(`Uploaded ${json.count} rows successfully!`);
+            setSuccess(`Uploaded ${json.count} destinations successfully!`);
             onUploadSuccess?.();
         } catch (err: unknown) {
-            console.error(err);
-            setError(err.message || 'Failed to upload file.');
+            console.error('Upload error:', err);
+            setError(err instanceof Error ? err.message : 'Failed to upload file.');
             setFileInfo(null);
         } finally {
             setLoading(false);
@@ -114,7 +142,7 @@ export default function ProductPackageDestinationUpload({
 
             <div className="flex items-center gap-4">
                 <Button type="button" onClick={() => inputRef.current?.click()}>
-                    Choose Excel file
+                    Choose Excel File
                 </Button>
                 {(loading || uploading) && (
                     <div className="text-sm text-muted-foreground">
@@ -124,17 +152,18 @@ export default function ProductPackageDestinationUpload({
             </div>
 
             <div className="mt-3 space-y-2">
-                {error && <div className="text-sm text-red-600">{error}</div>}
+                {error && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3 max-h-96 overflow-y-auto">
+                        <div className="font-semibold mb-2">Error:</div>
+                        <pre className="whitespace-pre-wrap text-xs">{error}</pre>
+                    </div>
+                )}
                 {success && <div className="text-sm text-green-600">{success}</div>}
 
                 {fileInfo && (
                     <div className="mt-2 text-sm text-gray-700">
-                        <div>
-                            <strong>File name:</strong> {fileInfo.name}
-                        </div>
-                        <div>
-                            <strong>Rows:</strong> {fileInfo.rowsCount}
-                        </div>
+                        <div><strong>File:</strong> {fileInfo.name}</div>
+                        <div><strong>Valid Destinations:</strong> {fileInfo.rowsCount}</div>
                     </div>
                 )}
             </div>
