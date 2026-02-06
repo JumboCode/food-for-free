@@ -62,7 +62,6 @@ model InventoryTransaction {
   source                     String?
   destination                String?
   productInventoryRecordId18 String           @unique
-  packages                   PackagesByItem[]
 }
 
 model PackagesByItem {
@@ -74,10 +73,11 @@ model PackagesByItem {
   distributionAmount         Int?
   pantryProductWeightLbs     Float?
   distributionCost           Float?
-  productInventoryRecordId18 String
-  productPackageId18         String
-  inventoryTransaction       InventoryTransaction      @relation(fields: [productInventoryRecordId18], references: [productInventoryRecordId18])
-  packageDestination         ProductPackageDestination @relation(fields: [productPackageId18], references: [productPackageId18])
+  productInventoryRecordId18 String?
+  productPackageId18         String?
+
+  @@index([productInventoryRecordId18])
+  @@index([productPackageId18])
 }
 
 model ProductPackageDestination {
@@ -86,7 +86,6 @@ model ProductPackageDestination {
   productPackageId18 String           @unique
   householdName      String
   householdId18      String
-  packages           PackagesByItem[]
 }
 
 enum Role {

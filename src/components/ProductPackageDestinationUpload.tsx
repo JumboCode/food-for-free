@@ -1,171 +1,98 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { Upload, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
-type FileInfo = {
-    name: string;
-    rowsCount: number;
-};
-
-type ProductPackageDestinationUploadProps = {
-    onUploadSuccess?: () => void;
-};
-
-export default function ProductPackageDestinationUpload({
-    onUploadSuccess,
-}: ProductPackageDestinationUploadProps) {
-    const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
-    const [loading, setLoading] = useState(false);
+export default function ProductPackageDestinationUpload() {
     const [uploading, setUploading] = useState(false);
+    const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
+    const [count, setCount] = useState<number>(0);
 
-    const normalizeRows = (rows: any[]) => {
-        return rows
-            .map((r, index) => {
-                // Get all fields (all strings)
-                const productPackageName = r['Product Package Name'] || r['Product Package: Product Package Name  ↑'];
-                const productPackageId18 = r['Product Package ID 18'];
-                const householdName = r['Household Name'] || r['Pantry Visit Where Distributed: Household Name'];
-                const householdId18 = r['Household ID 18'] || r['Pantry Visit Where Distributed: Household ID 18'];
-
-                // Debug logging for the first few rows
-                if (index < 3) {
-                    console.log(`Row ${index} (Destination):`, {
-                        productPackageName,
-                        productPackageId18,
-                        householdName,
-                        householdId18
-                    });
-                }
-
-                return {
-                    productPackageName: productPackageName ? String(productPackageName).trim() : null,
-                    productPackageId18: productPackageId18 ? String(productPackageId18).trim() : null,
-                    householdName: householdName ? String(householdName).trim() : null,
-                    householdId18: householdId18 ? String(householdId18).trim() : null,
-                };
-            })
-            .filter(r => {
-                // Check for all required fields
-                return (
-                    r.productPackageName &&
-                    r.productPackageId18 &&
-                    r.householdName &&
-                    r.householdId18
-                );
-            });
-    };
-
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        setError(null);
-        setSuccess(null);
-
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        // file type 
-        const allowed = ['.xls', '.xlsx'];
-        const lower = file.name.toLowerCase();
-        if (!allowed.some(ext => lower.endsWith(ext))) {
-            setError('Please upload an .xls or .xlsx file.');
-            setFileInfo(null);
-            return;
-        }
+
+        setUploading(true);
+        setSuccess(false);
+        setError(null);
 
         try {
-            setLoading(true);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('model', 'ProductPackageDestination');
 
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
-            const firstSheetName = workbook.SheetNames[0];
-            const firstSheet = workbook.Sheets[firstSheetName];
-
-            // SKIP THE FIRST ROW: 1 skips the title row and use second row as headers
-            const dataRows = XLSX.utils.sheet_to_json(firstSheet, {
-                defval: null,
-                range: 1, 
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
             });
-            // normaliza da rows 
-            const normalized = normalizeRows(dataRows);
 
-            if (normalized.length === 0) {
-                const sampleRow = dataRows[0] as any;
-                const availableColumns = Object.keys(sampleRow || {});
-                
-                throw new Error(
-                    `No valid records found. Required: 'Product Package Name', 'Product Package ID 18', 'Household Name', 'Household ID 18'.\n\n` +
-                    `Detected Columns: ${availableColumns.join(', ')}`
-                );
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Upload failed');
             }
 
-            setFileInfo({ name: file.name, rowsCount: normalized.length });
-
-            setUploading(true);
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'ProductPackageDestination', 
-                    records: normalized,
-                }),
-            });
-
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Upload failed');
-
-            setSuccess(`Uploaded ${json.count} destinations successfully!`);
-            onUploadSuccess?.();
-        } catch (err: unknown) {
-            console.error('Upload error:', err);
-            setError(err instanceof Error ? err.message : 'Failed to upload file.');
-            setFileInfo(null);
+            setSuccess(true);
+            setCount(data.count || 0);
+        } catch (err: any) {
+            setError(err.message);
         } finally {
-            setLoading(false);
             setUploading(false);
-            if (e.target) e.target.value = '';
+            e.target.value = '';
         }
     };
 
     return (
-        <div className="w-full max-w-md">
-            <input
-                ref={inputRef}
-                type="file"
-                accept=".xls,.xlsx"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-hidden
-            />
-
-            <div className="flex items-center gap-4">
-                <Button type="button" onClick={() => inputRef.current?.click()}>
-                    Choose Excel File
-                </Button>
-                {(loading || uploading) && (
-                    <div className="text-sm text-muted-foreground">
-                        {loading ? 'Parsing…' : 'Uploading…'}
+        <div className="space-y-3">
+            <label className="block">
+                <div className={`
+                    flex items-center gap-3 px-6 py-4 rounded-lg border-2 cursor-pointer transition-all
+                    ${uploading ? 'border-blue-300 bg-blue-50' : 
+                      success ? 'border-green-300 bg-green-50' : 
+                      error ? 'border-red-300 bg-red-50' : 
+                      'border-gray-200 hover:border-[#E7A54E] hover:bg-orange-50'}
+                `}>
+                    {uploading ? (
+                        <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                    ) : success ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : error ? (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                    ) : (
+                        <Upload className="w-5 h-5 text-gray-500" />
+                    )}
+                    
+                    <div className="flex-1">
+                        <div className="font-semibold text-gray-900">
+                            Product Package Destination
+                        </div>
+                        <div className="text-sm text-gray-500">
+                            {uploading ? 'Uploading...' :
+                             success ? `Uploaded ${count} records` :
+                             error ? error :
+                             'Upload Excel file (Product_Package_Destination)'}
+                        </div>
                     </div>
-                )}
-            </div>
-
-            <div className="mt-3 space-y-2">
-                {error && (
-                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3 max-h-96 overflow-y-auto">
-                        <div className="font-semibold mb-2">Error:</div>
-                        <pre className="whitespace-pre-wrap text-xs">{error}</pre>
-                    </div>
-                )}
-                {success && <div className="text-sm text-green-600">{success}</div>}
-
-                {fileInfo && (
-                    <div className="mt-2 text-sm text-gray-700">
-                        <div><strong>File:</strong> {fileInfo.name}</div>
-                        <div><strong>Valid Destinations:</strong> {fileInfo.rowsCount}</div>
-                    </div>
-                )}
+                    
+                    <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        disabled={uploading}
+                    />
+                </div>
+            </label>
+            
+            {success && (
+                <div className="text-sm text-green-600 px-2">
+                    ✓ Successfully uploaded {count} destination records
+                </div>
+            )}
+            
+            <div className="text-sm text-blue-600 px-2">
+                ℹ️ Upload this file FIRST before uploading Packages by Item
             </div>
         </div>
     );
