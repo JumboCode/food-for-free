@@ -33,15 +33,11 @@ const sampleDeliveryData = {
     ],
 };
 
-const DeliverySummary: React.FC<DeliverySummaryProps> = ({
-    deliveries,
-    historyLink,
-}) => {
+const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries, historyLink }) => {
     const [isDeliveryPopupOpen, setIsDeliveryPopupOpen] = useState(false);
 
     return (
         <div className="w-full">
-
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div>
