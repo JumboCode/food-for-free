@@ -15,6 +15,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PartnerCardProps } from '../../components/ui/PartnerCard';
 import DeliverySummary from '../../components/ui/DeliverySummary';
+import InventoryTransactionUpload from '@/components/InventoryTransactionUpload';
+import PackagesByItemUpload from '@/components/PackagesByItemUpload';
+import ProductPackageDestinationUpload from '@/components/ProductPackageDestinationUpload';
 const partners: PartnerCardProps[] = [
     {
         id: 1,
@@ -166,10 +169,17 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
             <FoodTypesDonutChart />
 
-            <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} />
+            {/* <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} /> */}
 
             <DeliverySummary deliveries={deliveries} historyLink="distribution" />
             <FoodTypesDonutChart />
+            <h2>Inventory Transaction Upload</h2>
+            <InventoryTransactionUpload />
+            <h2>Packages By Item Upload</h2>
+            <PackagesByItemUpload />
+            <h2>Product Package Destination Upload</h2>
+            <ProductPackageDestinationUpload />
+
         </div>
     );
 }
