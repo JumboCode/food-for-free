@@ -39,18 +39,16 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
 
     // handle partner selection
     const handlePartnerSelect = (partnerName: string) => {
+        setSearchInput(partnerName);
         if (onSelectPartner) {
             onSelectPartner(partnerName);
         }
         setIsDropdownOpen(false);
-        setSearchInput('');
     };
 
     // handle input click to open dropdown
     const handleInputClick = () => {
-        if (isAdmin) {
-            setIsDropdownOpen(true);
-        }
+        setIsDropdownOpen(true);
     };
 
     // close dropdown when clicking outside
@@ -81,39 +79,35 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
 
     return (
         <div className="w-full">
-            {isAdmin && (
-                <>
-                    {/*search bar*/}
-                    <div className="relative search-container">
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            value={searchInput}
-                            className="w-full px-4 py-3 pr-12 text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            onChange={handleSearchChange}
-                            onClick={handleInputClick}
-                        />
-                        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        {isDropdownOpen && filteredResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                                {filteredResults.map((org, index) => (
-                                    <div key={index}>
-                                        <PartnerCard
-                                            key={org.id}
-                                            id={org.id}
-                                            name={org.name}
-                                            location={org.location}
-                                            type={org.type}
-                                            disableClick={true}
-                                            onSelect={handlePartnerSelect}
-                                        />
-                                    </div>
-                                ))}
+            {/*search bar*/}
+            <div className="relative search-container">
+                <input
+                    type="text"
+                    placeholder="Search partners..."
+                    value={searchInput}
+                    className="w-full px-3 py-2 pr-10 text-gray-700 bg-white border border-gray-200 rounded-md shadow-none text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-200 focus:border-blue-300"
+                    onChange={handleSearchChange}
+                    onClick={handleInputClick}
+                />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                {isDropdownOpen && filteredResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                        {filteredResults.map((org, index) => (
+                            <div key={index}>
+                                <PartnerCard
+                                    key={org.id}
+                                    id={org.id}
+                                    name={org.name}
+                                    location={org.location}
+                                    type={org.type}
+                                    disableClick={true}
+                                    onSelect={handlePartnerSelect}
+                                />
                             </div>
-                        )}
+                        ))}
                     </div>
-                </>
-            )}
+                )}
+            </div>
         </div>
     );
 };

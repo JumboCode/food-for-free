@@ -400,7 +400,7 @@ const OverviewPage: React.FC<OrganizationInfo> = ({
             });
         });
 
-        const colors = ['#B7D7BD', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8'];
+        const colors = ['#9B8AC1', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8'];
         return Object.entries(aggregated).map(([label, value], index) => ({
             label,
             value,
@@ -520,95 +520,103 @@ const OverviewPage: React.FC<OrganizationInfo> = ({
 
     return (
         <div className="p-4 sm:p-6 lg:p-10 bg-[#FAF9F7] min-h-screen space-y-10">
-            {/* Header with Date Range Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold pb-2">
-                        {selectedPartner}: Statistics Overview
-                    </h1>
-                    <p className="pb-6 sm:pb-0">{description}</p>
+            <div className="max-w-7xl mx-auto space-y-10">
+                {/* Header with Date Range Selector */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold pb-2">
+                            {selectedPartner}: Statistics Overview
+                        </h1>
+                        <p className="pb-6 sm:pb-0">{description}</p>
+                    </div>
+                    <div className="flex-shrink-0 flex-start">
+                        <MyCalendar
+                            selectedRange={dateRange}
+                            onRangeChange={handleDateRangeChange}
+                        />
+                    </div>
                 </div>
-                <div className="flex-shrink-0 flex-start">
-                    <MyCalendar selectedRange={dateRange} onRangeChange={handleDateRangeChange} />
+
+                {/* Quick Filter Buttons - Standard UX patterns */}
+                <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-900">Time Period</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                        <button
+                            onClick={() => setQuickFilter('last7days')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'last7days'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            Last 7 Days
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('last30days')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'last30days'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            Last 30 Days
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('thisMonth')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'thisMonth'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            This Month
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('lastMonth')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'lastMonth'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            Last Month
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('thisYear')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'thisYear'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            This Year
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('past12months')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'past12months'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            Past 12 Months
+                        </button>
+                        <button
+                            onClick={() => setQuickFilter('allTime')}
+                            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                                activeFilter === 'allTime'
+                                    ? 'bg-[#5DB6E6] text-white shadow-md'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                        >
+                            All Time
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Quick Filter Buttons - Standard UX patterns */}
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-gray-700 mr-2">Quick Filters:</span>
-                <button
-                    onClick={() => setQuickFilter('last7days')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'last7days'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last 7 Days
-                </button>
-                <button
-                    onClick={() => setQuickFilter('last30days')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'last30days'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last 30 Days
-                </button>
-                <button
-                    onClick={() => setQuickFilter('thisMonth')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'thisMonth'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    This Month
-                </button>
-                <button
-                    onClick={() => setQuickFilter('lastMonth')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'lastMonth'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last Month
-                </button>
-                <button
-                    onClick={() => setQuickFilter('thisYear')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'thisYear'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    This Year
-                </button>
-                <button
-                    onClick={() => setQuickFilter('past12months')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'past12months'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Past 12 Months
-                </button>
-                <button
-                    onClick={() => setQuickFilter('allTime')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'allTime'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    All Time
-                </button>
-            </div>
-
-            {/* 
+                {/* 
                 Search Bar for Admin Users:
                 - Only visible to admin users (checked via /api/admin/invitations endpoint)
                 - Allows admins to search and filter by specific partner organizations
@@ -616,66 +624,74 @@ const OverviewPage: React.FC<OrganizationInfo> = ({
                   to show statistics for only that partner
                 - Non-admin users see no search bar and only see their own organization's data
             */}
-            <div className="flex items-center justify-center gap-2">
-                <div className="w-full max-w-md">
-                    <SearchBarOverview
-                        organizations={partnerData}
-                        onSelectPartner={handlePartnerSelection}
+                <div className="bg-white rounded-xl shadow-sm p-6 mb-8 relative z-20">
+                    <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-900">Filter by Partner</h3>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <div className="w-full max-w-sm">
+                            <SearchBarOverview
+                                organizations={partnerData}
+                                onSelectPartner={handlePartnerSelection}
+                            />
+                        </div>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setSelectedPartner('All Organizations')}
+                                disabled={selectedPartner === 'All Organizations'}
+                                className={`px-6 py-2.5 font-medium rounded-lg transition-all duration-150 whitespace-nowrap ${
+                                    selectedPartner === 'All Organizations'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
+                                }`}
+                            >
+                                Clear Filter
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Monthly Chart */}
+                <div className="w-full bg-white rounded-xl shadow p-6 relative z-10">
+                    <PoundsByMonthChart
+                        data={poundsByMonthData}
+                        dateRange={dateRange}
+                        activeFilter={activeFilter}
                     />
                 </div>
-                {isAdmin && (
-                    <button
-                        onClick={() => setSelectedPartner('All Organizations')}
-                        disabled={selectedPartner === 'All Organizations'}
-                        className={`px-6 py-3 font-medium rounded-lg shadow-sm transition-colors duration-200 whitespace-nowrap ${
-                            selectedPartner === 'All Organizations'
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
-                        }`}
-                    >
-                        Clear Filter
-                    </button>
-                )}
-            </div>
 
-            {/* Monthly Chart */}
-            <div className="w-full bg-white rounded-xl shadow p-6 -mt-6">
-                <PoundsByMonthChart
-                    data={poundsByMonthData}
-                    dateRange={dateRange}
-                    activeFilter={activeFilter}
-                />
-            </div>
-
-            {/* Pie + Stats */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Pie Chart */}
-                <div className="bg-white rounded-xl shadow p-6 h-full">
-                    <FoodTypesDonutChart data={foodTypesData} />
-                </div>
-
-                {/* Stat Cards – match donut height */}
-                <div className="flex flex-col gap-6 h-full">
-                    <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                        <StatCard
-                            label="Total Delivered"
-                            value={totalPoundsDelivered.toLocaleString()}
-                            unit="lbs"
-                        />
+                {/* Pie + Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+                    {/* Pie Chart - larger left column */}
+                    <div className="bg-white rounded-xl shadow p-6 lg:col-span-2 flex items-center min-h-[420px]">
+                        <div className="w-full">
+                            <FoodTypesDonutChart data={foodTypesData} />
+                        </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                        <StatCard
-                            label="Deliveries Completed"
-                            value={deliveriesCompleted.toString()}
-                        />
+                    {/* Stat Cards – stacked on right and vertically centered */}
+                    <div className="flex flex-col gap-6 justify-center">
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <StatCard
+                                label="Total Delivered"
+                                value={totalPoundsDelivered.toLocaleString()}
+                                unit="lbs"
+                            />
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <StatCard
+                                label="Deliveries Completed"
+                                value={deliveriesCompleted.toString()}
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Delivery Summary */}
-            <div className="w-full bg-white rounded-xl shadow p-6">
-                <DeliverySummary deliveries={deliverySummaryData} historyLink="distribution" />
+                {/* Delivery Summary */}
+                <div className="w-full bg-white rounded-xl shadow p-6">
+                    <DeliverySummary deliveries={deliverySummaryData} historyLink="distribution" />
+                </div>
             </div>
         </div>
     );
