@@ -1,184 +1,109 @@
-import { NextResponse } from 'next/server';
-import { clerkClient } from '@clerk/nextjs/server';
-import { requireAdmin } from '@/lib/admin';
-import { prisma } from '@/../lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 
-/**
- * POST /api/admin/invitations
- * Send a Clerk invitation to a user email and invite them to a Clerk Organization
- * Body: { email: string, organizationName?: string }
- */
-export async function POST(req: Request) {
+async function requireAdmin(userId: string) {
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+
+    const isAdmin = user.publicMetadata?.role === 'admin';
+
+    if (!isAdmin) {
+        throw new Error('Unauthorized: Admin access required');
+    }
+
+    return user;
+}
+
+export async function POST(req: NextRequest) {
     try {
-        await requireAdmin();
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        await requireAdmin(userId);
 
         const body = await req.json();
-        const { email, organizationName } = body;
+        const { email, organizationId, organizationName } = body;
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
 
-        const clerk = await clerkClient();
-
-        // Get or create Clerk Organization and Partner
-        let partner;
-        let clerkOrg;
-
-        if (organizationName) {
-            // Create new Clerk Organization
-            clerkOrg = await clerk.organizations.createOrganization({
-                name: organizationName,
-                slug: organizationName.toLowerCase().replace(/\s+/g, '-'),
-            });
-
-            // Create Partner record linked to Clerk Organization
-            partner = await prisma.partner.create({
-                data: {
-                    organizationName,
-                    clerkOrganizationId: clerkOrg.id,
-                },
-            });
-        } else {
-            return NextResponse.json({ error: 'Organization Name is required' }, { status: 400 });
+        // Validate that at least one of organizationId or organizationName is provided
+        if (!organizationId && !organizationName) {
+            return NextResponse.json(
+                { error: 'Either organizationId or organizationName must be provided' },
+                { status: 400 }
+            );
         }
 
-        // Check if user already exists in Clerk
-        try {
-            const existingUsers = await clerk.users.getUserList({
-                emailAddress: [email],
-            });
+        // Reject if both are provided (ambiguous)
+        if (organizationId && organizationName) {
+            return NextResponse.json(
+                { error: 'Provide either organizationId or organizationName, not both' },
+                { status: 400 }
+            );
+        }
 
-            if (existingUsers.data.length > 0) {
-                const userId = existingUsers.data[0].id;
+        const client = await clerkClient();
+        let targetOrganizationId = organizationId;
 
-                // Check if user is already a member of this organization
-                const memberships = await clerk.organizations.getOrganizationMembershipList({
-                    organizationId: clerkOrg.id,
-                });
+        // If organizationName is provided, create the organization first
+        if (organizationName) {
+            try {
+                // Check if organization already exists
+                const slug = organizationName.toLowerCase().replace(/\s+/g, '-');
 
-                const isAlreadyMember = memberships.data.some(
-                    member => member.publicUserData?.userId === userId
-                );
-
-                if (isAlreadyMember) {
+                try {
+                    const existing = await client.organizations.getOrganization({ slug });
                     return NextResponse.json(
-                        { error: 'User is already a member of this organization' },
-                        { status: 400 }
+                        { error: 'Organization with this name already exists' },
+                        { status: 409 }
                     );
+                } catch {
+                    // Organization doesn't exist, proceed with creation
                 }
 
-                // User exists but not in this org - add them directly
-                await clerk.organizations.createOrganizationMembership({
-                    organizationId: clerkOrg.id,
-                    userId,
-                    role: 'org:member',
+                const newOrg = await client.organizations.createOrganization({
+                    name: organizationName,
+                    createdBy: userId,
                 });
 
-                return NextResponse.json({
-                    success: true,
-                    message: 'User added to organization',
-                    organization: {
-                        id: clerkOrg.id,
-                        name: clerkOrg.name,
-                    },
-                    partner: {
-                        id: partner.id,
-                        organizationName: partner.organizationName,
-                    },
-                });
+                targetOrganizationId = newOrg.id;
+            } catch (error) {
+                console.error('Error creating organization:', error);
+                return NextResponse.json(
+                    { error: 'Failed to create organization' },
+                    { status: 500 }
+                );
             }
-        } catch (err) {
-            // User doesn't exist yet, continue with invitation
-            console.error('Error checking existing user:', err);
         }
 
-        // Create invitation to the organization
-        const invitation = await clerk.organizations.createOrganizationInvitation({
-            organizationId: clerkOrg.id,
+        // Create invitation
+        const invitation = await client.organizations.createOrganizationInvitation({
+            organizationId: targetOrganizationId!,
             emailAddress: email,
+            inviterUserId: userId,
             role: 'org:member',
         });
 
         return NextResponse.json({
-            success: true,
             invitation: {
                 id: invitation.id,
-                email: invitation.emailAddress,
+                emailAddress: invitation.emailAddress,
+                organizationId: invitation.organizationId,
                 status: invitation.status,
             },
-            organization: {
-                id: clerkOrg.id,
-                name: clerkOrg.name,
-            },
-            partner: {
-                id: partner.id,
-                organizationName: partner.organizationName,
-            },
         });
-    } catch (error: unknown) {
+    } catch (error) {
         console.error('Error creating invitation:', error);
-        if (error instanceof Error && error.message === 'Unauthorized: Admin access required') {
-            return NextResponse.json(
-                { error: 'Unauthorized: Admin access required' },
-                { status: 403 }
-            );
-        }
-        const errorMessage = error instanceof Error ? error.message : 'Failed to create invitation';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
-    }
-}
 
-/**
- * GET /api/admin/invitations
- * List all pending organization invitations (from Clerk)
- */
-export async function GET() {
-    try {
-        await requireAdmin();
-
-        const clerk = await clerkClient();
-
-        // Get all organizations
-        const organizations = await clerk.organizations.getOrganizationList();
-
-        // Get pending invitations for each organization
-        const allInvitations = [];
-        for (const org of organizations.data) {
-            try {
-                const invitations = await clerk.organizations.getOrganizationInvitationList({
-                    organizationId: org.id,
-                });
-                // Filter for pending invitations
-                const pendingInvitations = invitations.data.filter(inv => inv.status === 'pending');
-                allInvitations.push(
-                    ...pendingInvitations.map(inv => ({
-                        id: inv.id,
-                        email: inv.emailAddress,
-                        status: inv.status,
-                        createdAt: inv.createdAt,
-                        organizationId: org.id,
-                        organizationName: org.name,
-                    }))
-                );
-            } catch (err) {
-                // Skip organizations without invitations
-                console.error(`Error fetching invitations for org ${org.id}:`, err);
-            }
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+            return NextResponse.json({ error: error.message }, { status: 403 });
         }
 
-        return NextResponse.json({
-            invitations: allInvitations,
-        });
-    } catch (error: unknown) {
-        console.error('Error fetching invitations:', error);
-        if (error instanceof Error && error.message === 'Unauthorized: Admin access required') {
-            return NextResponse.json(
-                { error: 'Unauthorized: Admin access required' },
-                { status: 403 }
-            );
-        }
-        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch invitations';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 });
     }
 }
