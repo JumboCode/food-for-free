@@ -1,75 +1,86 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import SearchBar from '../../components/ui/SearchBar';
-import InvitationManager from '@/components/admin/InvitationManager';
+import { AddPartnerModal } from '../../components/ui/AddPartnerModal';
+import PartnerOrganizationTable from '../../components/PartnerOrganizationTable';
+import { OrganizationDetailModal } from '../../components/admin/OrganizationDetailModal';
+
+interface Organization {
+    id: string;
+    name: string;
+    slug: string;
+    membersCount: number;
+    createdAt: string;
+}
 
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
-    const router = useRouter();
-    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-    const [activeTab, setActiveTab] = useState<'partners' | 'invitations'>('partners');
-
-    //mock partner data to pass to search bar for partner cards
-    const partnerData = [
-        { id: 1, name: 'Whole Foods Market', location: 'Cambridge', type: 'Grocery Store' },
-        { id: 2, name: 'Somerville Food Pantry', location: 'Somerville', type: 'Food Pantry' },
-        {
-            id: 3,
-            name: 'Cambridge Community Center',
-            location: 'Cambridge',
-            type: 'Community Center',
-        },
-        { id: 4, name: 'Boston Food Bank', location: 'Boston', type: 'Food Bank' },
-        { id: 5, name: 'Harvard Square Market', location: 'Cambridge', type: 'Market' },
-        { id: 6, name: 'MIT Community Garden', location: 'Cambridge', type: 'Garden' },
-        { id: 7, name: 'Central Square Grocery', location: 'Cambridge', type: 'Grocery Store' },
-        { id: 8, name: 'Porter Square Co-op', location: 'Cambridge', type: 'Cooperative' },
-        {
-            id: 9,
-            name: 'Davis Square Farmers Market',
-            location: 'Somerville',
-            type: 'Farmers Market',
-        },
-        { id: 10, name: 'Union Square Market', location: 'Somerville', type: 'Market' },
-        { id: 11, name: 'Assembly Row Fresh Market', location: 'Somerville', type: 'Market' },
-        { id: 12, name: 'Kendall Square Kitchen', location: 'Cambridge', type: 'Kitchen' },
-        { id: 13, name: 'Arlington Food Cooperative', location: 'Arlington', type: 'Cooperative' },
-        { id: 14, name: 'Medford Community Kitchen', location: 'Medford', type: 'Kitchen' },
-        { id: 15, name: 'Malden Fresh Foods', location: 'Malden', type: 'Grocery Store' },
-        { id: 16, name: 'Everett Community Garden', location: 'Everett', type: 'Garden' },
-        { id: 17, name: 'Chelsea Food Hub', location: 'Chelsea', type: 'Food Hub' },
-        { id: 18, name: 'Revere Beach Market', location: 'Revere', type: 'Market' },
-        { id: 19, name: 'Lynn Community Center', location: 'Lynn', type: 'Community Center' },
-        { id: 20, name: 'Salem Organic Market', location: 'Salem', type: 'Market' },
-    ];
+    const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
+    const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        // Check if user is admin by trying to fetch invitations (admin-only endpoint)
-        fetch('/api/admin/invitations')
-            .then(res => {
-                if (res.status === 403) {
-                    setIsAdmin(false);
-                    router.push('/');
-                } else if (res.ok) {
-                    setIsAdmin(true);
-                }
-            })
-            .catch(() => setIsAdmin(false));
-    }, [router]);
+        fetchOrganizations();
+    }, []);
 
-    if (isAdmin === null) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-gray-600">Loading...</div>
-            </div>
-        );
-    }
+    const fetchOrganizations = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch('/api/admin/organizations');
+            if (!response.ok) throw new Error('Failed to fetch organizations');
+            const data = await response.json();
+            console.log('Organizations loaded:', data.organizations);
+            setOrganizations(data.organizations);
+        } catch (error) {
+            console.error('Error fetching organizations:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    if (!isAdmin) {
-        return null; // Will redirect
-    }
+    //Handle creating new organization
+    const handleAddPartner = async (data: { name: string; slug?: string }) => {
+        try {
+            const response = await fetch('/api/admin/organizations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) throw new Error('Failed to create organization');
+
+            await fetchOrganizations(); // Refresh the list
+            setIsAddPartnerModalOpen(false); // Close modal
+        } catch (error) {
+            console.error('Error creating organization:', error);
+            throw error;
+        }
+    };
+
+    // Handle clicking an organization
+    // Handle clicking an organization
+    const handleOrganizationClick = (organization: Organization) => {
+        console.log('Opening modal for:', organization);
+        setSelectedOrganization(organization);
+    };
+
+    // Filter organizations based on search
+    const filteredOrganizations = organizations.filter(
+        org =>
+            org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            org.slug.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Transform for table
+    const tableData = filteredOrganizations.map(org => ({
+        id: org.id,
+        name: org.name,
+        numOfUsers: org.membersCount,
+        onClick: () => handleOrganizationClick(org),
+    }));
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -83,47 +94,65 @@ const AdminConsolePage: React.FC = () => {
                         <div className="w-12 sm:w-16 h-1 bg-green-700"></div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="mb-6 border-b border-gray-200">
-                        <nav className="flex space-x-8">
-                            <button
-                                onClick={() => setActiveTab('partners')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                                    activeTab === 'partners'
-                                        ? 'border-green-600 text-green-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                Partner Records
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('invitations')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                                    activeTab === 'invitations'
-                                        ? 'border-green-600 text-green-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                Manage Invitations
-                            </button>
-                        </nav>
-                    </div>
+                    {/* Partner Organizations Section */}
+                    <div className="mb-6 sm:mb-8">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">
+                            Partner Record
+                        </h2>
 
-                    {/* Tab Content */}
-                    {activeTab === 'partners' && (
-                        <div className="mb-6 sm:mb-8">
-                            <h2 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4 sm:mb-6">
-                                Partner Record
-                            </h2>
+                        {/* Search Bar and Add Button */}
+                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                            {/* Search Input */}
+                            <div className="flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
+                                />
+                            </div>
 
-                            {/* SearchBar component - handles everything */}
-                            <SearchBar organizations={partnerData} />
+                            {/* ADD PARTNER BUTTON */}
+                            <button
+                                onClick={() => setIsAddPartnerModalOpen(true)}
+                                className="px-6 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors whitespace-nowrap flex items-center gap-2"
+                            >
+                                Add Partner Organization
+                                <span className="text-xl">+</span>
+                            </button>
                         </div>
-                    )}
 
-                    {activeTab === 'invitations' && <InvitationManager />}
+                        {/* Partner Organizations Table - REAL DATA */}
+                        {isLoading ? (
+                            <div className="rounded-lg shadow p-8 text-center text-gray-500">
+                                Loading organizations...
+                            </div>
+                        ) : (
+                            <div className="p-6">
+                                <PartnerOrganizationTable data={tableData} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Add Partner Modal */}
+            {isAddPartnerModalOpen && (
+                <AddPartnerModal
+                    onClose={() => setIsAddPartnerModalOpen(false)}
+                    onSubmit={handleAddPartner}
+                />
+            )}
+
+            {/* Organization Detail Modal */}
+            {selectedOrganization && (
+                <OrganizationDetailModal
+                    organization={selectedOrganization}
+                    onClose={() => setSelectedOrganization(null)}
+                    onUpdate={fetchOrganizations}
+                />
+            )}
         </div>
     );
 };
