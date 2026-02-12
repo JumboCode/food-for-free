@@ -15,6 +15,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PartnerCardProps } from '../../components/ui/PartnerCard';
 import DeliverySummary from '../../components/ui/DeliverySummary';
+import InventoryTransactionUpload from '@/components/InventoryTransactionUpload';
+import PackagesByItemUpload from '@/components/PackagesByItemUpload';
+import ProductPackageDestinationUpload from '@/components/ProductPackageDestinationUpload';
 const partners: PartnerCardProps[] = [
     {
         id: 1,
@@ -40,7 +43,6 @@ const deliveries = [
     { id: 2, date: new Date('2025-11-05'), totalPounds: 95 },
     { id: 3, date: new Date('2025-11-10'), totalPounds: 150 },
 ];
-
 
 // Delivery popup sample data
 const sampleDeliveryData = {
@@ -75,26 +77,23 @@ export default function CalendarPage() {
             </section>
             <section>
                 <h1 className="text-2xl font-bold mb-4">Summary Dashboard</h1>
-                <StatCard
-                    title="Summary Dashboard"
-                    statistics={[
-                        {
-                            label: 'Total Pounds Distributed',
-                            value: '2,847',
-                            icon: <Package className="h-5 w-5" />,
-                        },
-                        {
-                            label: 'Total Partners',
-                            value: '23',
-                            icon: <Users className="h-5 w-5" />,
-                        },
-                        {
-                            label: 'Active Volunteers',
-                            value: '156',
-                            icon: <UserCheck className="h-5 w-5" />,
-                        },
-                    ]}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <StatCard
+                        label="Total Pounds Distributed"
+                        value="2,847"
+                        icon={<Package className="h-5 w-5" />}
+                    />
+                    <StatCard
+                        label="Total Partners"
+                        value="23"
+                        icon={<Users className="h-5 w-5" />}
+                    />
+                    <StatCard
+                        label="Active Volunteers"
+                        value="156"
+                        icon={<UserCheck className="h-5 w-5" />}
+                    />
+                </div>
             </section>
             <section>
                 <h1 className="text-2xl font-bold mb-4">Delivery Detail Popup</h1>
@@ -170,13 +169,17 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
             <FoodTypesDonutChart />
 
-            <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} />
+            {/* <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} /> */}
 
-            <DeliverySummary
-                deliveries={deliveries}
-                historyLink="IDK" // Replace with your actual route
-            />
+            <DeliverySummary deliveries={deliveries} historyLink="distribution" />
             <FoodTypesDonutChart />
+            <h2>Inventory Transaction Upload</h2>
+            <InventoryTransactionUpload />
+            <h2>Packages By Item Upload</h2>
+            <PackagesByItemUpload />
+            <h2>Product Package Destination Upload</h2>
+            <ProductPackageDestinationUpload />
+
         </div>
     );
 }
