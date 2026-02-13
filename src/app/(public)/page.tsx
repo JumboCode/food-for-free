@@ -1,9 +1,7 @@
-import Link from 'next/link';
+'use client';
+
 import Image from 'next/image';
-import {
-    SignInButton,
-    SignUpButton,
-} from '@clerk/nextjs';
+import { SignInButton, SignUpButton } from '@clerk/nextjs';
 
 export default function Home() {
     return (

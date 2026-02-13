@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import SearchBar from '../../components/ui/SearchBar';
-import { AddPartnerModal } from '../../components/ui/AddPartnerModal';
-import PartnerOrganizationTable from '../../components/PartnerOrganizationTable';
-import { OrganizationDetailModal } from '../../components/admin/OrganizationDetailModal';
+import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
+import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
+import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
 
 interface Organization {
     id: string;
