@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
-import DeliverySummary from '../../components/ui/DeliverySummary';
+import DeliverySummary from '@/components/ui/DeliverySummary';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 
