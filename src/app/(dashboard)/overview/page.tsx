@@ -5,7 +5,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
-import DeliverySummary from '../../components/ui/DeliverySummary';
+import DeliverySummary from '@/components/ui/DeliverySummary';
 
 const deliveries = [
     { id: 1, date: new Date('2025-11-01'), totalPounds: 120 },

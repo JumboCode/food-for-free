@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+    SignInButton,
+    SignUpButton,
+} from '@clerk/nextjs';
 
-export default function LandingPage() {
+export default function Home() {
     return (
         <div
             className="min-h-screen relative overflow-hidden flex items-center justify-center px-6 lg:px-20 bg-[#E7F3EB]"
@@ -31,16 +35,16 @@ export default function LandingPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-4">
-                        <Link href="/sign-in">
+                        <SignInButton>
                             <button className="bg-[#1C5E2C] text-white rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#154621] transition-colors shadow-md">
                                 Sign In
                             </button>
-                        </Link>
-                        <Link href="/sign-up">
+                        </SignInButton>
+                        <SignUpButton>
                             <button className="bg-transparent border-2 border-[#1C5E2C] text-[#1C5E2C] rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#1C5E2C] hover:text-white transition-colors">
                                 Create Partner Account
                             </button>
-                        </Link>
+                        </SignUpButton>
                     </div>
                 </div>
 
