@@ -3,27 +3,35 @@ import { ChevronRight } from 'lucide-react';
 
 export type DeliverySummaryRowProps = {
     date: Date;
+    organization: string;
+    name: string;
     totalPounds: number;
+    tags?: string[];
     id: number;
     onClick?: () => void;
 };
 
 const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
     date,
+    organization,
+    name,
     totalPounds,
+    tags,
     id,
     onClick,
 }) => {
     return (
         <div
             onClick={onClick}
-            className="flex items-center justify-between px-6 py-4 bg-[#B7D7BD] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
+            className="flex grid text-left grid-cols-5 items-center justify-between px-6 py-4 bg-[#FFFFFF] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
         >
-            <div className="flex items-center gap-4">
-                {date.toLocaleDateString()}
+            <div className="flex items-center gap-4">{date.toLocaleDateString()}</div>
+            <div className="flex items-center gap-4">{organization}</div>
+            <div className="flex items-center gap-4">{name}</div>
+            <div className="flex items-center gap-4">{totalPounds} lbs</div>
+            <div className="flex items-center gap-4 rounded-lg bg-[#A8B3E3] px-3 py-1 text-[#FFFFFF] text-sm">
+                {tags?.join(', ')}
             </div>
-            <span className="font-medium">{totalPounds}lbs</span>
-            <ChevronRight className="h-5 w-5" />
         </div>
     );
 };
