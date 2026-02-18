@@ -169,7 +169,14 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold mb-">Donut Chart</h1>
             <FoodTypesDonutChart />
 
-            {/* <DeliverySummaryRow date={new Date()} totalPounds={100} id={1} /> */}
+            <DeliverySummaryRow
+                date={new Date()}
+                organization="Food For Free"
+                name="Fresh Apples"
+                totalPounds={100}
+                tags={['Pallet']}
+                id={1}
+            />
 
             <DeliverySummary deliveries={deliveries} historyLink="distribution" />
             <FoodTypesDonutChart />
@@ -179,7 +186,6 @@ export default function CalendarPage() {
             <PackagesByItemUpload />
             <h2>Product Package Destination Upload</h2>
             <ProductPackageDestinationUpload />
-
         </div>
     );
 }
