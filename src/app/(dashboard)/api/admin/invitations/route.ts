@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-
-async function requireAdmin(userId: string) {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-
-    const isAdmin = user.publicMetadata?.role === 'admin';
-
-    if (!isAdmin) {
-        throw new Error('Unauthorized: Admin access required');
-    }
-
-    return user;
-}
+import { requireAdmin } from '@/lib/admin';
+import { prisma } from '~/lib/prisma';
 
 export async function POST(req: NextRequest) {
     try {
@@ -22,7 +11,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin(userId);
+        await requireAdmin();
 
         const body = await req.json();
         const { email, organizationId, organizationName } = body;
@@ -69,6 +58,14 @@ export async function POST(req: NextRequest) {
                 const newOrg = await client.organizations.createOrganization({
                     name: organizationName,
                     createdBy: userId,
+                });
+
+                // Create matching Partner in Neon so webhook can associate invited users with this org
+                await prisma.partner.create({
+                    data: {
+                        organizationName: organizationName,
+                        clerkOrganizationId: newOrg.id,
+                    },
                 });
 
                 targetOrganizationId = newOrg.id;

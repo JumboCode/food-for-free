@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-
-async function requireAdmin(userId: string) {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-
-    const isAdmin = user.publicMetadata?.role === 'admin';
-
-    if (!isAdmin) {
-        throw new Error('Unauthorized: Admin access required');
-    }
-
-    return user;
-}
+import { requireAdmin } from '@/lib/admin';
 
 export async function DELETE(
     req: NextRequest,
@@ -25,7 +13,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin(userId);
+        await requireAdmin();
 
         const { organizationId, memberId } = params;
         const client = await clerkClient();

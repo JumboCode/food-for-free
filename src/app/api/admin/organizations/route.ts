@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-
-// Check if user is admin
-async function requireAdmin(userId: string) {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-
-    const isAdmin = user.publicMetadata?.role === 'admin';
-
-    if (!isAdmin) {
-        throw new Error('Unauthorized: Admin access required');
-    }
-
-    return user;
-}
+import { requireAdmin } from '@/lib/admin';
+import { prisma } from '~/lib/prisma';
 
 // GET - List all organizations
 export async function GET(req: NextRequest) {
@@ -24,7 +12,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin(userId);
+        await requireAdmin();
 
         const client = await clerkClient();
 
@@ -74,7 +62,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin(userId);
+        await requireAdmin();
 
         const body = await req.json();
         const { name, slug } = body;
@@ -100,11 +88,19 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Create organization
+        // Create organization in Clerk
         const organization = await client.organizations.createOrganization({
             name,
             slug: slug || undefined,
             createdBy: userId,
+        });
+
+        // Create matching Partner in Neon so webhook can associate users with this org
+        await prisma.partner.create({
+            data: {
+                organizationName: name,
+                clerkOrganizationId: organization.id,
+            },
         });
 
         return NextResponse.json({
