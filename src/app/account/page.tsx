@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PoundsByMonthChart, PoundsData } from '@/components/ui/PoundsByMonthChart';
 import FileUploadButton from '@/components/FileUploadButton';
 
@@ -16,8 +16,8 @@ export default function PoundsPage() {
                 if (!res.ok) throw new Error('Failed to fetch pounds data');
                 const json = await res.json();
                 setData(json);
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'An unexpected error occurred');
             } finally {
                 setLoading(false);
             }
@@ -30,12 +30,7 @@ export default function PoundsPage() {
 
     return (
         <div className="p-6">
-            <FileUploadButton
-                endpoint="/api/upload-pounds-data"
-                onSuccess={(newData: PoundsData[]) => setData(newData)}
-            >
-                Upload Pounds Data
-            </FileUploadButton>
+            <FileUploadButton />
             <PoundsByMonthChart data={data} title="Puffin: Pounds Donated By Month" />
         </div>
     );

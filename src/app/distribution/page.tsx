@@ -100,7 +100,7 @@ const DistributionPage: React.FC = () => {
                             <Search className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
 
-                        <MyCalendar compact />
+                        <MyCalendar />
 
                         <button className="inline-flex items-center gap-2 bg-[#E6F6EF] hover:bg-[#DFF0E6] text-[#227A4E] px-4 py-2 rounded-md border border-[#D9EFE0] shadow-sm">
                             Filter

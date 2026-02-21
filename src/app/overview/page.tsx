@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
@@ -248,15 +248,9 @@ const allDeliveries = [
     },
 ];
 
-interface OrganizationInfo {
-    organizationName?: string;
-    description?: string;
-}
-
-const OverviewPage: React.FC<OrganizationInfo> = ({
-    organizationName = 'All Organizations',
-    description = "Overview of your organization's deliveries and analytics.",
-}) => {
+const OverviewPage = () => {
+    const organizationName = 'All Organizations';
+    const description = "Overview of your organization's deliveries and analytics.";
     // Default to Past 12 Months for better UX
     const getDefaultDateRange = () => {
         const today = new Date();
