@@ -35,8 +35,8 @@ export default function PackagesByItemUpload() {
 
             setSuccess(true);
             setCount(data.count || 0);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Upload failed');
         } finally {
             setUploading(false);
             e.target.value = '';
@@ -46,13 +46,20 @@ export default function PackagesByItemUpload() {
     return (
         <div className="space-y-3">
             <label className="block">
-                <div className={`
+                <div
+                    className={`
                     flex items-center gap-3 px-6 py-4 rounded-lg border-2 cursor-pointer transition-all
-                    ${uploading ? 'border-blue-300 bg-blue-50' : 
-                      success ? 'border-green-300 bg-green-50' : 
-                      error ? 'border-red-300 bg-red-50' : 
-                      'border-gray-200 hover:border-[#E7A54E] hover:bg-orange-50'}
-                `}>
+                    ${
+                        uploading
+                            ? 'border-blue-300 bg-blue-50'
+                            : success
+                              ? 'border-green-300 bg-green-50'
+                              : error
+                                ? 'border-red-300 bg-red-50'
+                                : 'border-gray-200 hover:border-[#E7A54E] hover:bg-orange-50'
+                    }
+                `}
+                >
                     {uploading ? (
                         <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
                     ) : success ? (
@@ -62,19 +69,20 @@ export default function PackagesByItemUpload() {
                     ) : (
                         <Upload className="w-5 h-5 text-gray-500" />
                     )}
-                    
+
                     <div className="flex-1">
-                        <div className="font-semibold text-gray-900">
-                            Packages by Item
-                        </div>
+                        <div className="font-semibold text-gray-900">Packages by Item</div>
                         <div className="text-sm text-gray-500">
-                            {uploading ? 'Uploading...' :
-                             success ? `Uploaded ${count} records` :
-                             error ? error :
-                             'Upload Excel file (Packages_by_Item)'}
+                            {uploading
+                                ? 'Uploading...'
+                                : success
+                                  ? `Uploaded ${count} records`
+                                  : error
+                                    ? error
+                                    : 'Upload Excel file (Packages_by_Item)'}
                         </div>
                     </div>
-                    
+
                     <input
                         type="file"
                         accept=".xlsx,.xls"
@@ -84,13 +92,13 @@ export default function PackagesByItemUpload() {
                     />
                 </div>
             </label>
-            
+
             {success && (
                 <div className="text-sm text-green-600 px-2">
                     ✓ Successfully uploaded {count} package records
                 </div>
             )}
-            
+
             {error && (
                 <div className="text-sm text-red-600 px-2">
                     Upload ProductPackageDestination first if you see foreign key errors

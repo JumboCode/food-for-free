@@ -33,22 +33,25 @@ export default function FileUploadButton() {
             const workbook = XLSX.read(data);
             const firstSheetName = workbook.SheetNames[0];
             const firstSheet = workbook.Sheets[firstSheetName];
-            
+
             // IMPORTANT: Skip first row to use row 2 as headers
-            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { 
+            const rawRows = XLSX.utils.sheet_to_json(firstSheet, {
                 defval: null,
-                range: 1 // Start from row 2 (0-indexed)
+                range: 1, // Start from row 2 (0-indexed)
             });
 
             // Debug: Log available columns
             if (rawRows.length > 0 && rawRows[0]) {
-                console.log('Available columns:', Object.keys(rawRows[0] as Record<string, unknown>));
+                console.log(
+                    'Available columns:',
+                    Object.keys(rawRows[0] as Record<string, unknown>)
+                );
                 console.log('Sample row:', rawRows[0]);
             }
 
             // Transform rows to InventoryTransaction format
-            const records = rawRows
-                .map((row: any) => {
+            const records = (rawRows as Record<string, unknown>[])
+                .map(row => {
                     // Map actual Excel column names (with arrows)
                     const date = row['Date  ↓'] || row['Date'];
                     const location = row['Location  ↑'] || row['Location'];
@@ -89,12 +92,13 @@ export default function FileUploadButton() {
                         weightLbs: weightLbs,
                         source: source || null,
                         destination: destination || null,
-                        productInventoryRecordId18: productInventoryRecordId18 != null 
-                            ? String(productInventoryRecordId18).trim() 
-                            : null,
+                        productInventoryRecordId18:
+                            productInventoryRecordId18 != null
+                                ? String(productInventoryRecordId18).trim()
+                                : null,
                     };
                 })
-                .filter((r: any) => {
+                .filter(r => {
                     // Pre-filter to only send records with all required fields
                     return (
                         r.productInventoryRecordId18 &&
@@ -112,23 +116,27 @@ export default function FileUploadButton() {
 
             // Validate records before sending
             if (records.length === 0) {
-                const sampleRows = rawRows.slice(0, 3).map((row: any, idx: number) => {
-                    const missingFields = [];
-                    if (!row['Date  ↓'] && !row['Date']) missingFields.push('Date');
-                    if (!row['Location  ↑'] && !row['Location']) missingFields.push('Location');
-                    if (!row['Pantry Product: Product']) missingFields.push('Pantry Product: Product');
-                    if (!row['Inventory Type']) missingFields.push('Inventory Type');
-                    if (!row['Amount']) missingFields.push('Amount');
-                    if (!row['Product Inventory Record ID 18']) missingFields.push('Product Inventory Record ID 18');
-                    
-                    return `Row ${idx + 1}: Missing fields: ${missingFields.join(', ') || 'none'}`;
-                });
-                
+                const sampleRows = (rawRows as Record<string, unknown>[])
+                    .slice(0, 3)
+                    .map((row, idx: number) => {
+                        const missingFields = [];
+                        if (!row['Date  ↓'] && !row['Date']) missingFields.push('Date');
+                        if (!row['Location  ↑'] && !row['Location']) missingFields.push('Location');
+                        if (!row['Pantry Product: Product'])
+                            missingFields.push('Pantry Product: Product');
+                        if (!row['Inventory Type']) missingFields.push('Inventory Type');
+                        if (!row['Amount']) missingFields.push('Amount');
+                        if (!row['Product Inventory Record ID 18'])
+                            missingFields.push('Product Inventory Record ID 18');
+
+                        return `Row ${idx + 1}: Missing fields: ${missingFields.join(', ') || 'none'}`;
+                    });
+
                 throw new Error(
                     `No valid records found after filtering. ` +
-                    `Found ${rawRows.length} raw rows, but ${records.length} valid records. ` +
-                    `\n\nFirst few rows analysis:\n${sampleRows.join('\n')}\n\n` +
-                    `Please check that your Excel file has all required columns with data.`
+                        `Found ${rawRows.length} raw rows, but ${records.length} valid records. ` +
+                        `\n\nFirst few rows analysis:\n${sampleRows.join('\n')}\n\n` +
+                        `Please check that your Excel file has all required columns with data.`
                 );
             }
 
@@ -148,7 +156,7 @@ export default function FileUploadButton() {
                 console.error('Status:', res.status);
                 console.error('Records sent:', records.length);
                 console.error('First record sent:', records[0]);
-                
+
                 // Build detailed error message
                 let errorMsg = json.error || 'Upload failed';
                 if (json.details) {
@@ -159,26 +167,27 @@ export default function FileUploadButton() {
                 } else if (res.status === 500) {
                     errorMsg += `\n\nThis is a server error. Check the server logs for more details.`;
                 }
-                
+
                 throw new Error(errorMsg);
             }
 
             setSuccess(`Successfully uploaded ${json.count} records!`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Upload error:', err);
-            console.error('Error stack:', err.stack);
-            
+            const error = err as { message?: string; stack?: string; name?: string };
+            console.error('Error stack:', error.stack);
+
             // Show more detailed error message
-            let errorMessage = err.message || 'Failed to upload file.';
-            if (err.message && err.message.includes('\n')) {
+            let errorMessage = error.message || 'Failed to upload file.';
+            if (error.message && error.message.includes('\n')) {
                 // If error has multiple lines, show them all
-                errorMessage = err.message;
-            } else if (err.name === 'TypeError') {
-                errorMessage = `Type Error: ${err.message}. This might indicate a data format issue.`;
-            } else if (err.name === 'SyntaxError') {
-                errorMessage = `Syntax Error: ${err.message}. Check the file format.`;
+                errorMessage = error.message;
+            } else if (error.name === 'TypeError') {
+                errorMessage = `Type Error: ${error.message}. This might indicate a data format issue.`;
+            } else if (error.name === 'SyntaxError') {
+                errorMessage = `Syntax Error: ${error.message}. Check the file format.`;
             }
-            
+
             setError(errorMessage);
         } finally {
             setLoading(false);
