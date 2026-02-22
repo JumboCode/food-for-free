@@ -1,6 +1,7 @@
 import React from 'react';
+import { ChevronRight } from 'lucide-react';
 
-export type DeliverySummaryRowProps = {
+export type DistributionPageRowProps = {
     date: Date;
     organization: string;
     name: string;
@@ -10,12 +11,13 @@ export type DeliverySummaryRowProps = {
     onClick?: () => void;
 };
 
-const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
+const DistributionPageRow: React.FC<DistributionPageRowProps> = ({
     date,
     organization,
     name,
     totalPounds,
     tags,
+    id,
     onClick,
 }) => {
     return (
@@ -34,4 +36,4 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
     );
 };
 
-export default DeliverySummaryRow;
+export default DistributionPageRow;

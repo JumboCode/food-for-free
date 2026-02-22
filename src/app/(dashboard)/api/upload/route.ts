@@ -9,19 +9,19 @@ function excelSerialToJSDate(serial: number): Date {
 }
 
 // Parse date from various formats
-function parseDate(value: any): Date | null {
+function parseDate(value: unknown): Date | null {
     if (!value) return null;
-    
+
     // If it's already a Date
     if (value instanceof Date && !isNaN(value.getTime())) {
         return value;
     }
-    
+
     // If it's a number (Excel serial date)
     if (typeof value === 'number' && !isNaN(value)) {
         return excelSerialToJSDate(value);
     }
-    
+
     // If it's a string
     if (typeof value === 'string') {
         const parsed = new Date(value);
@@ -29,7 +29,7 @@ function parseDate(value: any): Date | null {
             return parsed;
         }
     }
-    
+
     return null;
 }
 
@@ -57,22 +57,22 @@ export async function POST(req: Request) {
             // ----------------- InventoryTransaction -----------------
             case 'InventoryTransaction': {
                 // Read from row 12 (header at row 11, 0-indexed)
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
                     range: 11,
                     defval: null,
-                    raw: false // This helps with date parsing
+                    raw: false, // This helps with date parsing
                 });
 
                 // Forward-fill the date and location (they only appear in first row of each group)
                 let currentDate: Date | null = null;
                 let currentLocation: string | null = null;
 
-                const validTransactions = jsonData
-                    .map((row: any) => {
+                const validTransactions = (jsonData as Record<string, unknown>[])
+                    .map(row => {
                         // Update current date/location if present in this row
                         const rowDate = row['Date  ↓'] || row['Date'];
                         const rowLocation = row['Location  ↑'] || row['Location'];
-                        
+
                         if (rowDate) {
                             currentDate = parseDate(rowDate);
                         }
@@ -80,10 +80,13 @@ export async function POST(req: Request) {
                             currentLocation = rowLocation;
                         }
 
-                        const productName = row['Pantry Product: Product'] || row['pantryProductName'];
+                        const productName =
+                            row['Pantry Product: Product'] || row['pantryProductName'];
                         const inventoryType = row['Inventory Type'] || row['inventoryType'];
                         const amount = row['Amount'] || row['amount'];
-                        const recordId = row['Product Inventory Record ID 18'] || row['productInventoryRecordId18'];
+                        const recordId =
+                            row['Product Inventory Record ID 18'] ||
+                            row['productInventoryRecordId18'];
 
                         return {
                             date: currentDate,
@@ -91,22 +94,29 @@ export async function POST(req: Request) {
                             pantryProductName: productName || null,
                             inventoryType: inventoryType || null,
                             amount: amount != null ? Number(amount) : null,
-                            productUnitsForDisplay: row['Product Units for Display'] || row['productUnitsForDisplay'] || null,
-                            weightLbs: row['Weight (in pounds)'] || row['weightLbs'] ? Number(row['Weight (in pounds)'] || row['weightLbs']) : null,
+                            productUnitsForDisplay:
+                                row['Product Units for Display'] ||
+                                row['productUnitsForDisplay'] ||
+                                null,
+                            weightLbs:
+                                row['Weight (in pounds)'] || row['weightLbs']
+                                    ? Number(row['Weight (in pounds)'] || row['weightLbs'])
+                                    : null,
                             source: row['Source'] || row['source'] || null,
                             destination: row['Destination'] || row['destination'] || null,
                             productInventoryRecordId18: recordId ? String(recordId).trim() : null,
                         };
                     })
-                    .filter((r: any) =>
-                        r.productInventoryRecordId18 &&
-                        r.date &&
-                        !isNaN(r.date.getTime()) &&
-                        r.location &&
-                        r.pantryProductName &&
-                        r.inventoryType &&
-                        r.amount != null &&
-                        !isNaN(r.amount)
+                    .filter(
+                        r =>
+                            r.productInventoryRecordId18 &&
+                            r.date &&
+                            !isNaN(r.date.getTime()) &&
+                            r.location &&
+                            r.pantryProductName &&
+                            r.inventoryType &&
+                            r.amount != null &&
+                            !isNaN(r.amount)
                     );
 
                 if (validTransactions.length === 0) {
@@ -144,88 +154,93 @@ export async function POST(req: Request) {
 
             // ----------------- PackagesByItem -----------------
             case 'PackagesByItem': {
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
                     range: 9,
-                    defval: null 
+                    defval: null,
                 });
 
                 // First map all rows so we can give detailed diagnostics
-                const mappedPackages = jsonData.map((row: any, index: number) => {
-                    const productInventoryRecordId18 =
-                        row['Distribution Record: Product Inventory Record ID 18'] ||
-                        row['productInventoryRecordId18']
-                            ? String(
-                                  row['Distribution Record: Product Inventory Record ID 18'] ||
-                                      row['productInventoryRecordId18']
-                              ).trim()
-                            : null;
+                const mappedPackages = (jsonData as Record<string, unknown>[]).map(
+                    (row, index: number) => {
+                        const productInventoryRecordId18 =
+                            row['Distribution Record: Product Inventory Record ID 18'] ||
+                            row['productInventoryRecordId18']
+                                ? String(
+                                      row['Distribution Record: Product Inventory Record ID 18'] ||
+                                          row['productInventoryRecordId18']
+                                  ).trim()
+                                : null;
 
-                    const productPackageId18 =
-                        row['Product Package ID 18'] || row['productPackageId18']
-                            ? String(
-                                  row['Product Package ID 18'] || row['productPackageId18']
-                              ).trim()
-                            : null;
+                        const productPackageId18 =
+                            row['Product Package ID 18'] || row['productPackageId18']
+                                ? String(
+                                      row['Product Package ID 18'] || row['productPackageId18']
+                                  ).trim()
+                                : null;
 
-                    return {
-                        // Approximate Excel row number (header is at row 10, data starts at 11)
-                        rowNumber: index + 11,
-                        productPackageName:
-                            row['Product Package: Product Package Name  ↑'] ||
-                            row['productPackageName'] ||
-                            null,
-                        pantryProductName:
-                            row['Pantry Product: Product  ↑'] || row['pantryProductName'] || null,
-                        lotSourceAccountName:
-                            row['Lot: Source: Account Name'] ||
-                            row['lotSourceAccountName'] ||
-                            null,
-                        lotFoodRescueProgram:
-                            row['Lot: Food Rescue Program'] ||
-                            row['lotFoodRescueProgram'] ||
-                            null,
-                        distributionAmount:
-                            row['Distribution Record: Amount'] || row['distributionAmount']
-                                ? Number(
-                                      row['Distribution Record: Amount'] ||
-                                          row['distributionAmount']
-                                  )
-                                : null,
-                        pantryProductWeightLbs:
-                            row['Pantry Product: Weight (in pounds)'] ||
-                            row['pantryProductWeightLbs']
-                                ? Number(
-                                      row['Pantry Product: Weight (in pounds)'] ||
-                                          row['pantryProductWeightLbs']
-                                  )
-                                : null,
-                        distributionCost:
-                            row['Distribution Record: Cost'] || row['distributionCost']
-                                ? Number(
-                                      row['Distribution Record: Cost'] || row['distributionCost']
-                                  )
-                                : null,
-                        productInventoryRecordId18,
-                        productPackageId18,
-                    };
-                });
+                        return {
+                            // Approximate Excel row number (header is at row 10, data starts at 11)
+                            rowNumber: index + 11,
+                            productPackageName:
+                                row['Product Package: Product Package Name  ↑'] ||
+                                row['productPackageName'] ||
+                                null,
+                            pantryProductName:
+                                row['Pantry Product: Product  ↑'] ||
+                                row['pantryProductName'] ||
+                                null,
+                            lotSourceAccountName:
+                                row['Lot: Source: Account Name'] ||
+                                row['lotSourceAccountName'] ||
+                                null,
+                            lotFoodRescueProgram:
+                                row['Lot: Food Rescue Program'] ||
+                                row['lotFoodRescueProgram'] ||
+                                null,
+                            distributionAmount:
+                                row['Distribution Record: Amount'] || row['distributionAmount']
+                                    ? Number(
+                                          row['Distribution Record: Amount'] ||
+                                              row['distributionAmount']
+                                      )
+                                    : null,
+                            pantryProductWeightLbs:
+                                row['Pantry Product: Weight (in pounds)'] ||
+                                row['pantryProductWeightLbs']
+                                    ? Number(
+                                          row['Pantry Product: Weight (in pounds)'] ||
+                                              row['pantryProductWeightLbs']
+                                      )
+                                    : null,
+                            distributionCost:
+                                row['Distribution Record: Cost'] || row['distributionCost']
+                                    ? Number(
+                                          row['Distribution Record: Cost'] ||
+                                              row['distributionCost']
+                                      )
+                                    : null,
+                            productInventoryRecordId18,
+                            productPackageId18,
+                        };
+                    }
+                );
 
                 // Keep only rows that have BOTH IDs present.
                 // Rows missing either ID are ignored.
                 const validPackages = mappedPackages.filter(
-                    (r: any) => r.productInventoryRecordId18 && r.productPackageId18
+                    r => r.productInventoryRecordId18 && r.productPackageId18
                 );
 
                 if (validPackages.length === 0) {
                     const missingInventoryRows = mappedPackages
-                        .filter((r: any) => !r.productInventoryRecordId18)
+                        .filter(r => !r.productInventoryRecordId18)
                         .slice(0, 10)
-                        .map((r: any) => r.rowNumber);
+                        .map(r => r.rowNumber);
 
                     const missingPackageRows = mappedPackages
-                        .filter((r: any) => !r.productPackageId18)
+                        .filter(r => !r.productPackageId18)
                         .slice(0, 10)
-                        .map((r: any) => r.rowNumber);
+                        .map(r => r.rowNumber);
 
                     return NextResponse.json(
                         {
@@ -252,7 +267,7 @@ export async function POST(req: Request) {
                     );
                 }
 
-                const packagesToInsert = validPackages.map((p: any) => ({
+                const packagesToInsert = validPackages.map(p => ({
                     productPackageName: p.productPackageName,
                     pantryProductName: p.pantryProductName,
                     lotSourceAccountName: p.lotSourceAccountName,
@@ -282,20 +297,19 @@ export async function POST(req: Request) {
                 return NextResponse.json({
                     success: true,
                     count: result.count,
-                    message:
-                        `Successfully uploaded ${result.count} PackagesByItem records. Rows missing either ID were ignored.`,
+                    message: `Successfully uploaded ${result.count} PackagesByItem records. Rows missing either ID were ignored.`,
                 });
             }
 
             // ----------------- ProductPackageDestination -----------------
             case 'ProductPackageDestination': {
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
                     range: 9,
-                    defval: null 
+                    defval: null,
                 });
 
                 const validDestinations = jsonData
-                    .map((row: any) => ({
+                    .map((row: Record<string, unknown>) => ({
                         productPackageName:
                             row['Product Package: Product Package Name  ↑'] ||
                             row['productPackageName'],
@@ -318,7 +332,7 @@ export async function POST(req: Request) {
                             row['householdId18'] ||
                             null,
                     }))
-                    .filter((r: any) => {
+                    .filter(r => {
                         if (!r.productPackageId18 || !r.productPackageName) {
                             return false;
                         }
@@ -371,33 +385,40 @@ export async function POST(req: Request) {
                     { status: 400 }
                 );
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Upload error:', err);
+        const error = err as { code?: string; message?: string; meta?: unknown; stack?: string };
         console.error('Error details:', {
-            code: err.code,
-            message: err.message,
-            meta: err.meta,
+            code: error.code,
+            message: error.message,
+            meta: error.meta,
         });
 
-        if (err.code === "P2002") {
+        if (error.code === 'P2002') {
             return NextResponse.json(
-                { success: false, error: "Duplicate record detected. Some records may already exist." },
+                {
+                    success: false,
+                    error: 'Duplicate record detected. Some records may already exist.',
+                },
                 { status: 409 }
             );
         }
 
-        if (err.code === "P2003") {
+        if (error.code === 'P2003') {
             return NextResponse.json(
-                { success: false, error: "Foreign key constraint failed. Ensure related records exist first." },
+                {
+                    success: false,
+                    error: 'Foreign key constraint failed. Ensure related records exist first.',
+                },
                 { status: 400 }
             );
         }
 
         return NextResponse.json(
-            { 
-                success: false, 
-                error: err.message || 'Upload failed',
-                details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            {
+                success: false,
+                error: error.message || 'Upload failed',
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
             },
             { status: 500 }
         );
