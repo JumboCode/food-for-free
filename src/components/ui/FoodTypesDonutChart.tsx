@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Apple } from 'lucide-react';
@@ -13,7 +14,6 @@ const DEFAULT_DATA = [
 ];
 
 export interface FoodTypeData {
-    [key: string]: string | number;
     label: string;
     value: number;
     color: string;
