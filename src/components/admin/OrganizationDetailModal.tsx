@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { X, MoreVertical, ExternalLink } from 'lucide-react';
-import PartnerOrganizationTable from '../PartnerOrganizationTable';
 
 interface Organization {
     id: string;
@@ -229,7 +228,33 @@ export function OrganizationDetailModal({
 
                 {/* User Table */}
                 <div className="p-6">
-                    <PartnerOrganizationTable data={users} />
+                    {isLoading ? (
+                        <div className="rounded-lg border border-gray-200 p-6 text-center text-gray-500">
+                            Loading users...
+                        </div>
+                    ) : users.length === 0 ? (
+                        <div className="rounded-lg border border-gray-200 p-6 text-center text-gray-500">
+                            No users found.
+                        </div>
+                    ) : (
+                        <div className="rounded-lg border border-gray-200 overflow-hidden">
+                            <div className="grid grid-cols-[2fr_2fr_1fr] gap-4 p-4 bg-[#fafaf8] font-medium">
+                                <span>Name</span>
+                                <span>Email</span>
+                                <span>Status</span>
+                            </div>
+                            {users.map(user => (
+                                <div
+                                    key={user.id}
+                                    className="grid grid-cols-[2fr_2fr_1fr] gap-4 p-4 border-t border-gray-100"
+                                >
+                                    <span>{user.name}</span>
+                                    <span>{user.email}</span>
+                                    <span>{user.status}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* <div className="flex-1 overflow-auto">

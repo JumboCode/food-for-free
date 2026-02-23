@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 export type PartnerDataRow = {
     name: string;
     numOfUsers: number;
-    id: number;
+    id: string | number;
     onClick?: () => void;
 };
 
