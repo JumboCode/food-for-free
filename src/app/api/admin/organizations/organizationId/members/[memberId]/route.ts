@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { organizationId: string; memberId: string } }
+    context: { params: Promise<{ organizationId: string; memberId: string }> }
 ) {
     try {
         const { userId } = await auth();
@@ -15,7 +15,7 @@ export async function DELETE(
 
         await requireAdmin();
 
-        const { organizationId, memberId } = params;
+        const { organizationId, memberId } = await context.params;
         const client = await clerkClient();
 
         // Delete the membership
