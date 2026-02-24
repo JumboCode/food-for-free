@@ -88,6 +88,48 @@ model ProductPackageDestination {
   householdId18      String
 }
 
+model AllInventoryTransactions {
+  date                       DateTime
+  location                   String
+  pantryProductName          String
+  inventoryType              String
+  amount                     Int
+  productUnitsForDisplay     String?
+  weightLbs                  Float?
+  source                     String?
+  destination                String?
+  productInventoryRecordId18 String           @id
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @default(now())
+}
+
+model AllPackagesByItem {
+  productPackageName         String?
+  pantryProductName          String?
+  lotSourceAccountName       String?
+  lotFoodRescueProgram       String?
+  distributionAmount         Int?
+  pantryProductWeightLbs     Float?
+  distributionCost           Float?
+  productInventoryRecordId18 String           @id
+  productPackageId18         String?
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @default(now())
+
+  @@index([productInventoryRecordId18])
+  @@index([productPackageId18])
+}
+
+model AllProductPackageDestinations {
+  date               DateTime
+  productPackageName String
+  productPackageId18 String           @unique
+  householdName      String
+  pantryVisitId18    String           @id @default("##################")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @default(now())
+}
+
 enum Role {
   ADMIN
   PARTNER
