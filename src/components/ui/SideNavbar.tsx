@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { CircleUser, ChartLine, Gift, Users } from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 
 type NavItem = {
     label: string;
@@ -39,7 +40,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
             </div>
 
             {/* navigation */}
-            <nav className="flex flex-col space-y-2">
+            <nav className="flex flex-col flex-1 space-y-2">
                 {items.map(item => {
                     const isActive = pathname === item.href;
 
@@ -63,6 +64,17 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                     );
                 })}
             </nav>
+
+            <div className="p-4 flex justify-center items-center gap-3 border-t mt-auto text-sm font-medium text-gray-700">
+                <UserButton
+                    appearance={{
+                        variables: {
+                            colorPrimary: '#1C5E2C',
+                        },
+                    }}
+                />
+                <span>My Profile</span>
+            </div>
         </aside>
     );
 };
