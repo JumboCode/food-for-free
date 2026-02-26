@@ -12,16 +12,16 @@ export default function Home() {
             {/* Circular Gradient Overlay */}
             <div
                 className="absolute z-5 inset-1 top-1/2 left-1/2 
-              w-[130vw] h-[100vw] 
-              -translate-x-1/2 -translate-y-3/4 
+              w-[110vw] h-[100vw] 
+              -translate-x-7/16 -translate-y-9/16 
               rounded-full 
-              bg-[radial-gradient(circle,_rgba(143,193,169,0.6)_17%,_rgba(255,246,233,0.7)_88%)]"
+              bg-[radial-gradient(circle,_rgba(255,246,233,0.5)_17%,_rgba(143,193,169,0.3)_88%)]"
             ></div>
             <div
                 className="absolute inset-0 -z-1"
                 style={{
                     background:
-                        'radial-gradient(circle at bottom left, #36AF75 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)',
+                        'radial-gradient(circle at bottom left, #E7F3EB 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)',
                 }}
             />
 
