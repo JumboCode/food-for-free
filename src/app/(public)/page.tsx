@@ -11,14 +11,21 @@ export default function Home() {
         >
             {/* Circular Gradient Overlay */}
             <div
-                className="absolute inset-0 -z-10"
+                className="absolute z-5 inset-1 top-1/2 left-1/2 
+              w-[110vw] h-[100vw] 
+              -translate-x-7/16 -translate-y-9/16 
+              rounded-full 
+              bg-[radial-gradient(circle,_rgba(255,246,233,0.5)_17%,_rgba(143,193,169,0.3)_88%)]"
+            ></div>
+            <div
+                className="absolute inset-0 -z-1"
                 style={{
                     background:
-                        'radial-gradient(circle at bottom left, #36AF75 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)',
+                        'radial-gradient(circle at bottom left, #E7F3EB 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)',
                 }}
             />
 
-            <div className="max-w-7xl w-full grid lg:grid-cols-2 gap-12 items-center">
+            <div className="z-10 inset-2 max-w-7xl w-full grid lg:grid-cols-2 gap-12 items-center">
                 {/* Left Section - Text and Buttons */}
                 <div className="space-y-8">
                     <div className="space-y-4">
@@ -32,7 +39,7 @@ export default function Home() {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-4">
+                    <div className="  flex flex-wrap gap-4">
                         <SignInButton>
                             <button className="bg-[#1C5E2C] text-white rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#154621] transition-colors shadow-md">
                                 Sign In
