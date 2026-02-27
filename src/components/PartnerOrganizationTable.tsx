@@ -7,10 +7,10 @@ import PartnerOrganizationRow, { PartnerDataRow } from '@/components/ui/PartnerO
 const PartnerOrganizationTable: React.FC<{ data: PartnerDataRow[] }> = ({ data }) => {
     return (
         <div>
-            <div className="flex items-center justify-between gap-4 p-4 bg-[#fafaf8] rounded-sm mb-2">
-                <span>{'Organization Name'}</span>
-                <span>{'Number of Users'}</span>
-                <span>{'Details'}</span>
+            <div className="grid grid-cols-[1fr_1fr_60px] items-center px-6 py-3 bg-[#fafaf8] rounded-sm mb-3 text-sm font-medium text-gray-700">
+                <div>Organization Name</div>
+                <div className="text-center">Number of Users</div>
+                <div className="text-right">Details</div>
             </div>
             {data.map(partner => (
                 <PartnerOrganizationRow
