@@ -51,6 +51,5 @@ export async function GET() {
         }
     }
 
-    console.log(distributionDeliveries);
     return NextResponse.json(distributionDeliveries);
 }

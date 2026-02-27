@@ -25,7 +25,7 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
             onClick={onClick}
             className="flex grid text-left grid-cols-5 items-center justify-between px-6 py-4 bg-[#FFFFFF] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
         >
-            <div className="flex items-center gap-4">{date.toLocaleDateString()}</div>
+            <div className="flex items-center gap-4">{new Date(date).toLocaleDateString()}</div>
             <div className="flex items-center gap-4">{organization}</div>
             <div className="flex items-center gap-4">{name}</div>
             <div className="flex items-center gap-4">{totalPounds} lbs</div>

@@ -1,69 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
-import DownloadPDFButton from '@/components/ui/DownloadPDFButton';
 
 interface DeliveryRecord {
-    id: number;
-    date: Date; // ISO string from backend
+    householdId18: number;
+    date: Date;
     organizationName: string;
     productName: string;
     weightLbs: number;
     inventoryType: string;
+    foodRescueProgram: string;
 }
 
 const DistributionPage: React.FC = () => {
-    const [records, setRecords] = useState<DeliveryRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [data, setData] = useState<DeliveryRecord[]>([]);
+
     useEffect(() => {
-        const fetchDeliveries = async () => {
-            setLoading(true);
+        async function fetchData() {
             try {
-                await new Promise(resolve => setTimeout(resolve, 800));
-                const mockData: DeliveryRecord[] = [
-                    {
-                        id: 101,
-                        date: new Date('2026-02-14'),
-                        organizationName: 'Food For Free',
-                        productName: 'Fresh Apples',
-                        weightLbs: 1205,
-                        inventoryType: 'Weekly Account',
-                    },
-                    {
-                        id: 102,
-                        date: new Date('2026-02-14'),
-                        organizationName: 'Open Door Pantry',
-                        productName: 'Whole Grain Bread',
-                        weightLbs: 850,
-                        inventoryType: 'Whole Pallet Order',
-                    },
-                    {
-                        id: 103,
-                        date: new Date('2026-02-13'),
-                        organizationName: 'Grace Church',
-                        productName: 'Frozen Chicken',
-                        weightLbs: 400,
-                        inventoryType: 'Weekly Account',
-                    },
-                ];
-                setRecords(mockData);
+                const response = await fetch('/api/admin/deliveries');
+                if (!response.ok) throw new Error('Failed to fetch data.');
+                const json = await response.json();
+                console.log('Data:', json);
+                setData(json);
+            } catch (err) {
+                console.error('Fetch error:', err);
             } finally {
                 setLoading(false);
             }
-        };
-        fetchDeliveries();
+        }
+        fetchData();
     }, []);
-
-    const filteredRecords = records.filter(
-        r =>
-            r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.productName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     return (
         <div className="p-6 md:p-10 bg-[#F9FAFB] min-h-screen">
@@ -71,7 +44,7 @@ const DistributionPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Distribution</h1>
                 <p className="text-gray-600 mb-8">
                     A full summary of past deliveries, across all partner organizations. Click
-                    "export" to download the full history.
+                    &ldquo;export&rdquo; to download the full history.
                 </p>
                 <div className="bg-[#FFFFFF] p-15 rounded-lg shadow-sm">
                     <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
@@ -103,17 +76,15 @@ const DistributionPage: React.FC = () => {
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
                                 <p>Fetching distribution data...</p>
                             </div>
-                        ) : filteredRecords.length > 0 ? (
-                            filteredRecords.map(record => (
+                        ) : data.length > 0 ? (
+                            data.map((d, index) => (
                                 <DeliverySummaryRow
-                                    key={record.id}
-                                    id={record.id}
-                                    date={record.date}
-                                    organization={record.organizationName}
-                                    name={record.productName}
-                                    totalPounds={record.weightLbs}
-                                    tags={[record.inventoryType]}
-                                    onClick={() => console.log('Opening detail for:', record.id)}
+                                    key={d.householdId18 + index}
+                                    id={d.householdId18}
+                                    date={d.date}
+                                    organization={d.organizationName}
+                                    name={d.productName}
+                                    totalPounds={d.weightLbs}
                                 />
                             ))
                         ) : (
