@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { isAdmin } from '@/lib/admin';
 import { NextResponse } from 'next/server';
 
 // Define protected routes
@@ -41,17 +40,6 @@ export default clerkMiddleware(async (auth, req) => {
         }
 
         // protect all other protected routes
-
-        // Enforce admin-only access for /admin routes
-        if (isAdminRoute(req)) {
-            // Only allow admins
-            const admin = await isAdmin();
-            if (!admin) {
-                // Redirect to /overview or return 403
-                return NextResponse.redirect(new URL('/overview', req.url));
-                // Alternatively: return new NextResponse('Forbidden', { status: 403 });
-            }
-        }
     }
 });
 

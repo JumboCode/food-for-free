@@ -3,14 +3,14 @@ import { prisma } from '@/../lib/prisma';
 import { redirect } from 'next/navigation';
 
 /**
- * Check if the current user is an admin
- * Admin is determined by database role only
+ * Check if the current user is an admin.
+ * - In middleware, pass the userId from the `auth` argument.
+ * - In other server contexts, call without args to let Clerk's `auth()` resolve it.
  */
-export async function isAdmin(): Promise<boolean> {
-    const { userId } = await auth();
+export async function isAdmin(userIdOverride?: string | null): Promise<boolean> {
+    let userId = userIdOverride ?? (await auth()).userId;
     if (!userId) return false;
 
-    // Check database role
     const dbUser = await prisma.user.findUnique({
         where: { clerkId: userId },
     });
