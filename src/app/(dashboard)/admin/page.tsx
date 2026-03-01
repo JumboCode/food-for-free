@@ -13,6 +13,30 @@ interface Organization {
     createdAt: string;
 }
 
+const DUMMY_ORGS: Organization[] = [
+    {
+        id: '1',
+        name: 'Test Organization 1',
+        slug: 'test-org-1',
+        membersCount: 12,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: '2',
+        name: 'Test Organization 2',
+        slug: 'test-org-2',
+        membersCount: 8,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        id: '3',
+        name: 'Test Organization 3',
+        slug: 'test-org-3',
+        membersCount: 5,
+        createdAt: new Date().toISOString(),
+    },
+];
+
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
     const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
@@ -26,18 +50,13 @@ const AdminConsolePage: React.FC = () => {
     }, []);
 
     const fetchOrganizations = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch('/api/admin/organizations');
-            if (!response.ok) throw new Error('Failed to fetch organizations');
-            const data = await response.json();
-            console.log('Organizations loaded:', data.organizations);
-            setOrganizations(data.organizations);
-        } catch (error) {
-            console.error('Error fetching organizations:', error);
-        } finally {
+        setIsLoading(true);
+
+        //frontend only - use dummy data
+        setTimeout(() => {
+            setOrganizations(DUMMY_ORGS);
             setIsLoading(false);
-        }
+        }, 500);
     };
 
     //Handle creating new organization
