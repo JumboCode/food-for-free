@@ -40,12 +40,12 @@ export default function Home() {
                     </div>
 
                     <div className="  flex flex-wrap gap-4">
-                        <SignInButton>
+                        <SignInButton forceRedirectUrl="/overview">
                             <button className="bg-[#1C5E2C] text-white rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#154621] transition-colors shadow-md">
                                 Sign In
                             </button>
                         </SignInButton>
-                        <SignUpButton>
+                        <SignUpButton forceRedirectUrl="/overview">
                             <button className="bg-transparent border-2 border-[#1C5E2C] text-[#1C5E2C] rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#1C5E2C] hover:text-white transition-colors">
                                 Create Partner Account
                             </button>

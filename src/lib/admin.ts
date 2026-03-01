@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/../lib/prisma';
+import { redirect } from 'next/navigation';
 
 /**
  * Check if the current user is an admin
@@ -36,6 +37,7 @@ export async function getCurrentUser() {
 export async function requireAdmin() {
     const admin = await isAdmin();
     if (!admin) {
+        redirect('/dashboard');
         throw new Error('Unauthorized: Admin access required');
     }
 }
