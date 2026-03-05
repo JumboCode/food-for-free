@@ -48,7 +48,7 @@ export function FoodTypesDonutChart({
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
     return (
-        <Card className="w-full max-w-[600px] p-4">
+        <Card className="w-full p-4">
             <CardHeader>
                 <CardTitle className="whitespace-nowrap mt-3">{title}</CardTitle>
             </CardHeader>
@@ -81,14 +81,14 @@ export function FoodTypesDonutChart({
                 </div>
 
                 {/* custom legend */}
-                <div className="flex flex-col gap-2 ml-30">
+                <div className="flex flex-col gap-2">
                     {data.map((item, index) => (
                         <div key={index} className="flex items-center gap-2">
                             <div
-                                className="w-3 h-3 rounded-full"
+                                className="w-3 h-3 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: item.color || '#8884d8' }}
                             />
-                            <span className="text-sm">{item.label}</span>
+                            <span className="text-sm whitespace-nowrap">{item.label}</span>
                         </div>
                     ))}
                 </div>

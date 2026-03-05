@@ -29,15 +29,10 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
         // actual sidebar component
         <aside className="fixed left-0  bg-white h-screen top-0 w-16 sm:w-56 flex flex-col ">
             {/* top logo portion */}
-            <div className="left-0 h-20 flex top-0">
-                {/* labels */}
-                <h2 className="hidden sm:block px-7 pt-7 text-lg font-semibold mb-4 font-bold">
-                    Food For Free
-                </h2>
-                <h3 className=" sm:block fixed top-14 text-gray-400 px-7 text-sm">
-                    Partner Portal
-                </h3>
-            </div>
+            <a href="/overview" className="left-0 h-20 flex flex-col top-0 px-7 pt-7">
+                <h2 className="hidden sm:block text-lg font-bold">Food For Free</h2>
+                <h3 className="hidden sm:block text-gray-400 text-sm">Partner Portal</h3>
+            </a>
 
             {/* navigation */}
             <nav className="flex flex-col flex-1 space-y-2">

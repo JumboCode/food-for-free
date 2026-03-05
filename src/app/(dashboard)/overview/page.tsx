@@ -8,7 +8,20 @@ import DeliverySummary from '@/components/ui/DeliverySummary';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 
 type PoundsData = { month: string; pounds: number };
-type FoodTypesData = { label: string; value: number; color: string }[];
+type FoodTypeEntry = { label: string; value: number; color: string };
+
+const MOCK_FOOD_TYPES: FoodTypeEntry[] = [
+    { label: 'Produce', value: 340, color: '#A1C5B0' },
+    { label: 'Dairy', value: 210, color: '#6CAEE6' },
+    { label: 'Grains & Bread', value: 180, color: '#E7A54E' },
+    { label: 'Protein', value: 150, color: '#F9DC70' },
+    { label: 'Canned Goods', value: 120, color: '#D4A5C9' },
+];
+
+const MOCK_PROCESSING: FoodTypeEntry[] = [
+    { label: 'Minimally Processed', value: 620, color: '#A1C5B0' },
+    { label: 'Processed', value: 380, color: '#E7A54E' },
+];
 type DeliverySummaryItem = { id: number; date: Date; totalPounds: number };
 
 const getDefaultDateRange = () => {
@@ -30,7 +43,7 @@ const OverviewPage: React.FC = () => {
     const [totalPoundsDelivered, setTotalPoundsDelivered] = useState(0);
     const [deliveriesCompleted, setDeliveriesCompleted] = useState(0);
     const [deliverySummaryData, setDeliverySummaryData] = useState<DeliverySummaryItem[]>([]);
-    const [foodTypesData, setFoodTypesData] = useState<FoodTypesData>([]);
+    const [foodTypesData] = useState<FoodTypeEntry[]>(MOCK_FOOD_TYPES);
     const fetchOverviewData = useCallback(async () => {
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
@@ -39,29 +52,25 @@ const OverviewPage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const [chartRes, statsRes, deliveriesRes, foodTypesRes] = await Promise.all([
+            const [chartRes, statsRes, deliveriesRes] = await Promise.all([
                 fetch(`/api/overview/pounds-by-month?${q}`),
                 fetch(`/api/overview/stats?${q}`),
                 fetch(`/api/overview/deliveries?${q}`),
-                fetch(`/api/overview/food-types?${q}`),
             ]);
 
             if (!chartRes.ok) throw new Error('Failed to load chart data');
             if (!statsRes.ok) throw new Error('Failed to load stats');
             if (!deliveriesRes.ok) throw new Error('Failed to load deliveries');
-            if (!foodTypesRes.ok) throw new Error('Failed to load food types');
 
-            const [chartData, stats, deliveriesPayload, foodTypes] = await Promise.all([
+            const [chartData, stats, deliveriesPayload] = await Promise.all([
                 chartRes.json(),
                 statsRes.json(),
                 deliveriesRes.json(),
-                foodTypesRes.json(),
             ]);
 
             setPoundsByMonthData(Array.isArray(chartData) ? chartData : []);
             setTotalPoundsDelivered(Number(stats.totalPoundsDelivered) ?? 0);
             setDeliveriesCompleted(Number(stats.deliveriesCompleted) ?? 0);
-            setFoodTypesData(Array.isArray(foodTypes) ? foodTypes : []);
 
             const list = deliveriesPayload.deliveries ?? [];
             setDeliverySummaryData(
@@ -77,7 +86,6 @@ const OverviewPage: React.FC = () => {
             setTotalPoundsDelivered(0);
             setDeliveriesCompleted(0);
             setDeliverySummaryData([]);
-            setFoodTypesData([]);
         } finally {
             setLoading(false);
         }
@@ -159,9 +167,7 @@ const OverviewPage: React.FC = () => {
         <div className="p-4 sm:p-6 lg:p-10 bg-[#FAF9F7] min-h-screen space-y-10">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold pb-2">
-                        Statistics Overview
-                    </h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold pb-2">Statistics Overview</h1>
                     <p className="pb-6 sm:pb-0">
                         Overview of deliveries and analytics across all partners.
                     </p>
@@ -272,24 +278,31 @@ const OverviewPage: React.FC = () => {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-white rounded-xl shadow p-6 h-full">
-                            <FoodTypesDonutChart data={foodTypesData} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
+                            <StatCard
+                                label="Total Delivered"
+                                value={totalPoundsDelivered.toLocaleString()}
+                                unit="lbs"
+                            />
                         </div>
-                        <div className="flex flex-col gap-6 h-full">
-                            <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                                <StatCard
-                                    label="Total Delivered"
-                                    value={totalPoundsDelivered.toLocaleString()}
-                                    unit="lbs"
-                                />
-                            </div>
-                            <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                                <StatCard
-                                    label="Deliveries Completed"
-                                    value={deliveriesCompleted.toString()}
-                                />
-                            </div>
+                        <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
+                            <StatCard
+                                label="Deliveries Completed"
+                                value={deliveriesCompleted.toString()}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="min-w-0">
+                            <FoodTypesDonutChart data={foodTypesData} title="Food Types Donated" />
+                        </div>
+                        <div className="min-w-0">
+                            <FoodTypesDonutChart
+                                data={MOCK_PROCESSING}
+                                title="Processing Breakdown"
+                            />
                         </div>
                     </div>
 
