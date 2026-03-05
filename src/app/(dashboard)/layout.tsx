@@ -4,8 +4,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
         <>
             <SideNavBar />
-            <div className="ml-16 sm:ml-56">
-                <main className="p-6">{children}</main>
+            <div className="ml-16 sm:ml-56 min-h-screen bg-[#FAF9F5]">
+                <main>{children}</main>
             </div>
         </>
     );
