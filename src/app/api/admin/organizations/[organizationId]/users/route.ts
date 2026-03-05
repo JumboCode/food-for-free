@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 
-export async function GET(req: NextRequest, { params }: { params: { organizationId: string } }) {
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ organizationId: string }> }
+) {
     try {
         const { userId } = await auth();
 
@@ -12,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { organization
 
         await requireAdmin();
 
-        const { organizationId } = params;
+        const { organizationId } = await params;
         const client = await clerkClient();
 
         // Get organization members

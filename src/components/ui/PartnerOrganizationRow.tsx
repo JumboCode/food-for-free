@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 export type PartnerDataRow = {
     name: string;
     numOfUsers: number;
-    id: number;
+    id: string;
     onClick?: () => void;
 };
 

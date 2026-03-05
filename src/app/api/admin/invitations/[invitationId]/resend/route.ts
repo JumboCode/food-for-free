@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 
-export async function POST(req: NextRequest, { params }: { params: { invitationId: string } }) {
+export async function POST(
+    req: NextRequest,
+    { params }: { params: Promise<{ invitationId: string }> }
+) {
     try {
         const { userId } = await auth();
 
@@ -12,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: { invitationI
 
         await requireAdmin();
 
-        const { invitationId } = params;
+        const { invitationId } = await params;
         const client = await clerkClient();
 
         // Get the invitation details

@@ -61,6 +61,8 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries, historyLi
                     <DeliverySummaryRow
                         key={delivery.id}
                         date={delivery.date}
+                        organization=""
+                        name=""
                         totalPounds={delivery.totalPounds}
                         id={delivery.id}
                         onClick={() => setIsDeliveryPopupOpen(true)}

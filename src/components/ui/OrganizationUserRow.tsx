@@ -23,4 +23,4 @@ const OrganizationUserRow: React.FC<UserDataRow> = ({ name, email, status, onCli
     );
 };
 
-export default PartnerOrganizationRow;
+export default OrganizationUserRow;

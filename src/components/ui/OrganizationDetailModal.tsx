@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React from 'react';
 
 import OrganizationUserRow, { UserDataRow } from '@/components/ui/OrganizationUserRow';
 
-const PartnerOrganizationRow: React.FC<{ data: UserDataRow[] }> = ({ data }) => {
+const PartnerOrganizationTable: React.FC<{ data: UserDataRow[] }> = ({ data }) => {
     return (
         <div>
             <div className="flex items-center justify-between gap-4 p-4 bg-#e5f3ea rounded-lg mb-2 cursor-pointer hover:bg-#fce5c3">
@@ -14,8 +14,9 @@ const PartnerOrganizationRow: React.FC<{ data: UserDataRow[] }> = ({ data }) => 
                 <span>{'Actions'}</span>
             </div>
             {data.map(user => (
-                <PartnerOrganizationRow
+                <OrganizationUserRow
                     key={user.id}
+                    id={user.id}
                     name={user.name}
                     email={user.email}
                     status={user.status}
