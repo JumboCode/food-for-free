@@ -1,83 +1,180 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect } from 'react';
+// import { useSearchParams } from 'next/navigation';
+// import { Search, Loader2 } from 'lucide-react';
+// import { MyCalendar } from '@/components/ui/CalendarPicker';
+// import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
+
+// interface DeliveryRecord {
+//     householdId18: number;
+//     date: Date;
+//     organizationName: string;
+//     productName: string;
+//     weightLbs: number;
+//     inventoryType: string;
+//     foodRescueProgram: string;
+// }
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
+import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
 
-interface DeliveryRecord {
-    householdId18: number;
-    date: Date;
+type DeliveryListItem = {
+    id: string;
+    date: string;
+    destination: string | null;
+    totalPounds: number;
+};
+
+type DeliveryDetail = {
+    date: string;
     organizationName: string;
-    productName: string;
-    weightLbs: number;
-    inventoryType: string;
-    foodRescueProgram: string;
+    totalPounds: number;
+    nutritionalTags: string[];
+    foodsDelivered: { name: string; weight: string }[];
+};
+
+function getDefaultRange() {
+    const end = new Date();
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 11);
+    start.setDate(1);
+    return { start, end };
 }
 
+function formatDateParam(date: Date) {
+    return date.toISOString().split('T')[0];
+}
+
+// const DistributionPage: React.FC = () => {
+//     const [loading, setLoading] = useState(true);
+//     const [searchTerm, setSearchTerm] = useState('');
+
+//     const [data, setData] = useState<DeliveryRecord[]>([]);
+//     const searchParams = useSearchParams();
+//     const startParam = searchParams.get('start') ?? undefined;
+//     const endParam = searchParams.get('end') ?? undefined;
+
+//     useEffect(() => {
+//         async function fetchData() {
+//             try {
+//                 const query = new URLSearchParams();
+//                 if (startParam) query.set('start', startParam);
+//                 if (endParam) query.set('end', endParam);
+//                 const response = await fetch(`/api/admin/deliveries?${query.toString()}`);
+//                 if (!response.ok) throw new Error('Failed to fetch data.');
+//                 const json = await response.json();
+//                 console.log('Data:', json);
+//                 setData(json);
+//             } catch (err) {
+//                 console.error('Fetch error:', err);
+//             } finally {
+//                 setLoading(false);
+//             }
+//         }
+//         fetchData();
+//     }, [startParam, endParam]);
 const DistributionPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [dateRange, setDateRange] = useState(getDefaultRange());
 
-    const [data, setData] = useState<DeliveryRecord[]>([]);
-    const [dateRange, setDateRange] = useState({
-        start: new Date('2025-01-01'),
-        end: new Date('2025-12-31'),
-    });
+    const [deliveries, setDeliveries] = useState<DeliveryListItem[]>([]);
+    const [selectedDelivery, setSelectedDelivery] = useState<DeliveryListItem | null>(null);
+    const [deliveryDetail, setDeliveryDetail] = useState<DeliveryDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState<string | null>(null);
     const [exporting, setExporting] = useState(false);
+
+    const filteredDeliveries = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return deliveries;
+        return deliveries.filter(d => (d.destination ?? '').toLowerCase().includes(term));
+    }, [deliveries, searchTerm]);
 
     const handleExport = async () => {
         setExporting(true);
         try {
-            const startStr = dateRange.start.toISOString();
-            const endStr = dateRange.end.toISOString();
-            const response = await fetch(
-                `/api/distribution?start=${startStr}&end=${endStr}&search=${encodeURIComponent(searchTerm)}`
-            );
-
-            if (!response.ok) {
-                if (response.status === 404) {
-                    alert('No records found for the selected range.');
-                    return;
-                }
-                throw new Error('Export failed');
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `distribution-${format(dateRange.start, 'yyyy-MM-dd')}_to_${format(dateRange.end, 'yyyy-MM-dd')}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err: unknown) {
-            console.error('Export error:', err);
-            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-            alert(errorMessage);
+            const rows = deliveries.map(d => ({
+                date: d.date,
+                organization: d.destination ?? '',
+                totalPounds: d.totalPounds,
+            }));
+            const header = ['date', 'organization', 'totalPounds'];
+            const csv = [
+                header.join(','),
+                ...rows.map(r => [r.date, r.organization, r.totalPounds].join(',')),
+            ].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `deliveries-${formatDateParam(new Date())}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Export failed:', err);
         } finally {
             setExporting(false);
         }
     };
 
     useEffect(() => {
-        async function fetchData() {
+        async function fetchDeliveries() {
             setLoading(true);
             try {
-                const response = await fetch('/api/admin/deliveries');
-                if (!response.ok) throw new Error('Failed to fetch data.');
-                const json = await response.json();
-                setData(json);
+                const start = formatDateParam(dateRange.start);
+                const end = formatDateParam(dateRange.end);
+                const res = await fetch(`/api/overview/deliveries?start=${start}&end=${end}`);
+                if (!res.ok) throw new Error('Failed to load deliveries');
+                const json = await res.json();
+                setDeliveries(json.deliveries ?? []);
             } catch (err) {
-                console.error(err);
+                console.error('Failed to load deliveries:', err);
+                setDeliveries([]);
             } finally {
                 setLoading(false);
             }
         }
-        fetchData();
-    }, []);
+
+        fetchDeliveries();
+    }, [dateRange]);
+
+    const loadDeliveryDetail = async (delivery: DeliveryListItem) => {
+        setSelectedDelivery(delivery);
+        setDetailError(null);
+        setDeliveryDetail(null);
+        setDetailLoading(true);
+
+        try {
+            const date = delivery.date.split('T')[0];
+            const dest = encodeURIComponent(delivery.destination ?? '');
+            const res = await fetch(`/api/overview/delivery?date=${date}&destination=${dest}`);
+            if (!res.ok) {
+                const json = await res.json().catch(() => ({}));
+                throw new Error(json?.error ?? 'Failed to load delivery detail.');
+            }
+            const json = await res.json();
+            setDeliveryDetail(json);
+        } catch (err) {
+            console.error('Failed to load delivery detail:', err);
+            setDetailError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const closeDetail = () => {
+        setSelectedDelivery(null);
+        setDeliveryDetail(null);
+        setDetailError(null);
+        setDetailLoading(false);
+    };
 
     return (
         <div className="p-6 md:p-10 bg-[#F9FAFB] min-h-screen">
@@ -125,6 +222,106 @@ const DistributionPage: React.FC = () => {
                         {loading ? (
                             <div className="flex flex-col items-center py-20 text-gray-400">
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                <p>Fetching distribution data...</p>
+                            </div>
+                        ) : filteredDeliveries.length > 0 ? (
+                            filteredDeliveries.map((d, index) => (
+                                <DeliverySummaryRow
+                                    key={d.id}
+                                    id={index}
+                                    date={new Date(d.date)}
+                                    organization={d.destination ?? ''}
+                                    name="Various"
+                                    totalPounds={d.totalPounds}
+                                    onClick={() => loadDeliveryDetail(d)}
+                                />
+                            ))
+                        ) : (
+                            <div className="py-20 text-center text-gray-500">No records found.</div>
+                        )}
+                        <DeliveryDetailPopup
+                            isOpen={Boolean(selectedDelivery)}
+                            onClose={closeDetail}
+                            date={deliveryDetail?.date ?? selectedDelivery?.date ?? ''}
+                            organizationName={
+                                deliveryDetail?.organizationName ??
+                                selectedDelivery?.destination ??
+                                ''
+                            }
+                            totalPounds={
+                                deliveryDetail?.totalPounds ? `${deliveryDetail.totalPounds}` : ''
+                            }
+                            nutritionalTags={deliveryDetail?.nutritionalTags}
+                            foodsDelivered={deliveryDetail?.foodsDelivered ?? []}
+                        />
+
+                        {detailLoading && selectedDelivery && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                                <div className="rounded-lg bg-white p-6 shadow-lg flex items-center gap-3">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <span>Loading delivery details...</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {detailError && (
+                            <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-100 border border-red-200 p-4 text-sm text-red-800">
+                                <strong>Error:</strong> {detailError}
+                            </div>
+                        )}
+                        {/* {loading ? (
+                            <div className="flex flex-col items-center py-20 text-gray-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                <p>Fetching distribution data...</p>
+                            </div>
+                        ) : filteredDeliveries.length > 0 ? (
+                            filteredDeliveries.map((d, index) => (
+                                <DeliverySummaryRow
+                                    key={d.id}
+                                    id={index}
+                                    date={new Date(d.date)}
+                                    organization={d.destination ?? ''}
+                                    name="Various"
+                                    totalPounds={d.totalPounds}
+                                    onClick={() => loadDeliveryDetail(d)}
+                                />
+                            ))
+                        ) : (
+                            <div className="py-20 text-center text-gray-500">No records found.</div>
+                        )}
+                        <DeliveryDetailPopup
+                            isOpen={Boolean(selectedDelivery)}
+                            onClose={closeDetail}
+                            date={deliveryDetail?.date ?? selectedDelivery?.date ?? ''}
+                            organizationName={
+                                deliveryDetail?.organizationName ??
+                                selectedDelivery?.destination ??
+                                ''
+                            }
+                            totalPounds={
+                                deliveryDetail?.totalPounds ? `${deliveryDetail.totalPounds}` : ''
+                            }
+                            nutritionalTags={deliveryDetail?.nutritionalTags}
+                            foodsDelivered={deliveryDetail?.foodsDelivered ?? []}
+                        />
+
+                        {detailLoading && selectedDelivery && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                                <div className="rounded-lg bg-white p-6 shadow-lg flex items-center gap-3">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <span>Loading delivery details...</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {detailError && (
+                            <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-100 border border-red-200 p-4 text-sm text-red-800">
+                                <strong>Error:</strong> {detailError}
+                            </div>
+                        )}
+                        {/* {loading ? (
+                            <div className="flex flex-col items-center py-20 text-gray-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-2" />
                                 <p>Fetching data...</p>
                             </div>
                         ) : data.length > 0 ? (
@@ -140,7 +337,7 @@ const DistributionPage: React.FC = () => {
                             ))
                         ) : (
                             <div className="py-20 text-center text-gray-500">No records found.</div>
-                        )}
+                        )} */}
                     </div>
                 </div>
             </div>

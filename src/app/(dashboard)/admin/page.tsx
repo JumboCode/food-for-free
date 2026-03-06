@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
 import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
+import AdminDeliveriesTab from '@/components/admin/AdminPage';
 
 interface Organization {
     id: string;
@@ -44,6 +45,7 @@ const AdminConsolePage: React.FC = () => {
     const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'partners' | 'deliveries'>('partners');
 
     useEffect(() => {
         fetchOrganizations();
@@ -70,15 +72,14 @@ const AdminConsolePage: React.FC = () => {
 
             if (!response.ok) throw new Error('Failed to create organization');
 
-            await fetchOrganizations(); // Refresh the list
-            setIsAddPartnerModalOpen(false); // Close modal
+            await fetchOrganizations();
+            setIsAddPartnerModalOpen(false);
         } catch (error) {
             console.error('Error creating organization:', error);
             throw error;
         }
     };
 
-    // Handle clicking an organization
     // Handle clicking an organization
     const handleOrganizationClick = (organization: Organization) => {
         console.log('Opening modal for:', organization);
@@ -112,46 +113,65 @@ const AdminConsolePage: React.FC = () => {
                         <div className="w-12 sm:w-16 h-1 bg-green-700"></div>
                     </div>
 
-                    {/* Partner Organizations Section */}
-                    <div className="mb-6 sm:mb-8">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">
-                            Partner Record
-                        </h2>
-
-                        {/* Search Bar and Add Button */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            {/* Search Input */}
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
-                                />
-                            </div>
-
-                            {/* ADD PARTNER BUTTON */}
+                    {/* Tabs */}
+                    <div className="border-b border-gray-200 mb-6">
+                        <div className="flex gap-8">
                             <button
-                                onClick={() => setIsAddPartnerModalOpen(true)}
-                                className="px-6 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors whitespace-nowrap flex items-center gap-2"
+                                onClick={() => setActiveTab('partners')}
+                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'partners' ? 'text-green-700 border-green-700' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
                             >
-                                Add Partner Organization
-                                <span className="text-xl">+</span>
+                                Partner Record
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('deliveries')}
+                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'deliveries' ? 'text-green-700 border-green-700' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
+                            >
+                                Deliveries
                             </button>
                         </div>
-
-                        {/* Partner Organizations Table - REAL DATA */}
-                        {isLoading ? (
-                            <div className="rounded-lg shadow p-8 text-center text-gray-500">
-                                Loading organizations...
-                            </div>
-                        ) : (
-                            <div className="p-6">
-                                <PartnerOrganizationTable data={tableData} />
-                            </div>
-                        )}
                     </div>
+
+                    {/* Partner Organizations Section */}
+                    {activeTab === 'partners' && (
+                        <div className="mb-6 sm:mb-8">
+                            {/* Search Bar and Add Button */}
+                            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                {/* Search Input */}
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Search..."
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
+                                    />
+                                </div>
+
+                                {/* ADD PARTNER BUTTON */}
+                                <button
+                                    onClick={() => setIsAddPartnerModalOpen(true)}
+                                    className="px-6 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors whitespace-nowrap flex items-center gap-2"
+                                >
+                                    Add Partner Organization
+                                    <span className="text-xl">+</span>
+                                </button>
+                            </div>
+
+                            {/* Partner Organizations Table - REAL DATA */}
+                            {isLoading ? (
+                                <div className="rounded-lg shadow p-8 text-center text-gray-500">
+                                    Loading organizations...
+                                </div>
+                            ) : (
+                                <div className="p-6">
+                                    <PartnerOrganizationTable data={tableData} />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Deliveries Tab */}
+                    {activeTab === 'deliveries' && <AdminDeliveriesTab />}
                 </div>
             </div>
 
