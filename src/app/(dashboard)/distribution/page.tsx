@@ -87,12 +87,42 @@ const DistributionPage: React.FC = () => {
     const [deliveryDetail, setDeliveryDetail] = useState<DeliveryDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     const filteredDeliveries = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         if (!term) return deliveries;
         return deliveries.filter(d => (d.destination ?? '').toLowerCase().includes(term));
     }, [deliveries, searchTerm]);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const rows = deliveries.map(d => ({
+                date: d.date,
+                organization: d.destination ?? '',
+                totalPounds: d.totalPounds,
+            }));
+            const header = ['date', 'organization', 'totalPounds'];
+            const csv = [
+                header.join(','),
+                ...rows.map(r => [r.date, r.organization, r.totalPounds].join(',')),
+            ].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `deliveries-${formatDateParam(new Date())}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Export failed:', err);
+        } finally {
+            setExporting(false);
+        }
+    };
 
     useEffect(() => {
         async function fetchDeliveries() {

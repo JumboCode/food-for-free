@@ -38,15 +38,14 @@ const DUMMY_ORGS: Organization[] = [
     },
 ];
 
-type ActiveTab = 'partners' | 'deliveries';
-
+//main Admin Console Page
 const AdminConsolePage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<ActiveTab>('partners');
     const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'partners' | 'deliveries'>('partners');
 
     useEffect(() => {
         fetchOrganizations();
@@ -54,12 +53,15 @@ const AdminConsolePage: React.FC = () => {
 
     const fetchOrganizations = async () => {
         setIsLoading(true);
+
+        //frontend only - use dummy data
         setTimeout(() => {
             setOrganizations(DUMMY_ORGS);
             setIsLoading(false);
         }, 500);
     };
 
+    //Handle creating new organization
     const handleAddPartner = async (data: { name: string; slug?: string }) => {
         try {
             const response = await fetch('/api/admin/organizations', {
@@ -67,7 +69,9 @@ const AdminConsolePage: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
+
             if (!response.ok) throw new Error('Failed to create organization');
+
             await fetchOrganizations();
             setIsAddPartnerModalOpen(false);
         } catch (error) {
@@ -76,16 +80,20 @@ const AdminConsolePage: React.FC = () => {
         }
     };
 
+    // Handle clicking an organization
     const handleOrganizationClick = (organization: Organization) => {
+        console.log('Opening modal for:', organization);
         setSelectedOrganization(organization);
     };
 
+    // Filter organizations based on search
     const filteredOrganizations = organizations.filter(
         org =>
             org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             org.slug.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Transform for table
     const tableData = filteredOrganizations.map(org => ({
         id: org.id,
         name: org.name,
@@ -110,32 +118,25 @@ const AdminConsolePage: React.FC = () => {
                         <div className="flex gap-8">
                             <button
                                 onClick={() => setActiveTab('partners')}
-                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${
-                                    activeTab === 'partners'
-                                        ? 'text-green-700 border-green-700'
-                                        : 'text-gray-500 border-transparent hover:text-gray-700'
-                                }`}
+                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'partners' ? 'text-green-700 border-green-700' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
                             >
                                 Partner Record
                             </button>
                             <button
                                 onClick={() => setActiveTab('deliveries')}
-                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${
-                                    activeTab === 'deliveries'
-                                        ? 'text-green-700 border-green-700'
-                                        : 'text-gray-500 border-transparent hover:text-gray-700'
-                                }`}
+                                className={`px-2 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'deliveries' ? 'text-green-700 border-green-700' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
                             >
                                 Deliveries
                             </button>
                         </div>
                     </div>
 
-                    {/* Partners Tab */}
+                    {/* Partner Organizations Section */}
                     {activeTab === 'partners' && (
-                        <div>
+                        <div className="mb-6 sm:mb-8">
                             {/* Search Bar and Add Button */}
                             <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                {/* Search Input */}
                                 <div className="flex-1">
                                     <input
                                         type="text"
@@ -145,6 +146,8 @@ const AdminConsolePage: React.FC = () => {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
                                     />
                                 </div>
+
+                                {/* ADD PARTNER BUTTON */}
                                 <button
                                     onClick={() => setIsAddPartnerModalOpen(true)}
                                     className="px-6 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors whitespace-nowrap flex items-center gap-2"
@@ -154,6 +157,7 @@ const AdminConsolePage: React.FC = () => {
                                 </button>
                             </div>
 
+                            {/* Partner Organizations Table - REAL DATA */}
                             {isLoading ? (
                                 <div className="rounded-lg shadow p-8 text-center text-gray-500">
                                     Loading organizations...
