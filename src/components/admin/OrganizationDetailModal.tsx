@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, MoreVertical, ExternalLink } from 'lucide-react';
+import { X, MoreVertical, ExternalLink, User, Mail } from 'lucide-react';
 import PartnerOrganizationTable from '../PartnerOrganizationTable';
 
 interface Organization {
@@ -149,6 +149,7 @@ export function OrganizationDetailModal({
     const [isLoading, setIsLoading] = useState(true);
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
+    const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -264,7 +265,7 @@ export function OrganizationDetailModal({
     };
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-start">
@@ -511,50 +512,44 @@ export function OrganizationDetailModal({
 
             {/* Add User Modal */}
             {isAddUserModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-                        <div className="px-6 py-4 bg-[#608D6A] text-white rounded-t-lg flex justify-between items-center">
-                            <h3 className="text-xl font-bold">Add User</h3>
-                            <button
-                                onClick={() => {
-                                    setIsAddUserModalOpen(false);
-                                    setError(null);
-                                    setNewUserEmail('');
-                                }}
-                                className="text-white hover:text-gray-200 transition-colors"
-                                aria-label="Close modal"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-60 p-4">
+                    <div className="bg-white rounded shadow-xl max-w-md w-full">
+                        <div className="flex justify-between items-start p-6 pb-0">
+                            <h3 className="text-xl font-bold">Add a New User</h3>
+                            <User className="h-6 w-6 text-gray-400" />
                         </div>
 
                         <form onSubmit={handleAddUser} className="p-6">
                             <div className="mb-4">
-                                <p className="text-sm text-gray-600">
-                                    Invite a user to{' '}
-                                    <span className="font-medium text-[#608D6A]">
-                                        {organization.name}
-                                    </span>
+                                <p className="text-sm text-black-600">
+                                    To add a user to {organization.name}, please input their name
+                                    and email address. We will send them a link to ______
                                 </p>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label
-                                        htmlFor="email"
-                                        className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                        Email Address <span className="text-red-500">*</span>
-                                    </label>
+                                    <input
+                                        type="text"
+                                        id="name"
+                                        value={newUserName}
+                                        onChange={e => setNewUserName(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
+                                        placeholder="Name (First and Last)"
+                                        disabled={isSubmitting}
+                                    />
+                                </div>
+                                <div className="relative">
                                     <input
                                         type="email"
                                         id="email"
                                         value={newUserEmail}
                                         onChange={e => setNewUserEmail(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
-                                        placeholder="user@example.com"
+                                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
+                                        placeholder="Email Address"
                                         disabled={isSubmitting}
                                     />
+                                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 </div>
 
                                 {error && (
@@ -564,25 +559,26 @@ export function OrganizationDetailModal({
                                 )}
                             </div>
 
-                            <div className="mt-6 flex gap-3 justify-end">
+                            <div className="mt-6 flex gap-3 justify-start">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setIsAddUserModalOpen(false);
                                         setError(null);
+                                        setNewUserName('');
                                         setNewUserEmail('');
                                     }}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="px-4 py-2 text-gray-700 font-medium border border-gray-400 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                                     disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-[#608D6A] text-white rounded-lg hover:bg-[#4F7557] transition-colors disabled:opacity-50"
+                                    className="px-4 py-1 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors disabled:opacity-50"
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? 'Sending Invite...' : 'Send Invitation'}
+                                    {isSubmitting ? 'Sending...' : 'Confirm'}
                                 </button>
                             </div>
                         </form>
@@ -590,23 +586,25 @@ export function OrganizationDetailModal({
                 </div>
             )}
 
-            {/* Invitation Sent Toast */}
+            {/* Invitation Sent Modal */}
             {showInvitationSent && (
-                <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-[70] flex items-center gap-3 max-w-md">
-                    <span className="text-2xl">✉️</span>
-                    <div className="flex-1">
-                        <p className="font-semibold text-gray-900">Invitation Sent!</p>
-                        <p className="text-sm text-gray-600">
-                            We sent a message to pparker@gmail.com with a link for them to join{' '}
-                            {organization.name}.
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-bold">Invitation Sent!</h3>
+                            <Mail className="h-6 w-6 text-blue-400" />
+                        </div>
+                        <p className="text-sm text-gray-600 mb-6">
+                            We sent a message to {newUserEmail || 'the user'} with a link for them
+                            to join {organization.name}.
                         </p>
+                        <button
+                            onClick={() => setShowInvitationSent(false)}
+                            className="px-4 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors text-sm font-medium"
+                        >
+                            Great!
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setShowInvitationSent(false)}
-                        className="px-3 py-1 text-sm font-medium text-white bg-[#5CB8E4] rounded hover:bg-[#4A9FCC]"
-                    >
-                        Great!
-                    </button>
                 </div>
             )}
         </div>
@@ -659,7 +657,7 @@ function UserActionsMenu({
             {onResendInvitation && (
                 <button
                     onClick={onResendInvitation}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full px-4 py-1 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
                     Resend Invitation
                 </button>
