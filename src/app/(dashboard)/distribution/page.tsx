@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Search, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
@@ -78,7 +77,7 @@ const DistributionPage: React.FC = () => {
             }
         }
         fetchData();
-    }, [startParam, endParam]);
+    }, []);
 
     return (
         <div className="p-6 md:p-10 bg-[#F9FAFB] min-h-screen">
