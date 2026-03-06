@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
             select: { date: true, weightLbs: true, destination: true },
         });
 
-        const byKey = new Map<string, { date: Date; totalPounds: number; destination: string | null }>();
+        const byKey = new Map<
+            string,
+            { date: Date; totalPounds: number; destination: string | null }
+        >();
 
         for (const r of records) {
             const d = new Date(r.date);
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .reverse();
 
-        return NextResponse.json({ deliveries });
+        return NextResponse.json({ deliveries: deliveries.slice(0, 10) });
     } catch (err: unknown) {
         console.error('Overview deliveries error:', err);
         return NextResponse.json(

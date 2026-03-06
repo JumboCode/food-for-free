@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Loader2 } from 'lucide-react';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
@@ -20,11 +21,17 @@ const DistributionPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
+    const searchParams = useSearchParams();
+    const startParam = searchParams.get('start') ?? undefined;
+    const endParam = searchParams.get('end') ?? undefined;
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const response = await fetch('/api/admin/deliveries');
+                const query = new URLSearchParams();
+                if (startParam) query.set('start', startParam);
+                if (endParam) query.set('end', endParam);
+                const response = await fetch(`/api/admin/deliveries?${query.toString()}`);
                 if (!response.ok) throw new Error('Failed to fetch data.');
                 const json = await response.json();
                 console.log('Data:', json);
@@ -36,7 +43,7 @@ const DistributionPage: React.FC = () => {
             }
         }
         fetchData();
-    }, []);
+    }, [startParam, endParam]);
 
     return (
         <div className="p-6 md:p-10 bg-[#F9FAFB] min-h-screen">

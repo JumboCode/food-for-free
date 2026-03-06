@@ -311,6 +311,14 @@ const OverviewPage: React.FC = () => {
                             deliveries={deliverySummaryData}
                             historyLink="distribution"
                         />
+                        <div className="flex justify-center mt-4">
+                            <a
+                                href={`/distribution?start=${formatDateParam(dateRange.start)}&end=${formatDateParam(dateRange.end)}`}
+                                className="px-6 py-2 text-sm font-medium text-white bg-[#5DB6E6] rounded-lg hover:bg-[#3da0d4] transition-colors"
+                            >
+                                See More
+                            </a>
+                        </div>
                     </div>
                 </>
             )}
