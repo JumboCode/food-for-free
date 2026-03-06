@@ -32,7 +32,9 @@ const DistributionPage: React.FC = () => {
         try {
             const startStr = dateRange.start.toISOString();
             const endStr = dateRange.end.toISOString();
-            const response = await fetch(`/api/distribution?start=${startStr}&end=${endStr}`);
+            const response = await fetch(
+                `/api/distribution?start=${startStr}&end=${endStr}&search=${encodeURIComponent(searchTerm)}`
+            );
 
             if (!response.ok) {
                 if (response.status === 404) {
