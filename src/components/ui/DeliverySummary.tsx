@@ -46,13 +46,6 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries, historyLi
                         Snapshot of past deliveries for your organization.
                     </p>
                 </div>
-
-                <a
-                    href={historyLink}
-                    className="text-blue-600 underline hover:text-blue-800 font-medium"
-                >
-                    Full Distribution History
-                </a>
             </div>
 
             {/* Delivery Rows */}

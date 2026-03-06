@@ -17,6 +17,7 @@
 // }
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
@@ -150,34 +151,44 @@ const DistributionPage: React.FC = () => {
             <div className="max-w-6xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Distribution</h1>
                 <p className="text-gray-600 mb-8">
-                    A full summary of past deliveries, across all partner organizations. Click
-                    &ldquo;export&rdquo; to download the full history.
+                    A summary of past deliveries. Click &ldquo;export&rdquo; to download CSV data.
                 </p>
-                <div className="bg-[#FFFFFF] p-15 rounded-lg shadow-sm">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
                         <div className="relative w-full max-w-sm">
                             <input
                                 placeholder="Search..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#608D6A] outline-none bg-white"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#608D6A] outline-none"
                             />
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         </div>
-                        <MyCalendar />
-                        {/* <DownloadPDFButton targetRef={null} /> */}
+
+                        <MyCalendar selectedRange={dateRange} onRangeChange={setDateRange} />
+
+                        <button
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="px-4 py-2 bg-[#608D6A] hover:bg-[#4d7155] text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {exporting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                'Export CSV'
+                            )}
+                        </button>
                     </div>
 
-                    <div className="grid text-left grid-cols-5 px-1 py-3 bg-[#e7f3ea] text-[#000000] rounded-t-lg border-b border-gray-200">
-                        <div className="flex-1 px-4 text-[#000000] ">Date</div>
-                        <div className="flex-1 px-4 text-[#000000] ">Organization</div>
-                        <div className="flex-1 px-4 text-[#000000]">Food</div>
-                        <div className="flex-1 px-4 text-[#000000]">Weight (lbs)</div>
-                        <div className="flex-1 px-4 text-[#000000] ">Tags</div>
+                    <div className="grid grid-cols-5 px-4 py-3 bg-[#e7f3ea] rounded-t-lg border-b border-gray-200 font-medium">
+                        <div>Date</div>
+                        <div>Organization</div>
+                        <div>Food</div>
+                        <div>Weight (lbs)</div>
+                        <div>Tags</div>
                     </div>
 
-                    {/* Distribution List */}
-                    <div className="border border-gray-200 rounded-b-lg overflow-hidden shadow-sm bg-white">
+                    <div className="border border-gray-200 rounded-b-lg overflow-hidden bg-white">
                         {loading ? (
                             <div className="flex flex-col items-center py-20 text-gray-400">
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
@@ -233,10 +244,60 @@ const DistributionPage: React.FC = () => {
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
                                 <p>Fetching distribution data...</p>
                             </div>
+                        ) : filteredDeliveries.length > 0 ? (
+                            filteredDeliveries.map((d, index) => (
+                                <DeliverySummaryRow
+                                    key={d.id}
+                                    id={index}
+                                    date={new Date(d.date)}
+                                    organization={d.destination ?? ''}
+                                    name="Various"
+                                    totalPounds={d.totalPounds}
+                                    onClick={() => loadDeliveryDetail(d)}
+                                />
+                            ))
+                        ) : (
+                            <div className="py-20 text-center text-gray-500">No records found.</div>
+                        )}
+                        <DeliveryDetailPopup
+                            isOpen={Boolean(selectedDelivery)}
+                            onClose={closeDetail}
+                            date={deliveryDetail?.date ?? selectedDelivery?.date ?? ''}
+                            organizationName={
+                                deliveryDetail?.organizationName ??
+                                selectedDelivery?.destination ??
+                                ''
+                            }
+                            totalPounds={
+                                deliveryDetail?.totalPounds ? `${deliveryDetail.totalPounds}` : ''
+                            }
+                            nutritionalTags={deliveryDetail?.nutritionalTags}
+                            foodsDelivered={deliveryDetail?.foodsDelivered ?? []}
+                        />
+
+                        {detailLoading && selectedDelivery && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                                <div className="rounded-lg bg-white p-6 shadow-lg flex items-center gap-3">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <span>Loading delivery details...</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {detailError && (
+                            <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-100 border border-red-200 p-4 text-sm text-red-800">
+                                <strong>Error:</strong> {detailError}
+                            </div>
+                        )}
+                        {/* {loading ? (
+                            <div className="flex flex-col items-center py-20 text-gray-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                <p>Fetching data...</p>
+                            </div>
                         ) : data.length > 0 ? (
                             data.map((d, index) => (
                                 <DeliverySummaryRow
-                                    key={d.householdId18 + index}
+                                    key={`${d.householdId18}-${index}`}
                                     id={d.householdId18}
                                     date={d.date}
                                     organization={d.organizationName}
