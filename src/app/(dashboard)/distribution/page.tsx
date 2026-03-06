@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliverySummaryRow from '@/components/ui/DeliverySummaryRow';
 
@@ -21,23 +22,57 @@ const DistributionPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
-    const searchParams = useSearchParams();
-    const startParam = searchParams.get('start') ?? undefined;
-    const endParam = searchParams.get('end') ?? undefined;
+    const [dateRange, setDateRange] = useState({
+        start: new Date('2025-01-01'),
+        end: new Date('2025-12-31'),
+    });
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const startStr = dateRange.start.toISOString();
+            const endStr = dateRange.end.toISOString();
+            const response = await fetch(
+                `/api/distribution?start=${startStr}&end=${endStr}&search=${encodeURIComponent(searchTerm)}`
+            );
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    alert('No records found for the selected range.');
+                    return;
+                }
+                throw new Error('Export failed');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `distribution-${format(dateRange.start, 'yyyy-MM-dd')}_to_${format(dateRange.end, 'yyyy-MM-dd')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err: unknown) {
+            console.error('Export error:', err);
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+            alert(errorMessage);
+        } finally {
+            setExporting(false);
+        }
+    };
 
     useEffect(() => {
         async function fetchData() {
+            setLoading(true);
             try {
-                const query = new URLSearchParams();
-                if (startParam) query.set('start', startParam);
-                if (endParam) query.set('end', endParam);
-                const response = await fetch(`/api/admin/deliveries?${query.toString()}`);
+                const response = await fetch('/api/admin/deliveries');
                 if (!response.ok) throw new Error('Failed to fetch data.');
                 const json = await response.json();
-                console.log('Data:', json);
                 setData(json);
             } catch (err) {
-                console.error('Fetch error:', err);
+                console.error(err);
             } finally {
                 setLoading(false);
             }
@@ -50,43 +85,53 @@ const DistributionPage: React.FC = () => {
             <div className="max-w-6xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Distribution</h1>
                 <p className="text-gray-600 mb-8">
-                    A full summary of past deliveries, across all partner organizations. Click
-                    &ldquo;export&rdquo; to download the full history.
+                    A summary of past deliveries. Click &ldquo;export&rdquo; to download CSV data.
                 </p>
-                <div className="bg-[#FFFFFF] p-15 rounded-lg shadow-sm">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
                         <div className="relative w-full max-w-sm">
                             <input
                                 placeholder="Search..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#608D6A] outline-none bg-white"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#608D6A] outline-none"
                             />
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         </div>
-                        <MyCalendar />
-                        {/* <DownloadPDFButton targetRef={null} /> */}
+
+                        <MyCalendar selectedRange={dateRange} onRangeChange={setDateRange} />
+
+                        <button
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="px-4 py-2 bg-[#608D6A] hover:bg-[#4d7155] text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {exporting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                'Export CSV'
+                            )}
+                        </button>
                     </div>
 
-                    <div className="grid text-left grid-cols-5 px-1 py-3 bg-[#e7f3ea] text-[#000000] rounded-t-lg border-b border-gray-200">
-                        <div className="flex-1 px-4 text-[#000000] ">Date</div>
-                        <div className="flex-1 px-4 text-[#000000] ">Organization</div>
-                        <div className="flex-1 px-4 text-[#000000]">Food</div>
-                        <div className="flex-1 px-4 text-[#000000]">Weight (lbs)</div>
-                        <div className="flex-1 px-4 text-[#000000] ">Tags</div>
+                    <div className="grid grid-cols-5 px-4 py-3 bg-[#e7f3ea] rounded-t-lg border-b border-gray-200 font-medium">
+                        <div>Date</div>
+                        <div>Organization</div>
+                        <div>Food</div>
+                        <div>Weight (lbs)</div>
+                        <div>Tags</div>
                     </div>
 
-                    {/* Distribution List */}
-                    <div className="border border-gray-200 rounded-b-lg overflow-hidden shadow-sm bg-white">
+                    <div className="border border-gray-200 rounded-b-lg overflow-hidden bg-white">
                         {loading ? (
                             <div className="flex flex-col items-center py-20 text-gray-400">
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                                <p>Fetching distribution data...</p>
+                                <p>Fetching data...</p>
                             </div>
                         ) : data.length > 0 ? (
                             data.map((d, index) => (
                                 <DeliverySummaryRow
-                                    key={d.householdId18 + index}
+                                    key={`${d.householdId18}-${index}`}
                                     id={d.householdId18}
                                     date={d.date}
                                     organization={d.organizationName}
