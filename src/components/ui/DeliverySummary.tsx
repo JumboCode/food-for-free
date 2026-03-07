@@ -74,15 +74,21 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries, historyLi
 
     return (
         <div className="w-full">
-            <div className="mb-4">
+            {/* <div className="mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">Delivery Summary</h2>
                 <p className="text-sm mt-0.5" style={{ color: 'gray-900' }}>
                     Snapshot of past deliveries for your organization.
                 </p>
-            </div>
+            </div> */}
 
             <div className="rounded-xl border overflow-hidden shadow-sm border-[#B7D7BD]">
                 <div className="divide-y divide-[#B7D7BD]/40 bg-white">
+                    <div className="grid grid-cols-[100px_1fr_72px_auto] items-center gap-4 px-4 py-2.5 bg-gray-50/80">
+                        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Date</span>
+                        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Partner</span>
+                        <span className="text-xs font-medium uppercase tracking-wide text-gray-500 text-right">Pounds</span>
+                        <span className="w-4" />
+                    </div>
                     {enriched.map(delivery => (
                         <DeliverySummaryRow
                             key={delivery.id}

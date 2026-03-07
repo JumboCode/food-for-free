@@ -31,21 +31,21 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
                     : 'grid-cols-[100px_1fr_72px_auto]'
             }`}
         >
-            <div className="text-sm text-gray-600 tabular-nums">
+            <div className="text-xs text-gray-600 tabular-nums">
                 {new Date(date).toLocaleDateString('en-US', {
                     month: 'numeric',
                     day: 'numeric',
                     year: 'numeric',
                 })}
             </div>
-            <div className="font-medium text-gray-900 min-w-0 truncate" title={organization}>
+            <div className="text-xs font-medium text-gray-900 min-w-0 truncate" title={organization}>
                 {organization}
             </div>
-            {hasName && <div className="text-sm text-gray-600 min-w-0 truncate">{name}</div>}
-            <div className="text-sm font-medium text-right tabular-nums text-[#608D6A]">
+            {hasName && <div className="text-xs text-gray-600 min-w-0 truncate">{name}</div>}
+            <div className="text-xs font-medium text-right tabular-nums text-[#608D6A]">
                 {totalPounds.toLocaleString()} lbs
             </div>
-            {onClick && <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />}
+            {onClick && <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
         </div>
     );
 };
