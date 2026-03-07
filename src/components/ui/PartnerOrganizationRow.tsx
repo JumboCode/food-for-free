@@ -10,22 +10,16 @@ export type PartnerDataRow = {
 
 const PartnerOrganizationRow: React.FC<PartnerDataRow> = ({ name, numOfUsers, onClick }) => {
     return (
-        // <div
-        //     className="flex items-center gap-4 p-4 bg-[#e7f3eb] rounded-lg mb-2 cursor-pointer hover:bg-[#fce6c4]"
-        //     onClick={onClick}
-        // >
-        //     <span className="flex-1">{name}</span>
-        //     <span className="w-32 text-center">{numOfUsers}</span>
-        //     <ChevronRight className="h-5 w-5" />
-        // </div>
-
         <div
             onClick={onClick}
-            className="grid grid-cols-[1fr_1fr_60px] items-center px-6 py-4 bg-[#DDE8E1] rounded-lg cursor-pointer hover:bg-[#fce6c4] transition"
+            role="button"
+            className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_60px] items-center px-6 py-3 text-sm text-gray-900 hover:bg-[#F7FAF7] transition-colors cursor-pointer"
         >
-            <div>{name}</div>
-            <div className="text-center">{numOfUsers}</div>
-            <div className="text-right">›</div>
+            <div className="truncate">{name}</div>
+            <div className="text-center text-gray-700">{numOfUsers}</div>
+            <div className="flex justify-end">
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
         </div>
     );
 };

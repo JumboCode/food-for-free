@@ -175,11 +175,11 @@ const OverviewPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#FAF9F7]">
-            <div className="mx-auto max-w-6xl px-4 sm:px-5 lg:px-8 py-4 sm:py-5 lg:py-6 space-y-4 sm:space-y-5">
-                {/* Page header - compact */}
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Statistics Overview
+            <div className="mx-auto max-w-6xl px-8 py-10 space-y-5">
+                {/* Page header */}
+                <div className="mb-1">
+                    <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                        Statistics overview
                     </h1>
                 </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Search, Plus } from 'lucide-react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
 import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
@@ -37,6 +38,8 @@ const DUMMY_ORGS: Organization[] = [
     },
 ];
 
+const THEME_GREEN = '#B7D7BD';
+
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
     const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
@@ -52,7 +55,7 @@ const AdminConsolePage: React.FC = () => {
     const fetchOrganizations = async () => {
         setIsLoading(true);
 
-        //frontend only - use dummy data
+        // frontend only - use dummy data for now
         setTimeout(() => {
             setOrganizations(DUMMY_ORGS);
             setIsLoading(false);
@@ -78,21 +81,16 @@ const AdminConsolePage: React.FC = () => {
         }
     };
 
-    // Handle clicking an organization
-    // Handle clicking an organization
     const handleOrganizationClick = (organization: Organization) => {
-        console.log('Opening modal for:', organization);
         setSelectedOrganization(organization);
     };
 
-    // Filter organizations based on search
     const filteredOrganizations = organizations.filter(
         org =>
             org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             org.slug.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Transform for table
     const tableData = filteredOrganizations.map(org => ({
         id: org.id,
         name: org.name,
@@ -101,58 +99,75 @@ const AdminConsolePage: React.FC = () => {
     }));
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-                <div className="max-w-6xl mx-auto">
-                    {/* Page Header */}
-                    <div className="mb-6 sm:mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                            Admin Console
-                        </h1>
-                        <div className="w-12 sm:w-16 h-1 bg-green-700"></div>
+        <div className="min-h-screen bg-[#FAF9F7]">
+            <div className="max-w-6xl mx-auto px-8 py-10">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                        Admin console
+                    </h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        Manage partner organizations and their access.
+                    </p>
+                </div>
+
+                {/* Partner Organizations Section */}
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-sm font-semibold text-gray-800 tracking-wide uppercase">
+                                Partner organizations
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-1">
+                                View and edit organizations connected to Food For Free.
+                            </p>
+                        </div>
+                        <span
+                            className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-[#608D6A]"
+                            style={{ borderColor: THEME_GREEN, backgroundColor: 'rgba(183, 215, 189, 0.25)' }}
+                        >
+                            {organizations.length} total
+                        </span>
                     </div>
 
-                    {/* Partner Organizations Section */}
-                    <div className="mb-6 sm:mb-8">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">
-                            Partner Record
-                        </h2>
-
-                        {/* Search Bar and Add Button */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            {/* Search Input */}
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
-                                />
-                            </div>
-
-                            {/* ADD PARTNER BUTTON */}
-                            <button
-                                onClick={() => setIsAddPartnerModalOpen(true)}
-                                className="px-6 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors whitespace-nowrap flex items-center gap-2"
-                            >
-                                Add Partner Organization
-                                <span className="text-xl">+</span>
-                            </button>
+                    {/* Search + add */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1 min-w-[220px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by name or slug…"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                            />
                         </div>
+                        <button
+                            onClick={() => setIsAddPartnerModalOpen(true)}
+                            className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-[#608D6A] hover:bg-[#4d7155] text-white text-sm font-medium transition-colors whitespace-nowrap"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add partner
+                        </button>
+                    </div>
 
-                        {/* Partner Organizations Table - REAL DATA */}
+                    {/* Partner Organizations Table */}
+                    <div className="rounded-xl border border-[#B7D7BD] bg-white shadow-sm overflow-hidden mt-2">
                         {isLoading ? (
-                            <div className="rounded-lg shadow p-8 text-center text-gray-500">
-                                Loading organizations...
+                            <div className="p-8 text-center text-gray-500 text-sm">
+                                Loading organizations…
+                            </div>
+                        ) : filteredOrganizations.length > 0 ? (
+                            <div className="p-4 sm:p-6">
+                                <PartnerOrganizationTable data={tableData} />
                             </div>
                         ) : (
-                            <div className="p-6">
-                                <PartnerOrganizationTable data={tableData} />
+                            <div className="p-8 text-center text-gray-400 text-sm">
+                                No organizations match your search.
                             </div>
                         )}
                     </div>
-                </div>
+                </section>
             </div>
 
             {/* Add Partner Modal */}

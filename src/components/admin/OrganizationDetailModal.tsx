@@ -140,6 +140,9 @@ const DUMMY_USERS: User[] = [
     },
 ];
 
+const THEME_GREEN = '#B7D7BD';
+const THEME_ORANGE = '#FAC87D';
+
 export function OrganizationDetailModal({
     organization,
     onClose,
@@ -265,42 +268,50 @@ export function OrganizationDetailModal({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-[#B7D7BD]">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-start">
+                <div className="px-8 pt-6 pb-4 border-b border-gray-100 flex justify-between items-start">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900">{organization.name}</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                            {organization.name}
+                        </h2>
+                        <p className="mt-1 text-xs text-gray-500">Partner organization</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100"
                         aria-label="Close modal"
                     >
-                        <X className="h-6 w-6" />
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Tabs */}
                 <div className="px-8 border-b border-gray-200">
-                    <div className="flex gap-8">
-                        <button className="px-2 py-4 text-sm font-medium text-blue-600 border-b-2 border-blue-600">
+                    <div className="flex gap-6 text-sm">
+                        <button className="px-0 py-3 font-medium text-[#608D6A] border-b-2 border-[#B7D7BD]">
                             Users
                         </button>
-                        <button className="px-2 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">
+                        <button className="px-0 py-3 font-medium text-gray-400 hover:text-gray-600">
                             Statistics
                         </button>
                     </div>
                 </div>
 
-                {/* Add User Button */}
-                <div className="px-8 py-4">
+                {/* Users header + Add User Button */}
+                <div className="px-8 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-800">Users</h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Invite and manage people with access to this partner.
+                        </p>
+                    </div>
                     <button
                         onClick={() => setIsAddUserModalOpen(true)}
-                        className="px-4 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors flex items-center gap-2 text-sm"
+                        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[#608D6A] hover:bg-[#4d7155] text-white text-xs font-medium transition-colors"
                     >
-                        Add User
-                        <span className="text-lg">+</span>
+                        Add user
                     </button>
                 </div>
 
@@ -334,10 +345,8 @@ export function OrganizationDetailModal({
                                 {users.map((user, index) => (
                                     <tr
                                         key={user.id}
-                                        className={`border-b border-gray-100 transition-colors ${
-                                            activeMenuUserId === user.id
-                                                ? 'bg-[#FBE6C4]' //yellow when menu is open
-                                                : 'bg-[#E8F5E9] hover:bg-[#D4EAD9]' //green normally, darker green on hover
+                                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                                            activeMenuUserId === user.id ? 'bg-[#FFF7E6]' : ''
                                         }`}
                                     >
                                         <td className="px-6 py-4 text-sm text-gray-900">
@@ -346,8 +355,16 @@ export function OrganizationDetailModal({
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {user.email}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {user.status}
+                                        <td className="px-6 py-4 text-sm">
+                                            <span
+                                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                                    user.status === 'Active'
+                                                        ? 'bg-[rgba(183,215,189,0.35)] text-[#608D6A]'
+                                                        : 'bg-[rgba(250,200,125,0.35)] text-[#744210]'
+                                                }`}
+                                            >
+                                                {user.status}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm relative">
                                             <button
@@ -358,7 +375,7 @@ export function OrganizationDetailModal({
                                                             : user.id
                                                     )
                                                 }
-                                                className="text-gray-500 hover:text-gray-700 p-2 hover:bg-[#F5D9A0] rounded-full transition-colors"
+                                                className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
                                             >
                                                 ⋯
                                             </button>
@@ -474,11 +491,12 @@ export function OrganizationDetailModal({
 
             {/* Delete Confirmation Modal */}
             {deleteConfirmUser && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[70]">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70]">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 border border-[#B7D7BD]">
                         <div className="p-6">
                             <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+                                     style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}>
                                     <span className="text-2xl">⚠️</span>
                                 </div>
                                 <div className="flex-1">
@@ -500,7 +518,8 @@ export function OrganizationDetailModal({
                                 </button>
                                 <button
                                     onClick={confirmDelete}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-[#FF9800] rounded-lg hover:bg-[#F57C00]"
+                                    className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
+                                    style={{ backgroundColor: THEME_ORANGE }}
                                 >
                                     Confirm
                                 </button>
@@ -512,21 +531,21 @@ export function OrganizationDetailModal({
 
             {/* Add User Modal */}
             {isAddUserModalOpen && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-60 p-4">
-                    <div className="bg-white rounded shadow-xl max-w-md w-full">
-                        <div className="flex justify-between items-start p-6 pb-0">
-                            <h3 className="text-xl font-bold">Add a New User</h3>
-                            <User className="h-6 w-6 text-gray-400" />
-                        </div>
-
-                        <form onSubmit={handleAddUser} className="p-6">
-                            <div className="mb-4">
-                                <p className="text-sm text-black-600">
-                                    To add a user to {organization.name}, please input their name
-                                    and email address. We will send them a link to ______
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-60 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
+                        <div className="flex justify-between items-start px-6 pt-5 pb-3 border-b border-gray-100">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">
+                                    Add user to {organization.name}
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    We&apos;ll email them an invitation to set up access.
                                 </p>
                             </div>
+                            <User className="h-5 w-5 text-gray-400" />
+                        </div>
 
+                        <form onSubmit={handleAddUser} className="px-6 pb-6 pt-4">
                             <div className="space-y-4">
                                 <div>
                                     <input
@@ -534,8 +553,8 @@ export function OrganizationDetailModal({
                                         id="name"
                                         value={newUserName}
                                         onChange={e => setNewUserName(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
-                                        placeholder="Name (First and Last)"
+                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                        placeholder="Name (first and last)"
                                         disabled={isSubmitting}
                                     />
                                 </div>
@@ -545,8 +564,8 @@ export function OrganizationDetailModal({
                                         id="email"
                                         value={newUserEmail}
                                         onChange={e => setNewUserEmail(e.target.value)}
-                                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#608D6A] focus:border-transparent"
-                                        placeholder="Email Address"
+                                        className="w-full h-9 px-3 pr-10 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                        placeholder="Email address"
                                         disabled={isSubmitting}
                                     />
                                     <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -559,7 +578,7 @@ export function OrganizationDetailModal({
                                 )}
                             </div>
 
-                            <div className="mt-6 flex gap-3 justify-start">
+                            <div className="mt-6 flex gap-3 justify-end">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -568,17 +587,18 @@ export function OrganizationDetailModal({
                                         setNewUserName('');
                                         setNewUserEmail('');
                                     }}
-                                    className="px-4 py-2 text-gray-700 font-medium border border-gray-400 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors"
                                     disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-1 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors disabled:opacity-50"
+                                    className="px-4 h-9 text-sm font-medium text-gray-800 rounded-lg border border-[#9fc5a9] hover:bg-[#9fc5a9]/80 disabled:opacity-50 transition-colors"
+                                    style={{ backgroundColor: THEME_GREEN }}
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? 'Sending...' : 'Confirm'}
+                                    {isSubmitting ? 'Sending…' : 'Send invite'}
                                 </button>
                             </div>
                         </form>
@@ -588,21 +608,22 @@ export function OrganizationDetailModal({
 
             {/* Invitation Sent Modal */}
             {showInvitationSent && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[70] p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-[#B7D7BD]">
                         <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-bold">Invitation Sent!</h3>
-                            <Mail className="h-6 w-6 text-blue-400" />
+                            <h3 className="text-base font-semibold text-gray-900">Invitation sent</h3>
+                            <Mail className="h-5 w-5 text-[#608D6A]" />
                         </div>
                         <p className="text-sm text-gray-600 mb-6">
-                            We sent a message to {newUserEmail || 'the user'} with a link for them
-                            to join {organization.name}.
+                            We sent a message to {newUserEmail || 'the user'} with a link for them to
+                            join {organization.name}.
                         </p>
                         <button
                             onClick={() => setShowInvitationSent(false)}
-                            className="px-4 py-2 bg-[#5CB8E4] text-white rounded-lg hover:bg-[#4A9FCC] transition-colors text-sm font-medium"
+                            className="px-4 py-2 text-sm font-medium text-gray-800 rounded-lg border border-[#9fc5a9] hover:bg-[#9fc5a9]/80 transition-colors"
+                            style={{ backgroundColor: THEME_GREEN }}
                         >
-                            Great!
+                            Great
                         </button>
                     </div>
                 </div>
