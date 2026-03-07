@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import DeliverySummaryRow from './DeliverySummaryRow';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
 
@@ -8,12 +8,37 @@ type Delivery = {
     date: Date;
     totalPounds: number;
     id: number;
+    destination?: string | null;
 };
 
 type DeliverySummaryProps = {
     deliveries: Delivery[];
     historyLink: string;
 };
+
+const SAMPLE_DESTINATIONS = [
+    'Bunker Hill Community College',
+    'Cambridge Community Center',
+    'Central Assembly of God',
+    'East Boston Community Soup Kitchen',
+    'First Parish Church',
+    'Pine Street Inn',
+    'Revival',
+    'Somerville YMCA',
+    'East Somerville Community School',
+    'West Somerville Neighborhood School',
+    'CEOC Pantry',
+    'East End House',
+    'Margaret Fuller House',
+];
+
+const SAGE_GREEN = '#B7D7BD';
+
+function isPlaceName(value: string | null | undefined): boolean {
+    if (!value || !value.trim()) return false;
+    const s = value.trim();
+    return SAMPLE_DESTINATIONS.includes(s);
+}
 
 // Sticker sheet mock popup data
 const sampleDeliveryData = {
@@ -36,31 +61,39 @@ const sampleDeliveryData = {
 const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries, historyLink }) => {
     const [isDeliveryPopupOpen, setIsDeliveryPopupOpen] = useState(false);
 
+    const enriched = useMemo(
+        () =>
+            deliveries.map((d, i) => ({
+                ...d,
+                organization: isPlaceName(d.destination)
+                    ? (d.destination as string).trim()
+                    : SAMPLE_DESTINATIONS[i % SAMPLE_DESTINATIONS.length],
+            })),
+        [deliveries]
+    );
+
     return (
         <div className="w-full">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Delivery Summary</h2>
-                    <p className="text-gray-600 mt-1">
-                        Snapshot of past deliveries for your organization.
-                    </p>
-                </div>
+            <div className="mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Delivery Summary</h2>
+                <p className="text-sm mt-0.5" style={{ color: 'gray-900' }}>
+                    Snapshot of past deliveries for your organization.
+                </p>
             </div>
 
-            {/* Delivery Rows */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                {deliveries.map(delivery => (
-                    <DeliverySummaryRow
-                        key={delivery.id}
-                        date={delivery.date}
-                        organization=""
-                        name=""
-                        totalPounds={delivery.totalPounds}
-                        id={delivery.id}
-                        onClick={() => setIsDeliveryPopupOpen(true)}
-                    />
-                ))}
+            <div className="rounded-xl border overflow-hidden shadow-sm border-[#B7D7BD]">
+                <div className="divide-y divide-[#B7D7BD]/40 bg-white">
+                    {enriched.map(delivery => (
+                        <DeliverySummaryRow
+                            key={delivery.id}
+                            date={delivery.date}
+                            organization={delivery.organization}
+                            totalPounds={delivery.totalPounds}
+                            id={delivery.id}
+                            onClick={() => setIsDeliveryPopupOpen(true)}
+                        />
+                    ))}
+                </div>
             </div>
 
             <DeliveryDetailPopup

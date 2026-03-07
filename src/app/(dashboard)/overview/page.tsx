@@ -22,7 +22,12 @@ const MOCK_PROCESSING: FoodTypeEntry[] = [
     { label: 'Minimally Processed', value: 620, color: '#A1C5B0' },
     { label: 'Processed', value: 380, color: '#E7A54E' },
 ];
-type DeliverySummaryItem = { id: number; date: Date; totalPounds: number };
+type DeliverySummaryItem = {
+    id: number;
+    date: Date;
+    totalPounds: number;
+    destination?: string | null;
+};
 
 // Past 12 months = from 12 months ago (same day) through today
 const getDefaultDateRange = () => {
@@ -76,11 +81,22 @@ const OverviewPage: React.FC = () => {
 
             const list = deliveriesPayload.deliveries ?? [];
             setDeliverySummaryData(
-                list.map((d: { id: string; date: string; totalPounds: number }, i: number) => ({
-                    id: i + 1,
-                    date: new Date(d.date),
-                    totalPounds: d.totalPounds,
-                }))
+                list.map(
+                    (
+                        d: {
+                            id: string;
+                            date: string;
+                            totalPounds: number;
+                            destination?: string | null;
+                        },
+                        i: number
+                    ) => ({
+                        id: i + 1,
+                        date: new Date(d.date),
+                        totalPounds: d.totalPounds,
+                        destination: d.destination ?? null,
+                    })
+                )
             );
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Something went wrong');

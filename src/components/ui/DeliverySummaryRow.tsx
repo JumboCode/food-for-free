@@ -4,8 +4,11 @@ import { ChevronRight } from 'lucide-react';
 export type DeliverySummaryRowProps = {
     date: Date;
     organization: string;
-    name: string;
+    name?: string;
     totalPounds: number;
+    maxPounds?: number;
+    processingTag?: string;
+    foodType?: string;
     tags?: string[];
     id: number;
     onClick?: () => void;
@@ -16,22 +19,33 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
     organization,
     name,
     totalPounds,
-    tags,
-    id,
     onClick,
 }) => {
+    const hasName = name != null && name !== '';
     return (
         <div
             onClick={onClick}
-            className="flex grid text-left grid-cols-5 items-center justify-between px-6 py-4 bg-[#FFFFFF] hover:bg-[#FBE6C4] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
+            className={`grid items-center gap-4 px-4 py-3.5 hover:bg-[#B7D7BD]/20 transition-colors cursor-pointer group ${
+                hasName
+                    ? 'grid-cols-[100px_1fr_120px_72px_auto]'
+                    : 'grid-cols-[100px_1fr_72px_auto]'
+            }`}
         >
-            <div className="flex items-center gap-4">{new Date(date).toLocaleDateString()}</div>
-            <div className="flex items-center gap-4">{organization}</div>
-            <div className="flex items-center gap-4">{name}</div>
-            <div className="flex items-center gap-4">{totalPounds} lbs</div>
-            <div className="flex items-center gap-4 rounded-lg bg-[#A8B3E3] px-3 py-1 text-[#FFFFFF] text-sm">
-                {tags?.join(', ')}
+            <div className="text-sm text-gray-600 tabular-nums">
+                {new Date(date).toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                })}
             </div>
+            <div className="font-medium text-gray-900 min-w-0 truncate" title={organization}>
+                {organization}
+            </div>
+            {hasName && <div className="text-sm text-gray-600 min-w-0 truncate">{name}</div>}
+            <div className="text-sm font-medium text-right tabular-nums text-[#608D6A]">
+                {totalPounds.toLocaleString()} lbs
+            </div>
+            {onClick && <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />}
         </div>
     );
 };
