@@ -1,7 +1,15 @@
 'use client';
 
-import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps } from 'recharts';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import {
+    Pie,
+    PieChart,
+    Tooltip,
+    ResponsiveContainer,
+    Cell,
+    Sector,
+    SectorProps,
+    TooltipProps,
+} from 'recharts';
 import { Apple } from 'lucide-react';
 
 // Sample data for when no data is provided
@@ -24,7 +32,6 @@ interface FoodTypesDonutChartProps {
     title?: string;
 }
 
-// Hovering logic
 const renderActiveShape = (props: SectorProps) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
     return (
@@ -33,66 +40,106 @@ const renderActiveShape = (props: SectorProps) => {
                 cx={cx}
                 cy={cy}
                 innerRadius={innerRadius}
-                outerRadius={outerRadius ? outerRadius + 8 : innerRadius}
-                cornerRadius={5}
+                outerRadius={outerRadius ? outerRadius + 6 : innerRadius}
+                cornerRadius={6}
                 startAngle={startAngle}
                 endAngle={endAngle}
                 fill={fill}
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.06))' }}
             />
         </g>
     );
 };
 
+function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
+    if (!active || !payload?.length) return null;
+    const item = payload[0].payload as FoodTypeData;
+    const total = (payload[0].payload as { total?: number }).total;
+    const pct = typeof total === 'number' && total > 0 ? ((item.value / total) * 100).toFixed(1) : '—';
+    return (
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
+            <p className="text-sm font-medium text-slate-800">{item.label}</p>
+            <p className="text-xs text-slate-500">
+                {Number(item.value).toLocaleString()} lbs ({pct}%)
+            </p>
+        </div>
+    );
+}
+
 export function FoodTypesDonutChart({
     data = DEFAULT_DATA,
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
-    return (
-        <Card className="w-full p-4">
-            <CardHeader>
-                <CardTitle className="whitespace-nowrap mt-3">{title}</CardTitle>
-            </CardHeader>
+    const total = data.reduce((sum, d) => sum + d.value, 0);
+    const dataWithTotal = data.map(d => ({ ...d, total }));
 
-            <CardContent className="flex items-center gap-8">
-                <div className="relative w-1/2">
-                    <ResponsiveContainer width="100%" height={300}>
+    return (
+        <div className="flex w-full flex-col">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {title}
+            </h3>
+            <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:gap-6">
+                <div className="relative h-[220px] w-full min-w-0 max-w-[220px] sm:h-[240px] sm:max-w-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
-                                data={data}
+                                data={dataWithTotal}
                                 dataKey="value"
                                 nameKey="label"
                                 cx="50%"
                                 cy="50%"
-                                innerRadius="50%"
-                                outerRadius="80%"
-                                cornerRadius={5}
+                                innerRadius="52%"
+                                outerRadius="78%"
+                                cornerRadius={6}
+                                stroke="none"
+                                paddingAngle={1}
                                 activeShape={renderActiveShape}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
-                            <Tooltip />
+                            <Tooltip content={<CustomTooltip />} />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                        <Apple className="h-8 w-8 text-gray-500" />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="flex flex-col items-center">
+                            <Apple className="h-7 w-7 text-slate-300 sm:h-8 sm:w-8" />
+                            <span className="mt-0.5 text-xs font-medium tabular-nums text-slate-500">
+                                {total.toLocaleString()} lbs
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* custom legend */}
-                <div className="flex flex-col gap-2">
-                    {data.map((item, index) => (
-                        <div key={index} className="flex items-center gap-2">
+                <div className="flex flex-1 flex-col justify-center gap-2 sm:gap-2.5">
+                    {data.map((item, index) => {
+                        const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
+                        return (
                             <div
-                                className="w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: item.color || '#8884d8' }}
-                            />
-                            <span className="text-sm whitespace-nowrap">{item.label}</span>
-                        </div>
-                    ))}
+                                key={index}
+                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div
+                                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                        style={{ backgroundColor: item.color || '#94a3b8' }}
+                                    />
+                                    <span className="truncate text-sm font-medium text-slate-800">
+                                        {item.label}
+                                    </span>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                    <span className="text-xs font-medium tabular-nums text-slate-600">
+                                        {item.value.toLocaleString()}
+                                    </span>
+                                    <span className="ml-0.5 text-xs text-slate-400">({pct}%)</span>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

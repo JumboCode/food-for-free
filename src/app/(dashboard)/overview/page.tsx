@@ -24,15 +24,17 @@ const MOCK_PROCESSING: FoodTypeEntry[] = [
 ];
 type DeliverySummaryItem = { id: number; date: Date; totalPounds: number };
 
+// Past 12 months = from 12 months ago (same day) through today
 const getDefaultDateRange = () => {
     const today = new Date();
-    const twelveMonthsAgo = new Date(today);
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
-    twelveMonthsAgo.setDate(1);
-    return { start: twelveMonthsAgo, end: today };
+    const start = new Date(today);
+    start.setMonth(start.getMonth() - 12);
+    return { start, end: today };
 };
 
 const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
+
+const THEME_ORANGE = '#FAC87D';
 
 const OverviewPage: React.FC = () => {
     const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(getDefaultDateRange());
@@ -102,7 +104,6 @@ const OverviewPage: React.FC = () => {
 
     const setQuickFilter = (
         filter:
-            | 'last7days'
             | 'last30days'
             | 'thisMonth'
             | 'lastMonth'
@@ -117,12 +118,6 @@ const OverviewPage: React.FC = () => {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         switch (filter) {
-            case 'last7days': {
-                const sevenDaysAgo = new Date(today);
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-                setDateRange({ start: sevenDaysAgo, end: today });
-                break;
-            }
             case 'last30days': {
                 const thirtyDaysAgo = new Date(today);
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
@@ -148,10 +143,9 @@ const OverviewPage: React.FC = () => {
                 });
                 break;
             case 'past12months': {
-                const twelveMonthsAgo = new Date(today);
-                twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
-                twelveMonthsAgo.setDate(1);
-                setDateRange({ start: twelveMonthsAgo, end: today });
+                const start = new Date(today);
+                start.setMonth(start.getMonth() - 12);
+                setDateRange({ start, end: today });
                 break;
             }
             case 'allTime':
@@ -164,164 +158,236 @@ const OverviewPage: React.FC = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-10 bg-[#FAF9F7] min-h-screen space-y-10">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-h-screen bg-[#FAF9F7]">
+            <div className="mx-auto max-w-6xl px-4 sm:px-5 lg:px-8 py-4 sm:py-5 lg:py-6 space-y-4 sm:space-y-5">
+                {/* Page header - compact */}
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold pb-2">Statistics Overview</h1>
-                    <p className="pb-6 sm:pb-0">
-                        Overview of deliveries and analytics across all partners.
-                    </p>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        Statistics Overview
+                    </h1>
                 </div>
-                <div className="flex-shrink-0 flex-start">
-                    <MyCalendar selectedRange={dateRange} onRangeChange={handleDateRangeChange} />
-                </div>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-sm font-medium text-gray-700 mr-2">Quick Filters:</span>
-                <button
-                    onClick={() => setQuickFilter('last7days')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'last7days'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last 7 Days
-                </button>
-                <button
-                    onClick={() => setQuickFilter('last30days')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'last30days'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last 30 Days
-                </button>
-                <button
-                    onClick={() => setQuickFilter('thisMonth')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'thisMonth'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    This Month
-                </button>
-                <button
-                    onClick={() => setQuickFilter('lastMonth')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'lastMonth'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Last Month
-                </button>
-                <button
-                    onClick={() => setQuickFilter('thisYear')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'thisYear'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    This Year
-                </button>
-                <button
-                    onClick={() => setQuickFilter('past12months')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'past12months'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    Past 12 Months
-                </button>
-                <button
-                    onClick={() => setQuickFilter('allTime')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors ${
-                        activeFilter === 'allTime'
-                            ? 'bg-[#5DB6E6] text-white border border-[#5DB6E6]'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    All Time
-                </button>
-            </div>
-
-            {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    {error}
-                    <button
-                        type="button"
-                        onClick={() => fetchOverviewData()}
-                        className="ml-2 underline"
-                    >
-                        Retry
-                    </button>
-                </div>
-            )}
-
-            {loading && (
-                <div className="text-gray-600 text-center py-8">Loading overview data…</div>
-            )}
-
-            {!loading && (
-                <>
-                    <div className="w-full bg-white rounded-xl shadow p-6 mt-4">
-                        <PoundsByMonthChart
-                            data={poundsByMonthData}
-                            dateRange={dateRange}
-                            activeFilter={activeFilter}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                            <StatCard
-                                label="Total Delivered"
-                                value={totalPoundsDelivered.toLocaleString()}
-                                unit="lbs"
-                            />
-                        </div>
-                        <div className="bg-white rounded-xl shadow p-6 h-full flex items-center justify-center py-10">
-                            <StatCard
-                                label="Deliveries Completed"
-                                value={deliveriesCompleted.toString()}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="min-w-0">
-                            <FoodTypesDonutChart data={foodTypesData} title="Food Types Donated" />
-                        </div>
-                        <div className="min-w-0">
-                            <FoodTypesDonutChart
-                                data={MOCK_PROCESSING}
-                                title="Processing Breakdown"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="w-full bg-white rounded-xl shadow p-6">
-                        <DeliverySummary
-                            deliveries={deliverySummaryData}
-                            historyLink="distribution"
-                        />
-                        <div className="flex justify-center mt-4">
-                            <a
-                                href={`/distribution?start=${formatDateParam(dateRange.start)}&end=${formatDateParam(dateRange.end)}`}
-                                className="px-6 py-2 text-sm font-medium text-white bg-[#5DB6E6] rounded-lg hover:bg-[#3da0d4] transition-colors"
+                {/* Filters + date range - compact single row on desktop */}
+                <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm px-3 py-2 sm:px-4 sm:py-2.5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 sm:mr-1">
+                                Time range
+                            </span>
+                            <button
+                                onClick={() => setQuickFilter('last30days')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'last30days'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'last30days' ? { backgroundColor: THEME_ORANGE } : undefined}
                             >
-                                See Full Distribution History
-                            </a>
+                                Last 30 days
+                            </button>
+                            <button
+                                onClick={() => setQuickFilter('thisMonth')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'thisMonth'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'thisMonth' ? { backgroundColor: THEME_ORANGE } : undefined}
+                            >
+                                This month
+                            </button>
+                            <button
+                                onClick={() => setQuickFilter('lastMonth')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'lastMonth'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'lastMonth' ? { backgroundColor: THEME_ORANGE } : undefined}
+                            >
+                                Last month
+                            </button>
+                            <button
+                                onClick={() => setQuickFilter('thisYear')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'thisYear'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'thisYear' ? { backgroundColor: THEME_ORANGE } : undefined}
+                            >
+                                This year
+                            </button>
+                            <button
+                                onClick={() => setQuickFilter('past12months')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'past12months'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'past12months' ? { backgroundColor: THEME_ORANGE } : undefined}
+                            >
+                                Past 12 months
+                            </button>
+                            <button
+                                onClick={() => setQuickFilter('allTime')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'allTime'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={activeFilter === 'allTime' ? { backgroundColor: THEME_ORANGE } : undefined}
+                            >
+                                All time
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="hidden text-xs text-gray-500 sm:inline">Custom range</span>
+                            <MyCalendar
+                                selectedRange={dateRange}
+                                onRangeChange={handleDateRangeChange}
+                            />
                         </div>
                     </div>
-                </>
-            )}
+                </div>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between gap-4">
+                        <p className="text-sm">{error}</p>
+                        <button
+                            type="button"
+                            onClick={() => fetchOverviewData()}
+                            className="text-sm font-medium underline underline-offset-4"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                {loading && (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="rounded-xl border border-dashed border-gray-300 bg-white/70 px-6 py-5 text-center">
+                            <p className="text-sm font-medium text-gray-700">
+                                Loading overview data…
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">
+                                This may take a moment while we pull in your latest deliveries.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {!loading && (
+                    <>
+                        {/* Top stats + trend: compact key metrics column, chart takes rest */}
+                        <div className="grid grid-cols-1 gap-y-2 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] items-stretch">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Key metrics
+                            </p>
+                            <div className="hidden lg:block">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Delivery trend
+                                </p>
+                            </div>
+                            <div className="grid grid-rows-3 gap-1.5 min-h-0 max-w-[280px] lg:max-w-none">
+                                <StatCard
+                                    label="Total Delivered"
+                                    value={totalPoundsDelivered.toLocaleString()}
+                                    unit="lbs"
+                                />
+                                <StatCard
+                                    label="Deliveries Completed"
+                                    value={deliveriesCompleted.toString()}
+                                />
+                                <StatCard
+                                    label="Avg per delivery"
+                                    value={
+                                        deliveriesCompleted
+                                            ? Math.round(
+                                                  totalPoundsDelivered / deliveriesCompleted
+                                              ).toLocaleString()
+                                            : '0'
+                                    }
+                                    unit="lbs"
+                                />
+                            </div>
+                            <div className="flex flex-col min-h-0">
+                                <div className="lg:hidden mb-1">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Delivery trend
+                                    </p>
+                                </div>
+                                <div className="flex-1 min-h-[200px] bg-white rounded-xl shadow-sm border border-gray-100 p-2.5 sm:p-3">
+                                    <PoundsByMonthChart
+                                        data={poundsByMonthData}
+                                        dateRange={dateRange}
+                                        activeFilter={activeFilter}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Composition charts */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                        Donation composition
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-gray-600">
+                                        Breakdown of food types and processing levels.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="min-w-0 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                    <FoodTypesDonutChart
+                                        data={foodTypesData}
+                                        title="Food Types Donated"
+                                    />
+                                </div>
+                                <div className="min-w-0 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                    <FoodTypesDonutChart
+                                        data={MOCK_PROCESSING}
+                                        title="Processing Breakdown"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Delivery summary */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                        Recent deliveries
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        Snapshot of completed deliveries in the selected period.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="w-full bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                <DeliverySummary
+                                    deliveries={deliverySummaryData}
+                                    historyLink="distribution"
+                                />
+                                <div className="flex justify-end mt-4">
+                                    <a
+                                        href={`/distribution?start=${formatDateParam(
+                                            dateRange.start
+                                        )}&end=${formatDateParam(dateRange.end)}`}
+                                        className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
+                                        style={{ backgroundColor: THEME_ORANGE }}
+                                    >
+                                        See full distribution history
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 };

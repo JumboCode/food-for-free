@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface StatCardProps {
     label: string;
@@ -9,17 +9,30 @@ interface StatCardProps {
 
 export function StatCard({ label, value, unit, icon }: StatCardProps) {
     return (
-        <Card className="w-full gap-2 border-0 shadow overflow-hidden">
-            <CardContent className="space-y-2 pt-1 min-w-0">
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{label}</span>
-                    {icon && <div className="h-5 w-5 text-blue-400">{icon}</div>}
-                </div>
-                <div className="flex items-end justify-between flex-wrap gap-1">
-                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 pt-2 whitespace-nowrap">
-                        {value}
+        <Card className="relative w-full overflow-hidden border border-slate-100 bg-white/70 shadow-sm py-0 gap-0">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-300" />
+            <CardContent className="min-w-0 px-3 py-1.5 sm:px-4 sm:py-2 flex flex-col justify-center">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {label}
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap items-baseline gap-1">
+                            <span className="text-lg sm:text-xl font-semibold text-slate-900 tabular-nums">
+                                {value}
+                            </span>
+                            {unit && (
+                                <span className="text-xs font-medium text-slate-500">
+                                    {unit}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    {unit && <span className="text-xl font-medium text-gray-900 pb-1">{unit}</span>}
+                    {icon && (
+                        <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full border border-sky-100 bg-sky-50 text-sky-500">
+                            {icon}
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useRef, useState, useLayoutEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
 
 export interface PoundsData {
     month: string;
@@ -16,7 +16,6 @@ interface PoundsByMonthChartProps {
     activeFilter?: string | null;
 }
 
-//Mock data - 12 months of donation data
 const DEFAULT_DATA: PoundsData[] = [
     { month: 'Jan', pounds: 320 },
     { month: 'Feb', pounds: 410 },
@@ -32,76 +31,87 @@ const DEFAULT_DATA: PoundsData[] = [
     { month: 'Dec', pounds: 420 },
 ];
 
-/**
- * PoundsByMonthChart Component - Adapts title and display based on date range
- **/
+function formatDateRange(range: { start: Date; end: Date } | undefined): string {
+    if (!range) return 'selected time range';
+    const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return `${range.start.toLocaleDateString('en-US', opts)} – ${range.end.toLocaleDateString('en-US', opts)}`;
+}
+
 export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
     data = DEFAULT_DATA,
-    title,
     dateRange,
     activeFilter,
 }) => {
-    // Determine appropriate title and aggregation level based on date range
-    const getChartTitle = (): string => {
-        if (title) return title;
-        if (!dateRange) return 'Pounds Donated By Month';
-
-        // If "All Time" is selected, show "By Year"
-        if (activeFilter === 'allTime') {
-            return 'Pounds Donated By Year';
-        }
-
-        const daysDiff = Math.ceil(
-            (dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const yearsDiff =
-            dateRange.end.getFullYear() -
-            dateRange.start.getFullYear() +
-            (dateRange.end.getMonth() - dateRange.start.getMonth()) / 12;
-
-        if (daysDiff <= 30) {
-            return 'Pounds Donated By Day';
-        } else if (yearsDiff <= 2) {
-            return 'Pounds Donated By Month';
-        } else {
-            return 'Pounds Donated By Year';
-        }
-    };
-
-    const chartTitle = getChartTitle();
-
-    // Ensure we always have data to display axes, even if empty
     const displayData = data && data.length > 0 ? data : [];
-
-    // Generate labels for empty data case
-    const monthNames = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-    ];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const emptyDataWithLabels = monthNames.map(month => ({ month, pounds: 0 }));
     const chartData = displayData.length > 0 ? displayData : emptyDataWithLabels;
     const hasData = displayData.length > 0;
 
-    // Determine if we need horizontal scrolling (more than 12 data points)
-    const needsScrolling = chartData.length > 12;
+    const barCount = chartData.length;
+    const minBarWidth = 48;
+    const minChartWidth = Math.max(barCount * minBarWidth, 320);
+    const needsScrolling = barCount > 8;
+
+    // Tight angled label height
+    const xAxisHeight = needsScrolling ? 52 : 20;
+
+    const maxPounds = Math.max(0, ...chartData.map(d => d.pounds));
+
+    const getNiceYScale = (max: number): { domainMax: number; ticks: number[] } => {
+        if (max <= 0) return { domainMax: 100, ticks: [0, 50, 100] };
+        const padded = max * 1.15;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
+        const normalized = padded / magnitude;
+        const step = magnitude * (normalized <= 2 ? 0.5 : normalized <= 5 ? 1 : 2);
+        const domainMax = Math.ceil(padded / step) * step;
+        const ticks: number[] = [];
+        for (let t = 0; t <= domainMax; t += step) ticks.push(t);
+        return { domainMax, ticks };
+    };
+    const { domainMax, ticks: yTicks } = getNiceYScale(maxPounds);
+
+    const yAxisTickFormatter = (value: number) => {
+        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
+        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+        return String(value);
+    };
+
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [chartWidth, setChartWidth] = useState(minChartWidth);
+
+    useLayoutEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => {
+            const w = el.getBoundingClientRect().width;
+            setChartWidth(Math.max(w, minChartWidth));
+        });
+        ro.observe(el);
+        setChartWidth(Math.max(el.getBoundingClientRect().width, minChartWidth));
+        return () => ro.disconnect();
+    }, [minChartWidth]);
+
+    const renderTooltip = (props: unknown) => {
+        const { active, payload, label } = (props || {}) as { active?: boolean; payload?: Array<{ value?: number }>; label?: string | number };
+        if (!active || !payload?.length || label == null) return null;
+        const value = payload[0]?.value;
+        return (
+            <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 shadow-sm">
+                <p className="text-xs font-medium text-black">
+                    {String(label)}: {typeof value === 'number' ? value.toLocaleString() : value} lbs
+                </p>
+            </div>
+        );
+    };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{chartTitle}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="relative">
+        <Card className="gap-0 pt-0 pb-1">
+            <CardContent className="px-3 py-3 sm:px-4 sm:py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    Pounds delivered over {formatDateRange(dateRange)}
+                </p>
+                <div className="relative" ref={containerRef}>
                     {!hasData && (
                         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                             <p className="text-gray-500 bg-white/90 px-4 py-2 rounded-lg">
@@ -109,65 +119,44 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
                             </p>
                         </div>
                     )}
-                    <div className={needsScrolling ? 'overflow-x-auto pb-2' : ''}>
-                        <div
-                            style={{
-                                minWidth: needsScrolling
-                                    ? `${Math.max(chartData.length * 60, 800)}px`
-                                    : '100%',
-                                width: needsScrolling
-                                    ? `${Math.max(chartData.length * 60, 800)}px`
-                                    : '100%',
-                            }}
-                        >
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart
-                                    data={chartData}
-                                    margin={{
-                                        top: 20,
-                                        right: 30,
-                                        left: 0,
-                                        bottom: needsScrolling ? 60 : 0,
-                                    }}
-                                >
-                                    <XAxis
-                                        dataKey="month"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{
-                                            fill: '#6B7280',
-                                            fontSize: 12,
-                                        }}
-                                        angle={needsScrolling ? -45 : 0}
-                                        textAnchor={needsScrolling ? 'end' : 'middle'}
-                                        height={needsScrolling ? 80 : 30}
-                                    />
-                                    <YAxis
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{
-                                            fill: '#6B7280',
-                                            fontSize: 12,
-                                        }}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: '#FFFFFF',
-                                            border: '1px solid #E5E7EB',
-                                            borderRadius: '8px',
-                                        }}
-                                        cursor={{ fill: 'rgba(200, 200, 200, 0.1)' }}
-                                        labelFormatter={label => label}
-                                        formatter={value => [`${value} lbs`, 'Pounds']}
-                                    />
-                                    <Bar
-                                        dataKey="pounds"
-                                        fill="#B7D7BD"
-                                        radius={[8, 8, 0, 0]}
-                                        isAnimationActive={true}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
+                    <div className="overflow-x-auto min-w-0">
+                        <div style={{ width: chartWidth, minWidth: chartWidth }}>
+                            <BarChart
+                                width={chartWidth}
+                                height={260}
+                                data={chartData}
+                                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                            >
+                                <XAxis
+                                    dataKey="month"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#6B7280', fontSize: 11 }}
+                                    angle={needsScrolling ? -45 : 0}
+                                    textAnchor={needsScrolling ? 'end' : 'middle'}
+                                    height={xAxisHeight}
+                                    dy={4}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#6B7280', fontSize: 11 }}
+                                    width={44}
+                                    ticks={yTicks}
+                                    tickFormatter={yAxisTickFormatter}
+                                    domain={[0, domainMax]}
+                                />
+                                <Tooltip
+                                    content={renderTooltip}
+                                    cursor={{ fill: 'rgba(200, 200, 200, 0.1)' }}
+                                />
+                                <Bar
+                                    dataKey="pounds"
+                                    fill="#B7D7BD"
+                                    radius={[6, 6, 0, 0]}
+                                    isAnimationActive={true}
+                                />
+                            </BarChart>
                         </div>
                     </div>
                 </div>

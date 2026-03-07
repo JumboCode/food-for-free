@@ -13,9 +13,13 @@ interface MyCalendarProps {
 export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCalendarProps = {}) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
-    const [month, setMonth] = useState(new Date());
+    const [leftMonth, setLeftMonth] = useState<Date>(() =>
+        externalRange ? new Date(externalRange.start) : new Date()
+    );
+    const [rightMonth, setRightMonth] = useState<Date>(() =>
+        externalRange ? new Date(externalRange.end) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+    );
 
-    // Convert external range format to DateRange format
     const initialRange: DateRange | undefined = externalRange
         ? { from: externalRange.start, to: externalRange.end }
         : undefined;
@@ -32,7 +36,8 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
             setInputValue(
                 `${format(externalRange.start, 'MM/dd/yyyy')} - ${format(externalRange.end, 'MM/dd/yyyy')}`
             );
-            setMonth(externalRange.start);
+            setLeftMonth(new Date(externalRange.start));
+            setRightMonth(new Date(externalRange.end));
         }
     }, [externalRange]);
 
@@ -56,18 +61,38 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
         };
     }, [isDialogOpen]);
 
-    const handleDayPickerSelect = (range: DateRange | undefined) => {
-        setSelectedRange(range);
-        if (range?.from && range?.to) {
-            setInputValue(
-                `${format(range.from, 'MM/dd/yyyy')} - ${format(range.to, 'MM/dd/yyyy')}`
-            );
-            // Notify parent component if callback is provided
-            if (onRangeChange) {
-                onRangeChange({ start: range.from, end: range.to });
+    const handleLeftSelect = (date: Date | undefined) => {
+        if (!date) return;
+        setSelectedRange(prev => {
+            const from = date;
+            const to = prev?.to && prev.to >= from ? prev.to : undefined;
+            const next: DateRange = { from, to };
+            if (to) {
+                setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
+                setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
+            } else {
+                setInputValue(format(from, 'MM/dd/yyyy'));
             }
-        } else if (range?.from) setInputValue(format(range.from, 'MM/dd/yyyy'));
-        else setInputValue('');
+            return next;
+        });
+    };
+
+    const handleRightSelect = (date: Date | undefined) => {
+        if (!date) return;
+        setSelectedRange(prev => {
+            const to = date;
+            const from = prev?.from && prev.from <= to ? prev.from : to;
+            const next: DateRange = { from, to };
+            setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
+            setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
+            return next;
+        });
+    };
+
+    const isInRange = (date: Date) => {
+        if (!selectedRange?.from || !selectedRange?.to) return false;
+        const t = date.getTime();
+        return t >= selectedRange.from.getTime() && t <= selectedRange.to.getTime();
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,27 +106,28 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
             const to = parse(parts[1], 'MM/dd/yyyy', new Date());
             if (isValid(from) && isValid(to)) {
                 setSelectedRange({ from, to });
-                setMonth(from); // Update calendar view
+                setLeftMonth(from);
+                setRightMonth(to);
                 return;
             }
         } else if (parts.length === 1) {
-            // Check for a single date (start of range)
             const from = parse(parts[0], 'MM/dd/yyyy', new Date());
             if (isValid(from)) {
                 setSelectedRange({ from, to: undefined });
-                setMonth(from); // Update calendar view
+                setLeftMonth(from);
                 return;
             }
         }
 
-        // If parsing fails or input is empty/invalid, clear the selection
         setSelectedRange(undefined);
     };
 
     const handleClear = () => {
         setSelectedRange(undefined);
         setInputValue('');
-        // Notify parent component to reset to default range
+        const now = new Date();
+        setLeftMonth(now);
+        setRightMonth(new Date(now.getFullYear(), now.getMonth() + 1, 1));
         if (onRangeChange) {
             onRangeChange({
                 start: new Date('2025-01-01'),
@@ -112,39 +138,29 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
 
     const handleDone = () => toggleDialog();
 
+    const themeAccent = '#FAC87D';
+    const startMonth = new Date(new Date().getFullYear() - 10, 0);
+    const endMonth = new Date(new Date().getFullYear() + 2, 11);
+
     return (
-        <div className="flex flex-col items-center">
-            {/* <label htmlFor="date-input" className="text-lg mb-2 font-semibold">
-                Date Range:
-            </label>
-
-            <input
-                id="date-input"
-                type="text"
-                value={inputValue}
-                placeholder="MM/dd/yyyy - MM/dd/yyyy"
-                onChange={handleInputChange}
-                className="text-lg px-4 py-2 mb-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-center"
-            /> */}
-
+        <div className="flex flex-col items-end">
             <button
                 onClick={toggleDialog}
-                className="px-3 py-2 bg-[#5DB6E6] hover:bg-[#4A9FCC] text-white rounded-lg flex items-center gap-2 font-medium"
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs sm:text-sm font-medium shadow-sm transition-colors border-[#FAC87D]/50 bg-[#FAC87D]/15 text-slate-800 hover:bg-[#FAC87D]/25 hover:border-[#FAC87D]/70"
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
             >
-                <Calendar className="w-4 h-4" />
-                {selectedRange?.from && selectedRange?.to
-                    ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(selectedRange.to, 'MM/dd/yyyy')}`
-                    : 'Date Range'}
+                <Calendar className="w-4 h-4 shrink-0" style={{ color: themeAccent }} />
+                <span className="truncate max-w-[150px] sm:max-w-[220px]">
+                    {selectedRange?.from && selectedRange?.to
+                        ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(
+                              selectedRange.to,
+                              'MM/dd/yyyy'
+                          )}`
+                        : 'Select date range'}
+                </span>
             </button>
-
-            {/* <p className="text-base mb-4 text-gray-700">
-                {selectedRange?.from && selectedRange?.to
-                    ? `${selectedRange.from.toDateString()} - ${selectedRange.to.toDateString()}`
-                    : 'Please pick a date range'}
-            </p> */}
 
             <dialog
                 ref={dialogRef}
@@ -152,30 +168,85 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
                 onClick={e => {
                     if (e.target === e.currentTarget) toggleDialog();
                 }}
-                className="p-6 rounded-xl shadow-2xl border-0 bg-white backdrop:bg-black/30 w-fit fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                className="p-0 border-0 bg-transparent backdrop:bg-black/30 w-full max-w-[min(95vw,44rem)] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             >
-                <DayPicker
-                    month={month}
-                    onMonthChange={setMonth}
-                    mode="range"
-                    selected={selectedRange}
-                    onSelect={handleDayPickerSelect}
-                    className="text-gray-800"
-                />
+                <div className="calendar-picker-compact rounded-xl bg-white p-3 shadow-2xl sm:p-4 border border-slate-100">
+                    <div className="mb-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Select date range
+                        </p>
+                    </div>
 
-                <div className="flex justify-end gap-4 mt-6">
-                    <button
-                        onClick={handleClear}
-                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-4 py-2 rounded-md"
-                    >
-                        Clear
-                    </button>
-                    <button
-                        onClick={handleDone}
-                        className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-md"
-                    >
-                        Done
-                    </button>
+                    <div className="flex gap-4 justify-center">
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
+                                Start date
+                            </p>
+                            <DayPicker
+                                mode="single"
+                                month={leftMonth}
+                                onMonthChange={setLeftMonth}
+                                selected={selectedRange?.from}
+                                onSelect={handleLeftSelect}
+                                captionLayout="dropdown"
+                                startMonth={startMonth}
+                                endMonth={endMonth}
+                                modifiers={{ inRange: isInRange }}
+                                modifiersStyles={{
+                                    inRange: { backgroundColor: '#fef8ed' },
+                                }}
+                                className="text-slate-900"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
+                                End date
+                            </p>
+                            <DayPicker
+                                mode="single"
+                                month={rightMonth}
+                                onMonthChange={setRightMonth}
+                                selected={selectedRange?.to}
+                                onSelect={handleRightSelect}
+                                captionLayout="dropdown"
+                                startMonth={startMonth}
+                                endMonth={endMonth}
+                                modifiers={{ inRange: isInRange }}
+                                modifiersStyles={{
+                                    inRange: { backgroundColor: '#fef8ed' },
+                                }}
+                                className="text-slate-900"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-xs text-slate-500">
+                            {selectedRange?.from && selectedRange?.to ? (
+                                <span>
+                                    {format(selectedRange.from, 'MMM d, yyyy')} –{' '}
+                                    {format(selectedRange.to, 'MMM d, yyyy')}
+                                </span>
+                            ) : (
+                                <span>Pick a start and end date.</span>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={handleClear}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={handleDone}
+                                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-black hover:opacity-90 transition-opacity"
+                                style={{ backgroundColor: themeAccent }}
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </dialog>
         </div>

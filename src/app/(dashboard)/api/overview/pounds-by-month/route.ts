@@ -19,8 +19,7 @@ function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date
 function getDefaultRange(): { start: Date; end: Date } {
     const end = new Date();
     const start = new Date(end);
-    start.setMonth(start.getMonth() - 11);
-    start.setDate(1);
+    start.setMonth(start.getMonth() - 12);
     return { start, end };
 }
 
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
         const yearsDiff =
             range.end.getFullYear() - range.start.getFullYear() +
             (range.end.getMonth() - range.start.getMonth()) / 12;
-        const aggregateByYear = yearsDiff > 2;
+        const aggregateByYear = yearsDiff > 1;
         const aggregateByDay = daysDiff <= 30 && !aggregateByYear;
 
         const buckets: Record<string, number> = {};
@@ -68,23 +67,45 @@ export async function GET(request: NextRequest) {
             buckets[key] = (buckets[key] ?? 0) + weight;
         }
 
-        const chartData = Object.entries(buckets)
-            .map(([month, pounds]) => ({ month, pounds: Math.round(pounds) }))
-            .sort((a, b) => {
-                if (aggregateByYear) return parseInt(a.month, 10) - parseInt(b.month, 10);
-                if (aggregateByDay) {
-                    const [ma, da] = a.month.split('/').map(Number);
-                    const [mb, db] = b.month.split('/').map(Number);
-                    const dateA = new Date(range.start.getFullYear(), ma - 1, da);
-                    const dateB = new Date(range.start.getFullYear(), mb - 1, db);
-                    return dateA.getTime() - dateB.getTime();
-                }
-                const [monthA, yearA] = a.month.split(' ');
-                const [monthB, yearB] = b.month.split(' ');
-                const dateA = new Date(parseInt(yearA, 10), MONTH_NAMES.indexOf(monthA), 1);
-                const dateB = new Date(parseInt(yearB, 10), MONTH_NAMES.indexOf(monthB), 1);
-                return dateA.getTime() - dateB.getTime();
-            });
+        // Build ordered list of all periods in range so chart shows only range span
+        type Period = { month: string; order: number };
+        const periodsInRange: Period[] = [];
+
+        if (aggregateByYear) {
+            // Only show years that have data (earliest data year onward)
+            const yearsWithData = Object.keys(buckets)
+                .filter(k => /^\d{4}$/.test(k))
+                .map(y => parseInt(y, 10))
+                .sort((a, b) => a - b);
+            for (const y of yearsWithData) {
+                periodsInRange.push({ month: String(y), order: y });
+            }
+        } else if (aggregateByDay) {
+            const cursor = new Date(range.start);
+            cursor.setHours(0, 0, 0, 0);
+            const end = new Date(range.end);
+            end.setHours(0, 0, 0, 0);
+            let order = 0;
+            while (cursor.getTime() <= end.getTime()) {
+                const key = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${String(cursor.getDate()).padStart(2, '0')}`;
+                periodsInRange.push({ month: key, order: order++ });
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        } else {
+            const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+            const end = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+            let order = 0;
+            while (cursor.getTime() <= end.getTime()) {
+                const key = `${MONTH_NAMES[cursor.getMonth()]} ${cursor.getFullYear()}`;
+                periodsInRange.push({ month: key, order: order++ });
+                cursor.setMonth(cursor.getMonth() + 1);
+            }
+        }
+
+        const chartData = periodsInRange.map(({ month }) => ({
+            month,
+            pounds: Math.round(buckets[month] ?? 0),
+        }));
 
         return NextResponse.json(chartData);
     } catch (err: unknown) {

@@ -44,6 +44,7 @@
 }
 
 :root {
+    zoom: 1.2;
     --radius: 0.625rem;
     --background: oklch(1 0 0);
     --foreground: oklch(0.13 0.028 261.692);
@@ -81,7 +82,7 @@
 body {
     background: var(--background);
     color: var(--foreground);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Acumin Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 .dark {
     --background: oklch(0.13 0.028 261.692);
@@ -115,6 +116,26 @@ body {
     --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+/* Calendar picker theme (dashboard orange #FAC87D) */
+.rdp-root {
+    --rdp-accent-color: #FAC87D;
+    --rdp-accent-background-color: #fef8ed;
+}
+
+/* Compact calendar in picker dialog – force orange so it wins over library default */
+.calendar-picker-compact .rdp-root {
+    --rdp-accent-color: #FAC87D !important;
+    --rdp-accent-background-color: #fef8ed !important;
+    --rdp-day-height: 34px;
+    --rdp-day-width: 34px;
+    --rdp-day_button-height: 32px;
+    --rdp-day_button-width: 32px;
+    --rdp-months-gap: 1rem;
+    --rdp-nav_button-height: 1.75rem;
+    --rdp-nav_button-width: 1.75rem;
+    --rdp-nav-height: 2rem;
 }
 
 @layer base {

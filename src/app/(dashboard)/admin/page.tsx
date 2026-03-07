@@ -106,7 +106,7 @@ const AdminConsolePage: React.FC = () => {
                 <div className="max-w-6xl mx-auto">
                     {/* Page Header */}
                     <div className="mb-6 sm:mb-8">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 text-green-700">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
                             Admin Console
                         </h1>
                         <div className="w-12 sm:w-16 h-1 bg-green-700"></div>
