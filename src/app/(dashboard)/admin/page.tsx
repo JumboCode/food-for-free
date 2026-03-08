@@ -17,23 +17,23 @@ interface Organization {
 const DUMMY_ORGS: Organization[] = [
     {
         id: '1',
-        name: 'Test Organization 1',
-        slug: 'test-org-1',
-        membersCount: 12,
+        name: 'Food for Free',
+        slug: 'food-for-free',
+        membersCount: 3,
         createdAt: new Date().toISOString(),
     },
     {
         id: '2',
-        name: 'Test Organization 2',
-        slug: 'test-org-2',
-        membersCount: 8,
+        name: 'Central Assembly of God',
+        slug: 'central-assembly-of-god',
+        membersCount: 3,
         createdAt: new Date().toISOString(),
     },
     {
         id: '3',
-        name: 'Test Organization 3',
-        slug: 'test-org-3',
-        membersCount: 5,
+        name: 'Bunker Hill Community College',
+        slug: 'bunker-hill-community-college',
+        membersCount: 2,
         createdAt: new Date().toISOString(),
     },
 ];

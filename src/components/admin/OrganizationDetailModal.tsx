@@ -49,96 +49,33 @@ interface OrganizationDetailModalProps {
     onUpdate: () => void;
 }
 
-//dummy data for testing
-const DUMMY_USERS: User[] = [
-    {
-        id: '1',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '2',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '3',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '4',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '5',
-        name: 'Peter Parker',
-        email: 'pparker@gmail.com',
-        status: 'Invited',
-        role: 'member',
-        invitationId: 'inv-123',
-    },
-    {
-        id: '6',
-        name: 'Peter Parker',
-        email: 'pparker@gmail.com',
-        status: 'Invited',
-        role: 'member',
-        invitationId: 'inv-456',
-    },
-    {
-        id: '7',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '8',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '9',
-        name: 'Peter Parker',
-        email: 'pparker@gmail.com',
-        status: 'Invited',
-        role: 'member',
-        invitationId: 'inv-789',
-    },
-    {
-        id: '10',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '11',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
-    {
-        id: '12',
-        name: 'Johnny Appleseed',
-        email: 'jappleseed@gmail.com',
-        status: 'Active',
-        role: 'member',
-    },
+// Mock users for Food for Free (admins)
+const FOOD_FOR_FREE_USERS: User[] = [
+    { id: '1', name: 'Alex', email: 'alex@foodforfree.org', status: 'Active', role: 'admin' },
+    { id: '2', name: 'Nick', email: 'nick@foodforfree.org', status: 'Active', role: 'admin' },
+    { id: '3', name: 'Tom', email: 'tom@foodforfree.org', status: 'Active', role: 'admin' },
 ];
+
+// Mock users for other partner orgs (fewer, generic)
+const CENTRAL_ASSEMBLY_USERS: User[] = [
+    { id: '4', name: 'Maria Santos', email: 'maria.santos@example.org', status: 'Active', role: 'member' },
+    { id: '5', name: 'James Chen', email: 'j.chen@example.org', status: 'Active', role: 'member' },
+    { id: '6', name: 'Sarah Williams', email: 's.williams@example.org', status: 'Invited', role: 'member', invitationId: 'inv-ca-1' },
+];
+
+const BUNKER_HILL_USERS: User[] = [
+    { id: '7', name: 'David Park', email: 'd.park@bhcc.edu', status: 'Active', role: 'member' },
+    { id: '8', name: 'Lisa Johnson', email: 'l.johnson@bhcc.edu', status: 'Active', role: 'member' },
+];
+
+function getUsersForOrganization(orgName: string): User[] {
+    if (orgName === 'Food for Free') return FOOD_FOR_FREE_USERS;
+    if (orgName === 'Central Assembly of God') return CENTRAL_ASSEMBLY_USERS;
+    if (orgName === 'Bunker Hill Community College') return BUNKER_HILL_USERS;
+    return [
+        { id: '9', name: 'Partner User', email: 'user@partner.org', status: 'Active', role: 'member' },
+    ];
+}
 
 const THEME_GREEN = '#B7D7BD';
 const THEME_ORANGE = '#FAC87D';
@@ -161,7 +98,7 @@ export function OrganizationDetailModal({
 
     useEffect(() => {
         fetchOrganizationUsers();
-    }, [organization.id]);
+    }, [organization.id, organization.name]);
 
     const fetchOrganizationUsers = async () => {
         //frontend only - just use dummy data
@@ -169,7 +106,7 @@ export function OrganizationDetailModal({
 
         //simulate loading delay
         setTimeout(() => {
-            setUsers(DUMMY_USERS);
+            setUsers(getUsersForOrganization(organization.name));
             setIsLoading(false);
         }, 500);
     };
