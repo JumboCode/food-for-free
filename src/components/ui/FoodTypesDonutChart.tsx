@@ -1,15 +1,6 @@
 'use client';
 
-import {
-    Pie,
-    PieChart,
-    Tooltip,
-    ResponsiveContainer,
-    Cell,
-    Sector,
-    SectorProps,
-    TooltipProps,
-} from 'recharts';
+import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps } from 'recharts';
 import { Apple } from 'lucide-react';
 
 // Sample data for when no data is provided
@@ -51,11 +42,17 @@ const renderActiveShape = (props: SectorProps) => {
     );
 };
 
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
+type CustomTooltipProps = {
+    active?: boolean;
+    payload?: Array<{ payload: FoodTypeData & { total?: number } }>;
+};
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
     const item = payload[0].payload as FoodTypeData;
-    const total = (payload[0].payload as { total?: number }).total;
-    const pct = typeof total === 'number' && total > 0 ? ((item.value / total) * 100).toFixed(1) : '—';
+    const total = payload[0].payload.total;
+    const pct =
+        typeof total === 'number' && total > 0 ? ((item.value / total) * 100).toFixed(1) : '—';
     return (
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
             <p className="text-sm font-medium text-slate-800">{item.label}</p>
