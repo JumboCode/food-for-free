@@ -119,13 +119,7 @@ const OverviewPage: React.FC = () => {
     };
 
     const setQuickFilter = (
-        filter:
-            | 'last30days'
-            | 'thisMonth'
-            | 'lastMonth'
-            | 'thisYear'
-            | 'past12months'
-            | 'allTime'
+        filter: 'last30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'past12months' | 'allTime'
     ) => {
         setActiveFilter(filter);
         const now = new Date();
@@ -179,7 +173,7 @@ const OverviewPage: React.FC = () => {
                 {/* Page header */}
                 <div className="mb-1">
                     <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
-                        Statistics overview
+                        Statistics Overview
                     </h1>
                 </div>
 
@@ -197,7 +191,11 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'last30days' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'last30days'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 Last 30 days
                             </button>
@@ -208,7 +206,11 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'thisMonth' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'thisMonth'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 This month
                             </button>
@@ -219,7 +221,11 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'lastMonth' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'lastMonth'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 Last month
                             </button>
@@ -230,7 +236,11 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'thisYear' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'thisYear'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 This year
                             </button>
@@ -241,7 +251,11 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'past12months' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'past12months'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 Past 12 months
                             </button>
@@ -252,13 +266,19 @@ const OverviewPage: React.FC = () => {
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
                                 }`}
-                                style={activeFilter === 'allTime' ? { backgroundColor: THEME_ORANGE } : undefined}
+                                style={
+                                    activeFilter === 'allTime'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
                             >
                                 All time
                             </button>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            <span className="hidden text-xs text-gray-500 sm:inline">Custom range</span>
+                            <span className="hidden text-xs text-gray-500 sm:inline">
+                                Custom range
+                            </span>
                             <MyCalendar
                                 selectedRange={dateRange}
                                 onRangeChange={handleDateRangeChange}

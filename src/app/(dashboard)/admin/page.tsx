@@ -101,10 +101,9 @@ const AdminConsolePage: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#FAF9F7]">
             <div className="max-w-6xl mx-auto px-8 py-10">
-                {/* Page Header */}
                 <div className="mb-8">
                     <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
-                        Admin console
+                        Admin Console
                     </h1>
                     <p className="mt-1 text-sm text-gray-500">
                         Manage partner organizations and their access.
@@ -124,7 +123,10 @@ const AdminConsolePage: React.FC = () => {
                         </div>
                         <span
                             className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-[#608D6A]"
-                            style={{ borderColor: THEME_GREEN, backgroundColor: 'rgba(183, 215, 189, 0.25)' }}
+                            style={{
+                                borderColor: THEME_GREEN,
+                                backgroundColor: 'rgba(183, 215, 189, 0.25)',
+                            }}
                         >
                             {organizations.length} total
                         </span>
