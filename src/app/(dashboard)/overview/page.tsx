@@ -353,7 +353,7 @@ const OverviewPage: React.FC = () => {
                                         Delivery trend
                                     </p>
                                 </div>
-                                <div className="flex-1 min-h-[200px] bg-white rounded-xl shadow-sm p-2.5 sm:p-3">
+                                <div className="flex-1 min-h-[200px]">
                                     <PoundsByMonthChart
                                         data={poundsByMonthData}
                                         dateRange={dateRange}
