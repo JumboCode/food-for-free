@@ -8,16 +8,35 @@ import 'react-day-picker/dist/style.css'; // make sure this is imported once glo
 interface MyCalendarProps {
     selectedRange?: { start: Date; end: Date };
     onRangeChange?: (range: { start: Date; end: Date }) => void;
+    /** When "Clear" is clicked, use this range (e.g. past 12 months). If not provided, uses past 12 months. */
+    defaultRange?: { start: Date; end: Date };
+    /** Called when "Clear" is clicked, so the parent can e.g. reset filter pill state. */
+    onClear?: () => void;
 }
 
-export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCalendarProps = {}) {
+function getPast12MonthsRange(): { start: Date; end: Date } {
+    const end = new Date();
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 12);
+    start.setDate(start.getDate() + 1);
+    return { start, end };
+}
+
+export function MyCalendar({
+    selectedRange: externalRange,
+    onRangeChange,
+    defaultRange,
+    onClear,
+}: MyCalendarProps = {}) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
     const [leftMonth, setLeftMonth] = useState<Date>(() =>
         externalRange ? new Date(externalRange.start) : new Date()
     );
     const [rightMonth, setRightMonth] = useState<Date>(() =>
-        externalRange ? new Date(externalRange.end) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+        externalRange
+            ? new Date(externalRange.end)
+            : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
     );
 
     const initialRange: DateRange | undefined = externalRange
@@ -123,17 +142,13 @@ export function MyCalendar({ selectedRange: externalRange, onRangeChange }: MyCa
     };
 
     const handleClear = () => {
-        setSelectedRange(undefined);
-        setInputValue('');
-        const now = new Date();
-        setLeftMonth(now);
-        setRightMonth(new Date(now.getFullYear(), now.getMonth() + 1, 1));
-        if (onRangeChange) {
-            onRangeChange({
-                start: new Date('2025-01-01'),
-                end: new Date('2025-12-31'),
-            });
-        }
+        const range = defaultRange ?? getPast12MonthsRange();
+        setSelectedRange({ from: range.start, to: range.end });
+        setInputValue(`${format(range.start, 'MM/dd/yyyy')} - ${format(range.end, 'MM/dd/yyyy')}`);
+        setLeftMonth(range.start);
+        setRightMonth(range.end);
+        onRangeChange?.(range);
+        onClear?.();
     };
 
     const handleDone = () => toggleDialog();

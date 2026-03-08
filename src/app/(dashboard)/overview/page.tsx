@@ -29,11 +29,12 @@ type DeliverySummaryItem = {
     destination?: string | null;
 };
 
-// Past 12 months = from 12 months ago (same day) through today
+// Past 12 months = from the day after 12 months ago through today (e.g. 3/9 last year – 3/8 this year)
 const getDefaultDateRange = () => {
     const today = new Date();
     const start = new Date(today);
     start.setMonth(start.getMonth() - 12);
+    start.setDate(start.getDate() + 1);
     return { start, end: today };
 };
 
@@ -155,6 +156,7 @@ const OverviewPage: React.FC = () => {
             case 'past12months': {
                 const start = new Date(today);
                 start.setMonth(start.getMonth() - 12);
+                start.setDate(start.getDate() + 1);
                 setDateRange({ start, end: today });
                 break;
             }
@@ -282,6 +284,8 @@ const OverviewPage: React.FC = () => {
                             <MyCalendar
                                 selectedRange={dateRange}
                                 onRangeChange={handleDateRangeChange}
+                                defaultRange={getDefaultDateRange()}
+                                onClear={() => setActiveFilter('past12months')}
                             />
                         </div>
                     </div>

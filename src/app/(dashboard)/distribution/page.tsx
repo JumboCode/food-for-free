@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, Download } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 
 interface DeliveryRecord {
@@ -24,18 +25,41 @@ function getProcessingLabel(inventoryType: string | null | undefined): string {
 }
 
 const THEME_GREEN = '#B7D7BD';
-const THEME_ORANGE = '#FAC87D';
 
-const DistributionPage: React.FC = () => {
+function getPast12MonthsRange(): { start: Date; end: Date } {
+    const end = new Date();
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 12);
+    start.setDate(start.getDate() + 1);
+    return { start, end };
+}
+
+function parseDateRangeFromSearchParams(searchParams: ReturnType<typeof useSearchParams>) {
+    const startParam = searchParams.get('start');
+    const endParam = searchParams.get('end');
+    const defaultRange = getPast12MonthsRange();
+    const start =
+        startParam && isValid(parseISO(startParam)) ? parseISO(startParam) : defaultRange.start;
+    const end = endParam && isValid(parseISO(endParam)) ? parseISO(endParam) : defaultRange.end;
+    if (start > end) return defaultRange;
+    return { start, end };
+}
+
+function DistributionContent() {
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
-    const [dateRange, setDateRange] = useState({
-        start: new Date('2025-01-01'),
-        end: new Date('2025-12-31'),
-    });
+    const [dateRange, setDateRange] = useState(() => parseDateRangeFromSearchParams(searchParams));
     const [exporting, setExporting] = useState(false);
+
+    // When navigating from overview with ?start=&end=, apply that range
+    const startParam = searchParams.get('start');
+    const endParam = searchParams.get('end');
+    useEffect(() => {
+        setDateRange(parseDateRangeFromSearchParams(searchParams));
+    }, [startParam, endParam]);
 
     const handleExport = async () => {
         setExporting(true);
@@ -178,7 +202,10 @@ const DistributionPage: React.FC = () => {
                                             <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
                                                 {format(new Date(d.date), 'M/d/yyyy')}
                                             </td>
-                                            <td className="py-3.5 pl-5 pr-2 text-sm font-medium text-gray-900 truncate max-w-[200px]" title={d.organizationName}>
+                                            <td
+                                                className="py-3.5 pl-5 pr-2 text-sm font-medium text-gray-900 truncate max-w-[200px]"
+                                                title={d.organizationName}
+                                            >
                                                 {d.organizationName}
                                             </td>
                                             <td className="py-3.5 pl-2 pr-5 text-sm text-gray-700 truncate max-w-[200px]">
@@ -191,13 +218,21 @@ const DistributionPage: React.FC = () => {
                                                 <span className="inline-flex flex-wrap items-center gap-2">
                                                     <span
                                                         className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border border-[#e8c878]/60"
-                                                        style={{ backgroundColor: 'rgba(250, 200, 125, 0.35)', color: '#744210' }}
+                                                        style={{
+                                                            backgroundColor:
+                                                                'rgba(250, 200, 125, 0.35)',
+                                                            color: '#744210',
+                                                        }}
                                                     >
                                                         {getProcessingLabel(d.inventoryType)}
                                                     </span>
                                                     <span
                                                         className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border border-[#9fc5a9]/60"
-                                                        style={{ backgroundColor: 'rgba(183, 215, 189, 0.35)', color: '#608D6A' }}
+                                                        style={{
+                                                            backgroundColor:
+                                                                'rgba(183, 215, 189, 0.35)',
+                                                            color: '#608D6A',
+                                                        }}
                                                     >
                                                         {d.inventoryType?.trim() || '—'}
                                                     </span>
@@ -207,7 +242,10 @@ const DistributionPage: React.FC = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center text-gray-500 text-sm">
+                                        <td
+                                            colSpan={5}
+                                            className="py-20 text-center text-gray-500 text-sm"
+                                        >
                                             No records match the current filters.
                                         </td>
                                     </tr>
@@ -219,6 +257,18 @@ const DistributionPage: React.FC = () => {
             </div>
         </div>
     );
-};
+}
 
-export default DistributionPage;
+export default function DistributionPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-[#fafaf9] flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                </div>
+            }
+        >
+            <DistributionContent />
+        </Suspense>
+    );
+}

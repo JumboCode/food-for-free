@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
 
 const MONTH_NAMES = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
 ];
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
@@ -20,6 +30,7 @@ function getDefaultRange(): { start: Date; end: Date } {
     const end = new Date();
     const start = new Date(end);
     start.setMonth(start.getMonth() - 12);
+    start.setDate(start.getDate() + 1);
     return { start, end };
 }
 
@@ -44,9 +55,12 @@ export async function GET(request: NextRequest) {
             select: { date: true, weightLbs: true },
         });
 
-        const daysDiff = Math.ceil((range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24));
+        const daysDiff = Math.ceil(
+            (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24)
+        );
         const yearsDiff =
-            range.end.getFullYear() - range.start.getFullYear() +
+            range.end.getFullYear() -
+            range.start.getFullYear() +
             (range.end.getMonth() - range.start.getMonth()) / 12;
         const aggregateByYear = yearsDiff > 1;
         const aggregateByDay = daysDiff <= 30 && !aggregateByYear;

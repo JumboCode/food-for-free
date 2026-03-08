@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MoreVertical, ExternalLink, User, Mail } from 'lucide-react';
 import PartnerOrganizationTable from '../PartnerOrganizationTable';
 
@@ -58,14 +59,33 @@ const FOOD_FOR_FREE_USERS: User[] = [
 
 // Mock users for other partner orgs (fewer, generic)
 const CENTRAL_ASSEMBLY_USERS: User[] = [
-    { id: '4', name: 'Maria Santos', email: 'maria.santos@example.org', status: 'Active', role: 'member' },
+    {
+        id: '4',
+        name: 'Maria Santos',
+        email: 'maria.santos@example.org',
+        status: 'Active',
+        role: 'member',
+    },
     { id: '5', name: 'James Chen', email: 'j.chen@example.org', status: 'Active', role: 'member' },
-    { id: '6', name: 'Sarah Williams', email: 's.williams@example.org', status: 'Invited', role: 'member', invitationId: 'inv-ca-1' },
+    {
+        id: '6',
+        name: 'Sarah Williams',
+        email: 's.williams@example.org',
+        status: 'Invited',
+        role: 'member',
+        invitationId: 'inv-ca-1',
+    },
 ];
 
 const BUNKER_HILL_USERS: User[] = [
     { id: '7', name: 'David Park', email: 'd.park@bhcc.edu', status: 'Active', role: 'member' },
-    { id: '8', name: 'Lisa Johnson', email: 'l.johnson@bhcc.edu', status: 'Active', role: 'member' },
+    {
+        id: '8',
+        name: 'Lisa Johnson',
+        email: 'l.johnson@bhcc.edu',
+        status: 'Active',
+        role: 'member',
+    },
 ];
 
 function getUsersForOrganization(orgName: string): User[] {
@@ -73,7 +93,13 @@ function getUsersForOrganization(orgName: string): User[] {
     if (orgName === 'Central Assembly of God') return CENTRAL_ASSEMBLY_USERS;
     if (orgName === 'Bunker Hill Community College') return BUNKER_HILL_USERS;
     return [
-        { id: '9', name: 'Partner User', email: 'user@partner.org', status: 'Active', role: 'member' },
+        {
+            id: '9',
+            name: 'Partner User',
+            email: 'user@partner.org',
+            status: 'Active',
+            role: 'member',
+        },
     ];
 }
 
@@ -95,6 +121,7 @@ export function OrganizationDetailModal({
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
     const [showInvitationSent, setShowInvitationSent] = useState(false);
+    const menuTriggerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetchOrganizationUsers();
@@ -210,9 +237,7 @@ export function OrganizationDetailModal({
                 {/* Header */}
                 <div className="px-8 pt-6 pb-4 border-b border-gray-100 flex justify-between items-start">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            {organization.name}
-                        </h2>
+                        <h2 className="text-xl font-semibold text-gray-900">{organization.name}</h2>
                         <p className="mt-1 text-xs text-gray-500">Partner organization</p>
                     </div>
                     <button
@@ -303,40 +328,50 @@ export function OrganizationDetailModal({
                                                 {user.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm relative">
-                                            <button
-                                                onClick={() =>
-                                                    setActiveMenuUserId(
-                                                        activeMenuUserId === user.id
-                                                            ? null
-                                                            : user.id
-                                                    )
+                                        <td className="px-6 py-4 text-sm">
+                                            <div
+                                                ref={
+                                                    activeMenuUserId === user.id
+                                                        ? menuTriggerRef
+                                                        : undefined
                                                 }
-                                                className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                                className="relative inline-block"
                                             >
-                                                ⋯
-                                            </button>
-                                            {activeMenuUserId === user.id && (
-                                                <UserActionsMenu
-                                                    user={user}
-                                                    onResendInvitation={
-                                                        user.status === 'Invited' &&
-                                                        user.invitationId
-                                                            ? () => {
-                                                                  handleResendInvitation(
-                                                                      user.invitationId!
-                                                                  );
-                                                                  setActiveMenuUserId(null);
-                                                              }
-                                                            : undefined
+                                                <button
+                                                    onClick={() =>
+                                                        setActiveMenuUserId(
+                                                            activeMenuUserId === user.id
+                                                                ? null
+                                                                : user.id
+                                                        )
                                                     }
-                                                    onDelete={() => {
-                                                        handleDeleteUser(user);
-                                                        setActiveMenuUserId(null);
-                                                    }}
-                                                    onClose={() => setActiveMenuUserId(null)}
-                                                />
-                                            )}
+                                                    className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                                >
+                                                    ⋯
+                                                </button>
+                                                {activeMenuUserId === user.id && (
+                                                    <UserActionsMenu
+                                                        triggerRef={menuTriggerRef}
+                                                        user={user}
+                                                        onResendInvitation={
+                                                            user.status === 'Invited' &&
+                                                            user.invitationId
+                                                                ? () => {
+                                                                      handleResendInvitation(
+                                                                          user.invitationId!
+                                                                      );
+                                                                      setActiveMenuUserId(null);
+                                                                  }
+                                                                : undefined
+                                                        }
+                                                        onDelete={() => {
+                                                            handleDeleteUser(user);
+                                                            setActiveMenuUserId(null);
+                                                        }}
+                                                        onClose={() => setActiveMenuUserId(null)}
+                                                    />
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -390,33 +425,39 @@ export function OrganizationDetailModal({
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right relative">
-                      <button
-                        onClick={() =>
-                          setActiveMenuUserId(activeMenuUserId === user.id ? null : user.id)
-                        }
-                        className="text-gray-400 hover:text-[#608D6A] transition-colors"
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div
+                        ref={activeMenuUserId === user.id ? menuTriggerRef : undefined}
+                        className="relative inline-block"
                       >
-                        <MoreVertical className="h-5 w-5" />
-                      </button>
-                      {activeMenuUserId === user.id && (
-                        <UserActionsMenu
-                          user={user}
-                          onResendInvitation={
-                            user.status === "Invited" && user.invitationId
-                              ? () => {
-                                  handleResendInvitation(user.invitationId!);
-                                  setActiveMenuUserId(null);
-                                }
-                              : undefined
+                        <button
+                          onClick={() =>
+                            setActiveMenuUserId(activeMenuUserId === user.id ? null : user.id)
                           }
-                          onDelete={() => {
-                            handleDeleteUser(user);
-                            setActiveMenuUserId(null);
-                          }}
-                          onClose={() => setActiveMenuUserId(null)}
-                        />
-                      )}
+                          className="text-gray-400 hover:text-[#608D6A] transition-colors"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </button>
+                        {activeMenuUserId === user.id && (
+                          <UserActionsMenu
+                            triggerRef={menuTriggerRef}
+                            user={user}
+                            onResendInvitation={
+                              user.status === "Invited" && user.invitationId
+                                ? () => {
+                                    handleResendInvitation(user.invitationId!);
+                                    setActiveMenuUserId(null);
+                                  }
+                                : undefined
+                            }
+                            onDelete={() => {
+                              handleDeleteUser(user);
+                              setActiveMenuUserId(null);
+                            }}
+                            onClose={() => setActiveMenuUserId(null)}
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -432,8 +473,10 @@ export function OrganizationDetailModal({
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 border border-[#B7D7BD]">
                         <div className="p-6">
                             <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
-                                     style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}>
+                                <div
+                                    className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+                                    style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}
+                                >
                                     <span className="text-2xl">⚠️</span>
                                 </div>
                                 <div className="flex-1">
@@ -548,12 +591,14 @@ export function OrganizationDetailModal({
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-[#B7D7BD]">
                         <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-base font-semibold text-gray-900">Invitation sent</h3>
+                            <h3 className="text-base font-semibold text-gray-900">
+                                Invitation sent
+                            </h3>
                             <Mail className="h-5 w-5 text-[#608D6A]" />
                         </div>
                         <p className="text-sm text-gray-600 mb-6">
-                            We sent a message to {newUserEmail || 'the user'} with a link for them to
-                            join {organization.name}.
+                            We sent a message to {newUserEmail || 'the user'} with a link for them
+                            to join {organization.name}.
                         </p>
                         <button
                             onClick={() => setShowInvitationSent(false)}
@@ -569,29 +614,52 @@ export function OrganizationDetailModal({
     );
 }
 
-// User Actions Menu Component
+const MENU_WIDTH = 192; // w-48
+const MENU_ITEM_HEIGHT = 40;
+const MENU_PADDING = 8;
+
+// User Actions Menu Component – renders in a portal below the trigger so it doesn't affect card layout
 function UserActionsMenu({
+    triggerRef,
     user,
     onResendInvitation,
     onDelete,
     onClose,
 }: {
+    triggerRef: React.RefObject<HTMLDivElement | null>;
     user: User;
     onResendInvitation?: () => void;
     onDelete: () => void;
     onClose: () => void;
 }) {
+    const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+    useLayoutEffect(() => {
+        if (!triggerRef?.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const itemCount = 2 + (onResendInvitation ? 1 : 0);
+        const menuHeight = MENU_ITEM_HEIGHT * itemCount + MENU_PADDING * 2;
+        let top = rect.bottom + MENU_PADDING;
+        let left = rect.right + MENU_PADDING;
+        if (top + menuHeight > window.innerHeight - 10) {
+            top = rect.top - menuHeight - MENU_PADDING;
+        }
+        left = Math.max(10, Math.min(left, window.innerWidth - MENU_WIDTH - 10));
+        setPosition({ top, left });
+    }, [triggerRef, onResendInvitation]);
+
     useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            onClose();
-        };
+        const handleClickOutside = () => onClose();
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
     }, [onClose]);
 
-    return (
+    if (position === null || typeof document === 'undefined') return null;
+
+    const menu = (
         <div
-            className="absolute right-0 top-12 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]"
+            style={{ top: position.top, left: position.left }}
             onClick={e => e.stopPropagation()}
             onMouseLeave={onClose}
         >
@@ -604,14 +672,12 @@ function UserActionsMenu({
             >
                 Edit
             </button>
-
             <button
                 onClick={onDelete}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
             >
                 Delete
             </button>
-
             {onResendInvitation && (
                 <button
                     onClick={onResendInvitation}
@@ -622,4 +688,6 @@ function UserActionsMenu({
             )}
         </div>
     );
+
+    return createPortal(menu, document.body);
 }
