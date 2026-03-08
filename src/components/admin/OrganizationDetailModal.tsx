@@ -635,31 +635,46 @@ function UserActionsMenu({
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
     useLayoutEffect(() => {
-        if (!triggerRef?.current) return;
-        const rect = triggerRef.current.getBoundingClientRect();
-        const itemCount = 2 + (onResendInvitation ? 1 : 0);
-        const menuHeight = MENU_ITEM_HEIGHT * itemCount + MENU_PADDING * 2;
-        let top = rect.bottom + MENU_PADDING;
-        let left = rect.right + MENU_PADDING;
-        if (top + menuHeight > window.innerHeight - 10) {
-            top = rect.top - menuHeight - MENU_PADDING;
+        const measure = () => {
+            const el = triggerRef?.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const itemCount = 2 + (onResendInvitation ? 1 : 0);
+            const menuHeight = MENU_ITEM_HEIGHT * itemCount + MENU_PADDING * 2;
+            let top = rect.bottom + MENU_PADDING;
+            let left = rect.right + MENU_PADDING;
+            if (top + menuHeight > window.innerHeight - 10) {
+                top = rect.top - menuHeight - MENU_PADDING;
+            }
+            left = Math.max(10, Math.min(left, window.innerWidth - MENU_WIDTH - 10));
+            setPosition({ top, left });
+        };
+        measure();
+        if (!triggerRef?.current) {
+            const raf = requestAnimationFrame(() => {
+                measure();
+            });
+            return () => cancelAnimationFrame(raf);
         }
-        left = Math.max(10, Math.min(left, window.innerWidth - MENU_WIDTH - 10));
-        setPosition({ top, left });
     }, [triggerRef, onResendInvitation]);
 
     useEffect(() => {
         const handleClickOutside = () => onClose();
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
+        const id = setTimeout(() => {
+            document.addEventListener('click', handleClickOutside);
+        }, 0);
+        return () => {
+            clearTimeout(id);
+            document.removeEventListener('click', handleClickOutside);
+        };
     }, [onClose]);
 
     if (position === null || typeof document === 'undefined') return null;
 
     const menu = (
         <div
-            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]"
-            style={{ top: position.top, left: position.left }}
+            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+            style={{ zIndex: 9999, top: position.top, left: position.left }}
             onClick={e => e.stopPropagation()}
             onMouseLeave={onClose}
         >
