@@ -67,7 +67,7 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
                 onClick={onClick}
                 role={onClick ? 'button' : undefined}
             >
-                <div className="text-[13px] text-slate-600 tabular-nums">
+                <div className="text-[13px] text-slate-600 tabular-nums" suppressHydrationWarning>
                     {format(new Date(date), 'M/d/yyyy')}
                 </div>
                 <div
@@ -95,20 +95,26 @@ const DeliverySummaryRow: React.FC<DeliverySummaryRowProps> = ({
             onClick={onClick}
             className="grid grid-cols-[100px_1fr_72px_auto] items-center gap-4 px-4 py-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer group"
         >
-            <div className="text-xs text-gray-600 tabular-nums">
+            <div className="text-xs text-gray-600 tabular-nums" suppressHydrationWarning>
                 {new Date(date).toLocaleDateString('en-US', {
                     month: 'numeric',
                     day: 'numeric',
                     year: 'numeric',
+                    timeZone: 'UTC',
                 })}
             </div>
-            <div className="text-xs font-medium text-gray-900 min-w-0 truncate" title={organization}>
+            <div
+                className="text-xs font-medium text-gray-900 min-w-0 truncate"
+                title={organization}
+            >
                 {organization}
             </div>
             <div className="text-xs font-medium text-right tabular-nums text-[#608D6A]">
                 {totalPounds.toLocaleString()} lbs
             </div>
-            {onClick && <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+            {onClick && (
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />
+            )}
         </div>
     );
 };

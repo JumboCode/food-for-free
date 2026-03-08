@@ -170,11 +170,10 @@ export default function CalendarPage() {
             <FoodTypesDonutChart />
 
             <DeliverySummaryRow
-                date={new Date()}
+                date={new Date('2025-01-15T12:00:00Z')}
                 organization="Food For Free"
                 name="Fresh Apples"
                 totalPounds={100}
-                tags={['Pallet']}
                 id={1}
             />
 
