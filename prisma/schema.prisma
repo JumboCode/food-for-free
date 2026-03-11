@@ -28,29 +28,6 @@ model Partner {
   users               User[]   @relation("UserPartner")
 }
 
-model UploadedSheet {
-  id        String            @id @default(uuid())
-  fileName  String
-  sheetName String
-  createdAt DateTime          @default(now())
-  records   InventoryRecord[]
-}
-
-model InventoryRecord {
-  id              String         @id @default(uuid())
-  product         String
-  inventoryType   String?
-  amount          Int?
-  units           String?
-  weightLbs       Float?
-  source          String?
-  destination     String?
-  createdAt       DateTime       @default(now())
-  uploadedSheetId String?
-  date            DateTime?
-  uploadedSheet   UploadedSheet? @relation(fields: [uploadedSheetId], references: [id])
-}
-
 model InventoryTransaction {
   id                         Int              @id @default(autoincrement())
   date                       DateTime
@@ -94,6 +71,8 @@ model AllInventoryTransactions {
   location                   String
   pantryProductName          String
   inventoryType              String
+  minimallyProcessedFood     Boolean?
+  productType                ProductType?
   amount                     Int
   productUnitsForDisplay     String?
   weightLbs                  Float?
@@ -129,6 +108,16 @@ model AllProductPackageDestinations {
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
+}
+
+enum ProductType {
+  DAIRY
+  DRY_GOODS
+  BAKERY
+  FROZEN_MEAT
+  MISC_COLD
+  NON_FOOD
+  PRODUCE
 }
 
 enum Role {
