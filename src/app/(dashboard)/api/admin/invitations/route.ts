@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         const client = await clerkClient();
         let targetOrganizationId = organizationId;
 
-        // If organizationName is provided, create the organization first
+        // If organizationName is provided, reuse the organization in Clerk (or create it if missing)
         if (organizationName) {
             try {
                 // Check if organization already exists
@@ -47,10 +47,17 @@ export async function POST(req: NextRequest) {
 
                 try {
                     const existing = await client.organizations.getOrganization({ slug });
-                    return NextResponse.json(
-                        { error: 'Organization with this name already exists' },
-                        { status: 409 }
-                    );
+                    targetOrganizationId = existing.id;
+
+                    // Ensure matching Partner exists in Neon for webhook association
+                    await prisma.partner.upsert({
+                        where: { clerkOrganizationId: existing.id },
+                        update: { organizationName },
+                        create: {
+                            organizationName,
+                            clerkOrganizationId: existing.id,
+                        },
+                    });
                 } catch {
                     // Organization doesn't exist, proceed with creation
                 }
@@ -61,9 +68,11 @@ export async function POST(req: NextRequest) {
                 });
 
                 // Create matching Partner in Neon so webhook can associate invited users with this org
-                await prisma.partner.create({
-                    data: {
-                        organizationName: organizationName,
+                await prisma.partner.upsert({
+                    where: { clerkOrganizationId: newOrg.id },
+                    update: { organizationName },
+                    create: {
+                        organizationName,
                         clerkOrganizationId: newOrg.id,
                     },
                 });
