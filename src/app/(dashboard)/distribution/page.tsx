@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, Download } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 
 interface DeliveryRecord {
-    householdId18: number;
-    date: Date;
+    householdId18: string;
+    date: string;
     organizationName: string;
     productName: string;
     weightLbs: number;
@@ -51,6 +51,7 @@ function DistributionContent() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [dateRange, setDateRange] = useState(() => parseDateRangeFromSearchParams(searchParams));
     const [exporting, setExporting] = useState(false);
 
@@ -59,7 +60,12 @@ function DistributionContent() {
     const endParam = searchParams.get('end');
     useEffect(() => {
         setDateRange(parseDateRangeFromSearchParams(searchParams));
-    }, [startParam, endParam]);
+    }, [searchParams, startParam, endParam]);
+
+    useEffect(() => {
+        const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+        return () => clearTimeout(id);
+    }, [searchTerm]);
 
     const handleExport = async () => {
         setExporting(true);
@@ -67,7 +73,9 @@ function DistributionContent() {
             const startStr = dateRange.start.toISOString();
             const endStr = dateRange.end.toISOString();
             const response = await fetch(
-                `/api/distribution?start=${startStr}&end=${endStr}&search=${encodeURIComponent(searchTerm)}`
+                `/api/distribution?start=${startStr}&end=${endStr}&search=${encodeURIComponent(
+                    debouncedSearch
+                )}`
             );
 
             if (!response.ok) {
@@ -100,7 +108,12 @@ function DistributionContent() {
         async function fetchData() {
             setLoading(true);
             try {
-                const response = await fetch('/api/admin/deliveries');
+                const params = new URLSearchParams({
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                    search: debouncedSearch,
+                });
+                const response = await fetch(`/api/admin/deliveries?${params.toString()}`);
                 if (!response.ok) throw new Error('Failed to fetch data.');
                 const json = await response.json();
                 setData(json);
@@ -111,19 +124,7 @@ function DistributionContent() {
             }
         }
         fetchData();
-    }, []);
-
-    const filteredData = useMemo(() => {
-        const search = searchTerm.trim().toLowerCase();
-        if (!search) return data;
-        return data.filter(d => {
-            return (
-                (d.organizationName || '').toLowerCase().includes(search) ||
-                (d.productName || '').toLowerCase().includes(search) ||
-                (d.inventoryType || '').toLowerCase().includes(search)
-            );
-        });
-    }, [data, searchTerm]);
+    }, [dateRange.start, dateRange.end, debouncedSearch]);
 
     return (
         <div className="min-h-screen bg-[#fafaf9]">
@@ -193,8 +194,8 @@ function DistributionContent() {
                                             Loading…
                                         </td>
                                     </tr>
-                                ) : filteredData.length > 0 ? (
-                                    filteredData.map((d, index) => (
+                                ) : data.length > 0 ? (
+                                    data.map((d, index) => (
                                         <tr
                                             key={`${d.householdId18}-${index}-${d.productName}-${d.date}`}
                                             className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors"
