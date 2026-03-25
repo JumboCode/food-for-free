@@ -44,9 +44,11 @@ export async function POST(req: NextRequest) {
             try {
                 // Check if organization already exists
                 const slug = organizationName.toLowerCase().replace(/\s+/g, '-');
+                let existingOrganizationId: string | null = null;
 
                 try {
                     const existing = await client.organizations.getOrganization({ slug });
+                    existingOrganizationId = existing.id;
                     targetOrganizationId = existing.id;
 
                     // Ensure matching Partner exists in Neon for webhook association
@@ -62,22 +64,24 @@ export async function POST(req: NextRequest) {
                     // Organization doesn't exist, proceed with creation
                 }
 
-                const newOrg = await client.organizations.createOrganization({
-                    name: organizationName,
-                    createdBy: userId,
-                });
+                if (!existingOrganizationId) {
+                    const newOrg = await client.organizations.createOrganization({
+                        name: organizationName,
+                        createdBy: userId,
+                    });
 
-                // Create matching Partner in Neon so webhook can associate invited users with this org
-                await prisma.partner.upsert({
-                    where: { clerkOrganizationId: newOrg.id },
-                    update: { organizationName },
-                    create: {
-                        organizationName,
-                        clerkOrganizationId: newOrg.id,
-                    },
-                });
+                    // Create matching Partner in Neon so webhook can associate invited users with this org
+                    await prisma.partner.upsert({
+                        where: { clerkOrganizationId: newOrg.id },
+                        update: { organizationName },
+                        create: {
+                            organizationName,
+                            clerkOrganizationId: newOrg.id,
+                        },
+                    });
 
-                targetOrganizationId = newOrg.id;
+                    targetOrganizationId = newOrg.id;
+                }
             } catch (error) {
                 console.error('Error creating organization:', error);
                 return NextResponse.json(

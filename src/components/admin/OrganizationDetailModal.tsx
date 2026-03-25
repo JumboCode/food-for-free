@@ -140,7 +140,7 @@ export function OrganizationDetailModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: newUserEmail.trim(),
-                    organizationName: organization.name,
+                    organizationId: organization.id,
                 }),
             });
 
