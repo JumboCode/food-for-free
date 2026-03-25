@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { requireAdmin } from '@/lib/admin';
+import { prisma } from '~/lib/prisma';
 
 export async function GET(
-    req: NextRequest,
+    _req: NextRequest,
     { params }: { params: Promise<{ organizationId: string }> }
 ) {
     try {
@@ -13,46 +13,38 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin();
-
         const { organizationId } = await params;
         const client = await clerkClient();
 
-        // Get organization members
-        const memberships = await client.organizations.getOrganizationMembershipList({
-            organizationId,
-            limit: 100,
+        const users = await prisma.user.findMany({
+            where: {
+                partner: {
+                    clerkOrganizationId: organizationId,
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
         });
 
-        // Get user details for each member
-        const members = await Promise.all(
-            memberships.data
-                .filter(membership => membership.publicUserData !== null) // ← Filter out nulls
-                .map(async membership => {
-                    const user = await client.users.getUser(membership.publicUserData!.userId);
-
-                    return {
-                        id: membership.id,
-                        userId: user.id,
-                        organizationId: membership.organization.id,
-                        role: membership.role,
-                        user: {
-                            id: user.id,
-                            firstName: user.firstName,
-                            lastName: user.lastName,
-                            email: user.emailAddresses[0]?.emailAddress || '',
-                            imageUrl: user.imageUrl,
-                        },
-                    };
-                })
-        );
-
-        // Get pending invitations
         const invitations = await client.organizations.getOrganizationInvitationList({
             organizationId,
             status: ['pending'],
             limit: 100,
         });
+
+        const members = users.map(user => ({
+            id: user.id,
+            userId: user.clerkId,
+            organizationId,
+            role: user.role,
+            user: {
+                id: user.id,
+                firstName: null,
+                lastName: null,
+                email: user.email,
+            },
+        }));
 
         return NextResponse.json({
             members,

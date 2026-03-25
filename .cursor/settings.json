@@ -1,0 +1,7 @@
+{
+  "plugins": {
+    "neon-postgres": {
+      "enabled": true
+    }
+  }
+}

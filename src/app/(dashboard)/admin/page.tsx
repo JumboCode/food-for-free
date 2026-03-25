@@ -14,30 +14,6 @@ interface Organization {
     createdAt: string;
 }
 
-const DUMMY_ORGS: Organization[] = [
-    {
-        id: '1',
-        name: 'Food for Free',
-        slug: 'food-for-free',
-        membersCount: 3,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: '2',
-        name: 'Central Assembly of God',
-        slug: 'central-assembly-of-god',
-        membersCount: 3,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: '3',
-        name: 'Bunker Hill Community College',
-        slug: 'bunker-hill-community-college',
-        membersCount: 2,
-        createdAt: new Date().toISOString(),
-    },
-];
-
 const THEME_GREEN = '#B7D7BD';
 
 //main Admin Console Page
@@ -53,13 +29,21 @@ const AdminConsolePage: React.FC = () => {
     }, []);
 
     const fetchOrganizations = async () => {
-        setIsLoading(true);
+        try {
+            setIsLoading(true);
+            const response = await fetch('/api/admin/organizations');
+            if (!response.ok) {
+                throw new Error('Failed to fetch organizations');
+            }
 
-        // frontend only - use dummy data for now
-        setTimeout(() => {
-            setOrganizations(DUMMY_ORGS);
+            const data = await response.json();
+            setOrganizations(data.organizations ?? []);
+        } catch (error) {
+            console.error('Error fetching organizations:', error);
+            setOrganizations([]);
+        } finally {
             setIsLoading(false);
-        }, 500);
+        }
     };
 
     //Handle creating new organization

@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 
 // GET - List all organizations
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const { userId } = await auth();
 
@@ -12,31 +12,34 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await requireAdmin();
-
         const client = await clerkClient();
 
-        // Get all organizations
+        // Get all organizations from Clerk
         const organizationsResponse = await client.organizations.getOrganizationList({
             limit: 100,
         });
 
-        // Get member counts for each organization
-        const organizationsWithCounts = await Promise.all(
-            organizationsResponse.data.map(async org => {
-                const memberships = await client.organizations.getOrganizationMembershipList({
-                    organizationId: org.id,
-                });
+        const clerkOrgIds = organizationsResponse.data.map(org => org.id);
+        const partners = await prisma.partner.findMany({
+            where: { clerkOrganizationId: { in: clerkOrgIds } },
+            include: {
+                _count: {
+                    select: { users: true },
+                },
+            },
+        });
 
-                return {
-                    id: org.id,
-                    name: org.name,
-                    slug: org.slug,
-                    membersCount: memberships.data.length,
-                    createdAt: org.createdAt.toString(),
-                };
-            })
+        const memberCountByOrgId = new Map(
+            partners.map(partner => [partner.clerkOrganizationId, partner._count.users])
         );
+
+        const organizationsWithCounts = organizationsResponse.data.map(org => ({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            membersCount: memberCountByOrgId.get(org.id) ?? 0,
+            createdAt: org.createdAt.toString(),
+        }));
 
         return NextResponse.json({
             organizations: organizationsWithCounts,
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
                         { status: 409 }
                     );
                 }
-            } catch (error) {
+            } catch {
                 // Organization doesn't exist, which is what we want
             }
         }

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MoreVertical, ExternalLink, User, Mail } from 'lucide-react';
-import PartnerOrganizationTable from '../PartnerOrganizationTable';
+import { X, User, Mail } from 'lucide-react';
 
 interface Organization {
     id: string;
@@ -50,59 +49,6 @@ interface OrganizationDetailModalProps {
     onUpdate: () => void;
 }
 
-// Mock users for Food for Free (admins)
-const FOOD_FOR_FREE_USERS: User[] = [
-    { id: '1', name: 'Alex', email: 'alex@foodforfree.org', status: 'Active', role: 'admin' },
-    { id: '2', name: 'Nick', email: 'nick@foodforfree.org', status: 'Active', role: 'admin' },
-    { id: '3', name: 'Tom', email: 'tom@foodforfree.org', status: 'Active', role: 'admin' },
-];
-
-// Mock users for other partner orgs (fewer, generic)
-const CENTRAL_ASSEMBLY_USERS: User[] = [
-    {
-        id: '4',
-        name: 'Maria Santos',
-        email: 'maria.santos@example.org',
-        status: 'Active',
-        role: 'member',
-    },
-    { id: '5', name: 'James Chen', email: 'j.chen@example.org', status: 'Active', role: 'member' },
-    {
-        id: '6',
-        name: 'Sarah Williams',
-        email: 's.williams@example.org',
-        status: 'Invited',
-        role: 'member',
-        invitationId: 'inv-ca-1',
-    },
-];
-
-const BUNKER_HILL_USERS: User[] = [
-    { id: '7', name: 'David Park', email: 'd.park@bhcc.edu', status: 'Active', role: 'member' },
-    {
-        id: '8',
-        name: 'Lisa Johnson',
-        email: 'l.johnson@bhcc.edu',
-        status: 'Active',
-        role: 'member',
-    },
-];
-
-function getUsersForOrganization(orgName: string): User[] {
-    if (orgName === 'Food for Free') return FOOD_FOR_FREE_USERS;
-    if (orgName === 'Central Assembly of God') return CENTRAL_ASSEMBLY_USERS;
-    if (orgName === 'Bunker Hill Community College') return BUNKER_HILL_USERS;
-    return [
-        {
-            id: '9',
-            name: 'Partner User',
-            email: 'user@partner.org',
-            status: 'Active',
-            role: 'member',
-        },
-    ];
-}
-
 const THEME_GREEN = '#B7D7BD';
 const THEME_ORANGE = '#FAC87D';
 
@@ -123,20 +69,54 @@ export function OrganizationDetailModal({
     const [showInvitationSent, setShowInvitationSent] = useState(false);
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        fetchOrganizationUsers();
-    }, [organization.id, organization.name]);
+    const fetchOrganizationUsers = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch(`/api/admin/organizations/${organization.id}/users`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch organization users');
+            }
 
-    const fetchOrganizationUsers = async () => {
-        //frontend only - just use dummy data
-        setIsLoading(true);
+            const data: {
+                members?: OrganizationMember[];
+                invitations?: OrganizationInvitation[];
+            } = await response.json();
 
-        //simulate loading delay
-        setTimeout(() => {
-            setUsers(getUsersForOrganization(organization.name));
+            const activeUsers: User[] = (data.members ?? []).map(member => {
+                const firstName = member.user.firstName ?? '';
+                const lastName = member.user.lastName ?? '';
+                const fullName = `${firstName} ${lastName}`.trim();
+
+                return {
+                    id: member.id,
+                    name: fullName || member.user.email,
+                    email: member.user.email,
+                    status: 'Active',
+                    role: member.role,
+                };
+            });
+
+            const invitedUsers: User[] = (data.invitations ?? []).map(invitation => ({
+                id: invitation.id,
+                name: invitation.emailAddress,
+                email: invitation.emailAddress,
+                status: 'Invited',
+                role: invitation.role,
+                invitationId: invitation.id,
+            }));
+
+            setUsers([...activeUsers, ...invitedUsers]);
+        } catch (error) {
+            console.error('Error fetching organization users:', error);
+            setUsers([]);
+        } finally {
             setIsLoading(false);
-        }, 500);
-    };
+        }
+    }, [organization.id]);
+
+    useEffect(() => {
+        void fetchOrganizationUsers();
+    }, [fetchOrganizationUsers]);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -180,7 +160,7 @@ export function OrganizationDetailModal({
         }
     };
 
-    const handleResendInvitation = async (invitationId: string) => {
+    const handleResendInvitation = async () => {
         setShowInvitationSent(true);
 
         //hide it after 3 seconds
@@ -225,10 +205,6 @@ export function OrganizationDetailModal({
         // } catch (error) {
         //     console.error('Error deleting user:', error);
         // }
-    };
-
-    const handleViewDashboard = () => {
-        window.open(`/organizations/${organization.slug}`, '_blank');
     };
 
     return (
@@ -304,7 +280,7 @@ export function OrganizationDetailModal({
                                 </tr>
                             </thead>
                             <tbody className="bg-white">
-                                {users.map((user, index) => (
+                                {users.map(user => (
                                     <tr
                                         key={user.id}
                                         className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
@@ -357,9 +333,7 @@ export function OrganizationDetailModal({
                                                             user.status === 'Invited' &&
                                                             user.invitationId
                                                                 ? () => {
-                                                                      handleResendInvitation(
-                                                                          user.invitationId!
-                                                                      );
+                                                                      void handleResendInvitation();
                                                                       setActiveMenuUserId(null);
                                                                   }
                                                                 : undefined
@@ -445,7 +419,7 @@ export function OrganizationDetailModal({
                             onResendInvitation={
                               user.status === "Invited" && user.invitationId
                                 ? () => {
-                                    handleResendInvitation(user.invitationId!);
+                                    void handleResendInvitation();
                                     setActiveMenuUserId(null);
                                   }
                                 : undefined

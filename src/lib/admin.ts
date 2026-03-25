@@ -1,6 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/../lib/prisma';
-import { redirect } from 'next/navigation';
 
 /**
  * Check if the current user is an admin.
@@ -8,7 +7,7 @@ import { redirect } from 'next/navigation';
  * - In other server contexts, call without args to let Clerk's `auth()` resolve it.
  */
 export async function isAdmin(userIdOverride?: string | null): Promise<boolean> {
-    let userId = userIdOverride ?? (await auth()).userId;
+    const userId = userIdOverride ?? (await auth()).userId;
     if (!userId) return false;
 
     const dbUser = await prisma.user.findUnique({
@@ -37,7 +36,6 @@ export async function getCurrentUser() {
 export async function requireAdmin() {
     const admin = await isAdmin();
     if (!admin) {
-        redirect('/dashboard');
         throw new Error('Unauthorized: Admin access required');
     }
 }
