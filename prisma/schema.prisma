@@ -109,6 +109,8 @@ model AllProductPackageDestinations {
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
+
+  @@index([destinationId])
 }
 
 enum Role {
