@@ -105,6 +105,7 @@ model AllProductPackageDestinations {
   productPackageName String
   productPackageId18 String           @unique
   householdName      String
+  destinationId      String
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
