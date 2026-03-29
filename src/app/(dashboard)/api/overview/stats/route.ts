@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
 import {
+    getOverviewScope,
+    overviewScopeErrorResponse,
+    scopeToPartnerFilter,
+} from '~/lib/overviewAccess';
+import {
     fetchPartnerDestinationsInRange,
     sumWeightsByProductPackageId,
 } from '~/lib/overviewPartnerMetrics';
@@ -30,10 +35,12 @@ function getDefaultRange(): { start: Date; end: Date } {
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
+        const scope = await getOverviewScope(searchParams.get('destination'));
+        const scopeErr = overviewScopeErrorResponse(scope);
+        if (scopeErr) return scopeErr;
+
         const range = parseDateRange(searchParams) ?? getDefaultRange();
-        const destination = searchParams.get('destination') ?? undefined;
-        const partnerFilter =
-            destination && destination !== 'All Organizations' ? destination : undefined;
+        const partnerFilter = scopeToPartnerFilter(scope);
 
         if (partnerFilter) {
             const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);

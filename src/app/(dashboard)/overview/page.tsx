@@ -51,6 +51,12 @@ const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
 const THEME_ORANGE = '#FAC87D';
 
 const OverviewPage: React.FC = () => {
+    const [sessionCtx, setSessionCtx] = useState<{
+        ready: boolean;
+        isAdmin: boolean;
+        partnerName: string | null;
+    }>({ ready: false, isAdmin: false, partnerName: null });
+
     const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(getDefaultDateRange());
     const [activeFilter, setActiveFilter] = useState<string | null>('past12months');
     const [loading, setLoading] = useState(true);
@@ -65,6 +71,28 @@ const OverviewPage: React.FC = () => {
 
     useEffect(() => {
         let cancelled = false;
+        fetch('/api/user/context')
+            .then(res => (res.ok ? res.json() : Promise.reject()))
+            .then((d: { isAdmin?: boolean; partnerOrganizationName?: string | null }) => {
+                if (cancelled) return;
+                const isAdmin = Boolean(d.isAdmin);
+                const partnerName = d.partnerOrganizationName ?? null;
+                setSessionCtx({ ready: true, isAdmin, partnerName });
+                if (!isAdmin && partnerName) {
+                    setSelectedPartner(partnerName);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setSessionCtx({ ready: true, isAdmin: false, partnerName: null });
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject(new Error('Partners failed'))))
             .then((data: { partners?: PartnerOrgCard[] }) => {
@@ -77,9 +105,14 @@ const OverviewPage: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [sessionCtx.ready, sessionCtx.isAdmin]);
+
+    const isPartnerDashboard =
+        sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
 
     const fetchOverviewData = useCallback(async () => {
+        if (!sessionCtx.ready) return;
+
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
         const params = new URLSearchParams({ start, end });
@@ -137,10 +170,10 @@ const OverviewPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange, selectedPartner]);
+    }, [dateRange, selectedPartner, sessionCtx.ready]);
 
     useEffect(() => {
-        fetchOverviewData();
+        void fetchOverviewData();
     }, [fetchOverviewData]);
 
     const handleDateRangeChange = (range: { start: Date; end: Date }) => {
@@ -206,7 +239,14 @@ const OverviewPage: React.FC = () => {
                     <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                         Statistics Overview
                     </h1>
-                    {selectedPartner ? (
+                    {isPartnerDashboard && sessionCtx.partnerName ? (
+                        <p className="mt-2 text-sm text-gray-600">
+                            Showing deliveries for your organization:{' '}
+                            <span className="font-medium text-gray-900">
+                                {sessionCtx.partnerName}
+                            </span>
+                        </p>
+                    ) : selectedPartner ? (
                         <p className="mt-2 text-sm text-gray-600">
                             Partner view:{' '}
                             <span className="font-medium text-gray-900">{selectedPartner}</span>
@@ -222,12 +262,14 @@ const OverviewPage: React.FC = () => {
                     ) : null}
                 </div>
 
-                <div className="max-w-md">
-                    <SearchBarOverview
-                        organizations={partnerOrganizations}
-                        onSelectPartner={name => setSelectedPartner(name)}
-                    />
-                </div>
+                {sessionCtx.isAdmin ? (
+                    <div className="max-w-md">
+                        <SearchBarOverview
+                            organizations={partnerOrganizations}
+                            onSelectPartner={name => setSelectedPartner(name)}
+                        />
+                    </div>
+                ) : null}
 
                 {/* Filters + date range - compact single row on desktop */}
                 <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm px-3 py-2 sm:px-4 sm:py-2.5">

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
+import {
+    getOverviewScope,
+    overviewScopeErrorResponse,
+    scopeToPartnerFilter,
+} from '~/lib/overviewAccess';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -26,13 +31,17 @@ function getDefaultRange(): { start: Date; end: Date } {
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
+        const scope = await getOverviewScope(searchParams.get('destination'));
+        const scopeErr = overviewScopeErrorResponse(scope);
+        if (scopeErr) return scopeErr;
+
         const range = parseDateRange(searchParams) ?? getDefaultRange();
-        const destination = searchParams.get('destination') ?? undefined;
+        const destination = scopeToPartnerFilter(scope);
 
         const where: { date: { gte: Date; lte: Date }; destination?: string } = {
             date: { gte: range.start, lte: range.end },
         };
-        if (destination && destination !== 'All Organizations') {
+        if (destination) {
             where.destination = destination;
         }
 

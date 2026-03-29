@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ChartLine, Gift, Users } from 'lucide-react';
@@ -16,14 +16,29 @@ interface SideNavBarProps {
     items?: NavItem[];
 }
 
-const SideNavBar: React.FC<SideNavBarProps> = ({
-    items = [
-        { label: 'Overview', href: '/overview', icon: <ChartLine className="h-5 w-5" /> },
-        { label: 'Distribution', href: '/distribution', icon: <Gift className="h-5 w-5" /> },
-        { label: 'Admin', href: '/admin', icon: <Users className="h-5 w-5" /> },
-    ],
-}) => {
+const defaultItems: NavItem[] = [
+    { label: 'Overview', href: '/overview', icon: <ChartLine className="h-5 w-5" /> },
+    { label: 'Distribution', href: '/distribution', icon: <Gift className="h-5 w-5" /> },
+    { label: 'Admin', href: '/admin', icon: <Users className="h-5 w-5" /> },
+];
+
+const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
     const pathname = usePathname();
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        fetch('/api/user/context')
+            .then(res => (res.ok ? res.json() : Promise.reject()))
+            .then((d: { isAdmin?: boolean }) => setIsAdmin(Boolean(d.isAdmin)))
+            .catch(() => setIsAdmin(false));
+    }, []);
+
+    const items = useMemo(() => {
+        const base = itemsProp ?? defaultItems;
+        if (isAdmin === null) return base.filter(i => i.href !== '/admin');
+        if (!isAdmin) return base.filter(i => i.href !== '/admin');
+        return base;
+    }, [itemsProp, isAdmin]);
 
     return (
         <aside className="fixed left-0 bg-white h-screen top-0 w-16 sm:w-56 flex flex-col border-r border-gray-100">
@@ -41,7 +56,6 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                 </div>
             </a>
 
-            {/* navigation */}
             <nav className="flex flex-col flex-1 px-2 sm:px-3 space-y-1 mt-2">
                 {items.map(item => {
                     const isActive = pathname === item.href;
@@ -62,7 +76,6 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                 })}
             </nav>
 
-            {/* user profile */}
             <div className="px-2 sm:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
                 <div className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2">
                     <UserButton
