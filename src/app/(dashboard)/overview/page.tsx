@@ -6,9 +6,17 @@ import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
 import DeliverySummary from '@/components/ui/DeliverySummary';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
+import SearchBarOverview from '@/components/ui/SearchBarOverview';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
+
+type PartnerOrgCard = {
+    id: number;
+    name: string;
+    location: string;
+    type: string;
+};
 
 const MOCK_FOOD_TYPES: FoodTypeEntry[] = [
     { label: 'Produce', value: 340, color: '#A1C5B0' },
@@ -52,10 +60,31 @@ const OverviewPage: React.FC = () => {
     const [deliveriesCompleted, setDeliveriesCompleted] = useState(0);
     const [deliverySummaryData, setDeliverySummaryData] = useState<DeliverySummaryItem[]>([]);
     const [foodTypesData] = useState<FoodTypeEntry[]>(MOCK_FOOD_TYPES);
+    const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
+    const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/overview/partners')
+            .then(res => (res.ok ? res.json() : Promise.reject(new Error('Partners failed'))))
+            .then((data: { partners?: PartnerOrgCard[] }) => {
+                if (!cancelled)
+                    setPartnerOrganizations(Array.isArray(data.partners) ? data.partners : []);
+            })
+            .catch(() => {
+                if (!cancelled) setPartnerOrganizations([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const fetchOverviewData = useCallback(async () => {
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
-        const q = new URLSearchParams({ start, end }).toString();
+        const params = new URLSearchParams({ start, end });
+        if (selectedPartner) params.set('destination', selectedPartner);
+        const q = params.toString();
 
         setLoading(true);
         setError(null);
@@ -108,7 +137,7 @@ const OverviewPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dateRange, selectedPartner]);
 
     useEffect(() => {
         fetchOverviewData();
@@ -177,6 +206,27 @@ const OverviewPage: React.FC = () => {
                     <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                         Statistics Overview
                     </h1>
+                    {selectedPartner ? (
+                        <p className="mt-2 text-sm text-gray-600">
+                            Partner view:{' '}
+                            <span className="font-medium text-gray-900">{selectedPartner}</span>
+                            <span className="mx-2 text-gray-300">·</span>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedPartner(null)}
+                                className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                            >
+                                View all organizations
+                            </button>
+                        </p>
+                    ) : null}
+                </div>
+
+                <div className="max-w-md">
+                    <SearchBarOverview
+                        organizations={partnerOrganizations}
+                        onSelectPartner={name => setSelectedPartner(name)}
+                    />
                 </div>
 
                 {/* Filters + date range - compact single row on desktop */}

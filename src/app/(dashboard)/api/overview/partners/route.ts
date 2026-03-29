@@ -1,23 +1,13 @@
 import { NextResponse } from 'next/server';
-import prisma from '~/lib/prisma';
+import { getDistinctPartnerHouseholdNames } from '~/lib/overviewPartnerMetrics';
 
 /**
  * GET /api/overview/partners
- * Returns distinct destinations from InventoryTransaction for partner filter dropdown.
+ * Returns distinct partner (destination) names from AllProductPackageDestinations.householdName.
  */
 export async function GET() {
     try {
-        const records = await prisma.inventoryTransaction.findMany({
-            where: { destination: { not: null } },
-            select: { destination: true },
-            distinct: ['destination'],
-        });
-
-        const names = records
-            .map(r => r.destination)
-            .filter((d): d is string => d != null && d.trim() !== '');
-
-        const unique = Array.from(new Set(names)).sort();
+        const unique = await getDistinctPartnerHouseholdNames();
 
         return NextResponse.json({
             partners: unique.map((name, index) => ({

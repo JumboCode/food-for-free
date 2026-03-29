@@ -12,6 +12,8 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        await requireAdmin();
+
         const client = await clerkClient();
 
         // Get all organizations from Clerk

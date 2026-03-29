@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
+import {
+    fetchPartnerDestinationsInRange,
+    sumWeightsByProductPackageId,
+} from '~/lib/overviewPartnerMetrics';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -28,16 +32,48 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams;
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const destination = searchParams.get('destination') ?? undefined;
+        const partnerFilter =
+            destination && destination !== 'All Organizations' ? destination : undefined;
 
-        const where: { date: { gte: Date; lte: Date }; destination?: string } = {
+        if (partnerFilter) {
+            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
+            const packageIds = Array.from(
+                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
+            );
+            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
+
+            const byDay = new Map<string, { date: Date; totalPounds: number }>();
+            for (const row of destRows) {
+                const d = new Date(row.date);
+                const day = d.toISOString().slice(0, 10);
+                const w = weightsByPackage.get(row.productPackageId18) ?? 0;
+                const existing = byDay.get(day);
+                if (existing) {
+                    existing.totalPounds += w;
+                } else {
+                    byDay.set(day, { date: d, totalPounds: w });
+                }
+            }
+
+            const deliveries = Array.from(byDay.entries())
+                .map(([day, v]) => ({
+                    id: `${day}|${partnerFilter}`,
+                    date: v.date.toISOString(),
+                    totalPounds: Math.round(v.totalPounds),
+                    destination: partnerFilter,
+                }))
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .reverse();
+
+            return NextResponse.json({ deliveries: deliveries.slice(0, 10) });
+        }
+
+        const where = {
             date: {
                 gte: range.start,
                 lte: range.end,
             },
         };
-        if (destination && destination !== 'All Organizations') {
-            where.destination = destination;
-        }
 
         const records = await prisma.inventoryTransaction.findMany({
             where,

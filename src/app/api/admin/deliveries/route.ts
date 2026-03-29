@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 
 function getPast12MonthsRange(): { start: Date; end: Date } {
@@ -10,6 +12,16 @@ function getPast12MonthsRange(): { start: Date; end: Date } {
 }
 
 export async function GET(req: NextRequest) {
+    const { userId } = await auth();
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    try {
+        await requireAdmin();
+    } catch {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const startParam = searchParams.get('start');
     const endParam = searchParams.get('end');

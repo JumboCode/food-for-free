@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
+import {
+    fetchPartnerDestinationsInRange,
+    sumWeightsByProductPackageId,
+} from '~/lib/overviewPartnerMetrics';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -28,16 +32,35 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams;
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const destination = searchParams.get('destination') ?? undefined;
+        const partnerFilter =
+            destination && destination !== 'All Organizations' ? destination : undefined;
 
-        const where: { date: { gte: Date; lte: Date }; destination?: string } = {
+        if (partnerFilter) {
+            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
+            const packageIds = Array.from(
+                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
+            );
+            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
+
+            let totalPoundsDelivered = 0;
+            const deliveryDays = new Set<string>();
+            for (const row of destRows) {
+                totalPoundsDelivered += weightsByPackage.get(row.productPackageId18) ?? 0;
+                deliveryDays.add(new Date(row.date).toISOString().slice(0, 10));
+            }
+
+            return NextResponse.json({
+                totalPoundsDelivered: Math.round(totalPoundsDelivered),
+                deliveriesCompleted: deliveryDays.size,
+            });
+        }
+
+        const where = {
             date: {
                 gte: range.start,
                 lte: range.end,
             },
         };
-        if (destination && destination !== 'All Organizations') {
-            where.destination = destination;
-        }
 
         const records = await prisma.inventoryTransaction.findMany({
             where,

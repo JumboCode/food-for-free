@@ -39,6 +39,21 @@ export async function POST(req: NextRequest) {
         const client = await clerkClient();
         let targetOrganizationId = organizationId;
 
+        // Invites keyed by Clerk org id must still have a Partner row or the membership webhook cannot link users.
+        if (organizationId && !organizationName) {
+            const org = await client.organizations.getOrganization({
+                organizationId: targetOrganizationId!,
+            });
+            await prisma.partner.upsert({
+                where: { clerkOrganizationId: org.id },
+                update: { organizationName: org.name },
+                create: {
+                    organizationName: org.name,
+                    clerkOrganizationId: org.id,
+                },
+            });
+        }
+
         // If organizationName is provided, reuse the organization in Clerk (or create it if missing)
         if (organizationName) {
             try {

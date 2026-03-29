@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 
 export async function GET(
@@ -12,6 +13,8 @@ export async function GET(
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        await requireAdmin();
 
         const { organizationId } = await params;
         const client = await clerkClient();

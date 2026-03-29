@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
+import {
+    fetchPartnerDestinationsInRange,
+    sumWeightsByProductPackageId,
+} from '~/lib/overviewPartnerMetrics';
 
 const MONTH_NAMES = [
     'Jan',
@@ -39,21 +43,8 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams;
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const destination = searchParams.get('destination') ?? undefined;
-
-        const where: { date: { gte: Date; lte: Date }; destination?: string } = {
-            date: {
-                gte: range.start,
-                lte: range.end,
-            },
-        };
-        if (destination && destination !== 'All Organizations') {
-            where.destination = destination;
-        }
-
-        const records = await prisma.inventoryTransaction.findMany({
-            where,
-            select: { date: true, weightLbs: true },
-        });
+        const partnerFilter =
+            destination && destination !== 'All Organizations' ? destination : undefined;
 
         const daysDiff = Math.ceil(
             (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24)
@@ -67,18 +58,52 @@ export async function GET(request: NextRequest) {
 
         const buckets: Record<string, number> = {};
 
-        for (const r of records) {
-            const d = new Date(r.date);
-            const weight = r.weightLbs ?? 0;
-            let key: string;
-            if (aggregateByYear) {
-                key = d.getFullYear().toString();
-            } else if (aggregateByDay) {
-                key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-            } else {
-                key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+        if (partnerFilter) {
+            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
+            const packageIds = Array.from(
+                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
+            );
+            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
+
+            for (const row of destRows) {
+                const d = new Date(row.date);
+                const weight = weightsByPackage.get(row.productPackageId18) ?? 0;
+                let key: string;
+                if (aggregateByYear) {
+                    key = d.getFullYear().toString();
+                } else if (aggregateByDay) {
+                    key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                } else {
+                    key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+                }
+                buckets[key] = (buckets[key] ?? 0) + weight;
             }
-            buckets[key] = (buckets[key] ?? 0) + weight;
+        } else {
+            const where = {
+                date: {
+                    gte: range.start,
+                    lte: range.end,
+                },
+            };
+
+            const records = await prisma.inventoryTransaction.findMany({
+                where,
+                select: { date: true, weightLbs: true },
+            });
+
+            for (const r of records) {
+                const d = new Date(r.date);
+                const weight = r.weightLbs ?? 0;
+                let key: string;
+                if (aggregateByYear) {
+                    key = d.getFullYear().toString();
+                } else if (aggregateByDay) {
+                    key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                } else {
+                    key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+                }
+                buckets[key] = (buckets[key] ?? 0) + weight;
+            }
         }
 
         // Build ordered list of all periods in range so chart shows only range span

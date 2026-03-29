@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 
 export async function GET() {
     try {
+        const { userId } = await auth();
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        await requireAdmin();
         // Fetch data
         const destinations = await prisma.productPackageDestination.findMany();
 
@@ -102,6 +109,10 @@ export async function GET() {
         });
     } catch (error) {
         console.error('Error fetching destinations:', error);
+
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+            return NextResponse.json({ error: error.message }, { status: 403 });
+        }
 
         return NextResponse.json({ error: 'Failed to fetch destinations' }, { status: 500 });
     }
