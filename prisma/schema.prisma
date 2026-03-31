@@ -28,44 +28,6 @@ model Partner {
   users               User[]   @relation("UserPartner")
 }
 
-model InventoryTransaction {
-  id                         Int              @id @default(autoincrement())
-  date                       DateTime
-  location                   String
-  pantryProductName          String
-  inventoryType              String
-  amount                     Int
-  productUnitsForDisplay     String?
-  weightLbs                  Float?
-  source                     String?
-  destination                String?
-  productInventoryRecordId18 String           @unique
-}
-
-model PackagesByItem {
-  id                         Int                       @id @default(autoincrement())
-  productPackageName         String?
-  pantryProductName          String?
-  lotSourceAccountName       String?
-  lotFoodRescueProgram       String?
-  distributionAmount         Int?
-  pantryProductWeightLbs     Float?
-  distributionCost           Float?
-  productInventoryRecordId18 String?
-  productPackageId18         String?
-
-  @@index([productInventoryRecordId18])
-  @@index([productPackageId18])
-}
-
-model ProductPackageDestination {
-  id                 Int              @id @default(autoincrement())
-  productPackageName String
-  productPackageId18 String           @unique
-  householdName      String
-  householdId18      String
-}
-
 model AllInventoryTransactions {
   date                       DateTime
   location                   String
@@ -105,12 +67,37 @@ model AllProductPackageDestinations {
   productPackageName String
   productPackageId18 String           @unique
   householdName      String
-  destinationId      String
+  householdId18      String
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
 
-  @@index([destinationId])
+  @@index([householdId18])
+}
+
+model JustEatsBoxes {
+  id                                   Int       @id @default(autoincrement())
+  productPackageName                   String
+  productPackageRecordId               String
+  numberPickedUp                       Int?
+  numberDistributed                    Int?
+  pounds                               Float?
+  poundsDroppedOff                     Float?
+  poundsLost                           Float?
+  packageDistributionRecordId          String
+  packageDistributionCreatedDate       DateTime
+  packageDistributionLastModifiedDate  DateTime
+  householdName                        String
+  householdId                          String
+  pantryVisitDateTime                  DateTime
+  pantryVisitId                        String
+  pantryVisitCreatedDate               DateTime
+  pantryVisitLastModifiedDate          DateTime
+
+  @@index([productPackageRecordId])
+  @@index([packageDistributionRecordId])
+  @@index([householdId])
+  @@index([pantryVisitId])
 }
 
 enum Role {
