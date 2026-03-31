@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
             FROM "AllInventoryTransactions"
             WHERE "date" >= ${range.start}
               AND "date" <= ${range.end}
+              AND "destination" IS NOT NULL
+              AND BTRIM("destination") <> ''
         `;
         const stats = rows[0];
 

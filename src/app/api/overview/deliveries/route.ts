@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
             FROM "AllInventoryTransactions"
             WHERE "date" >= ${range.start}
               AND "date" <= ${range.end}
+              AND "destination" IS NOT NULL
+              AND BTRIM("destination") <> ''
             GROUP BY DATE_TRUNC('day', "date"), "destination"
             ORDER BY DATE_TRUNC('day', "date") DESC
             LIMIT 10

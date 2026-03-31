@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
             ON d."productPackageId18" = p."productPackageId18"
         WHERE t."date" >= ${start}
           AND t."date" <= ${end}
+          AND t."destination" IS NOT NULL
+          AND BTRIM(t."destination") <> ''
           ${searchClause}
         ORDER BY t."date" DESC
     `;

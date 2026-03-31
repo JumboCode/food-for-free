@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
         const records = await prisma.allInventoryTransactions.findMany({
             where: {
                 date: { gte: new Date(start), lte: new Date(end) },
+                destination: { not: null },
+                NOT: { destination: '' },
                 OR: [
                     { destination: { contains: search, mode: 'insensitive' } },
                     { pantryProductName: { contains: search, mode: 'insensitive' } },

@@ -38,12 +38,16 @@ export async function GET(request: NextRequest) {
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const destination = scopeToPartnerFilter(scope);
 
-        const where: { date: { gte: Date; lte: Date }; destination?: string } = {
-            date: { gte: range.start, lte: range.end },
-        };
-        if (destination) {
-            where.destination = destination;
-        }
+        const where = destination
+            ? {
+                  date: { gte: range.start, lte: range.end },
+                  destination,
+              }
+            : {
+                  date: { gte: range.start, lte: range.end },
+                  destination: { not: null as string | null },
+                  NOT: { destination: '' },
+              };
 
         const grouped = await prisma.allInventoryTransactions.groupBy({
             by: ['inventoryType'],
