@@ -5,10 +5,6 @@ import {
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
 } from '~/lib/overviewAccess';
-import {
-    fetchPartnerDestinationsInRange,
-    sumWeightsByProductPackageId,
-} from '~/lib/overviewPartnerMetrics';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -43,80 +39,60 @@ export async function GET(request: NextRequest) {
         const partnerFilter = scopeToPartnerFilter(scope);
 
         if (partnerFilter) {
-            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
-            const packageIds = Array.from(
-                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
-            );
-            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
+            type PartnerDeliveryRow = { day: Date; totalPounds: number | null };
+            const rows = await prisma.$queryRaw<PartnerDeliveryRow[]>`
+                SELECT
+                    DATE_TRUNC('day', d."date") AS "day",
+                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                FROM "AllProductPackageDestinations" d
+                LEFT JOIN "AllPackagesByItem" p
+                    ON p."productPackageId18" = d."productPackageId18"
+                WHERE d."householdName" ILIKE ${partnerFilter}
+                  AND d."date" >= ${range.start}
+                  AND d."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."date")
+                ORDER BY DATE_TRUNC('day', d."date") DESC
+                LIMIT 10
+            `;
 
-            const byDay = new Map<string, { date: Date; totalPounds: number }>();
-            for (const row of destRows) {
-                const d = new Date(row.date);
-                const day = d.toISOString().slice(0, 10);
-                const w = weightsByPackage.get(row.productPackageId18) ?? 0;
-                const existing = byDay.get(day);
-                if (existing) {
-                    existing.totalPounds += w;
-                } else {
-                    byDay.set(day, { date: d, totalPounds: w });
-                }
-            }
-
-            const deliveries = Array.from(byDay.entries())
-                .map(([day, v]) => ({
-                    id: `${day}|${partnerFilter}`,
-                    date: v.date.toISOString(),
-                    totalPounds: Math.round(v.totalPounds),
-                    destination: partnerFilter,
-                }))
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .reverse();
-
-            return NextResponse.json({ deliveries: deliveries.slice(0, 10) });
+            return NextResponse.json({
+                deliveries: rows.map(r => {
+                    const day = new Date(r.day).toISOString().slice(0, 10);
+                    return {
+                        id: `${day}|${partnerFilter}`,
+                        date: new Date(r.day).toISOString(),
+                        totalPounds: Math.round(Number(r.totalPounds ?? 0)),
+                        destination: partnerFilter,
+                    };
+                }),
+            });
         }
+        type DeliveryRow = { day: Date; destination: string | null; totalPounds: number | null };
+        const rows = await prisma.$queryRaw<DeliveryRow[]>`
+            SELECT
+                DATE_TRUNC('day', "date") AS "day",
+                "destination" AS "destination",
+                SUM(COALESCE("weightLbs", 0)) AS "totalPounds"
+            FROM "AllInventoryTransactions"
+            WHERE "date" >= ${range.start}
+              AND "date" <= ${range.end}
+            GROUP BY DATE_TRUNC('day', "date"), "destination"
+            ORDER BY DATE_TRUNC('day', "date") DESC
+            LIMIT 10
+        `;
 
-        const where = {
-            date: {
-                gte: range.start,
-                lte: range.end,
-            },
-        };
-
-        const records = await prisma.inventoryTransaction.findMany({
-            where,
-            select: { date: true, weightLbs: true, destination: true },
+        return NextResponse.json({
+            deliveries: rows.map(r => {
+                const day = new Date(r.day).toISOString().slice(0, 10);
+                const destination = r.destination ?? null;
+                return {
+                    id: `${day}|${destination ?? ''}`,
+                    date: new Date(r.day).toISOString(),
+                    totalPounds: Math.round(Number(r.totalPounds ?? 0)),
+                    destination,
+                };
+            }),
         });
-
-        const byKey = new Map<
-            string,
-            { date: Date; totalPounds: number; destination: string | null }
-        >();
-
-        for (const r of records) {
-            const d = new Date(r.date);
-            const day = d.toISOString().slice(0, 10);
-            const dest = r.destination ?? null;
-            const key = `${day}|${dest ?? ''}`;
-            const weight = r.weightLbs ?? 0;
-            const existing = byKey.get(key);
-            if (existing) {
-                existing.totalPounds += weight;
-            } else {
-                byKey.set(key, { date: d, totalPounds: weight, destination: dest });
-            }
-        }
-
-        const deliveries = Array.from(byKey.entries())
-            .map(([key, v]) => ({
-                id: key,
-                date: v.date.toISOString(),
-                totalPounds: Math.round(v.totalPounds),
-                destination: v.destination,
-            }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .reverse();
-
-        return NextResponse.json({ deliveries: deliveries.slice(0, 10) });
     } catch (err: unknown) {
         console.error('Overview deliveries error:', err);
         return NextResponse.json(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
+import { Prisma } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 
 function getPast12MonthsRange(): { start: Date; end: Date } {
@@ -35,91 +36,46 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid date range' }, { status: 400 });
     }
 
-    // Scope reads by date first so we don't pull full tables from Neon.
-    const transactions = await prisma.inventoryTransaction.findMany({
-        where: {
-            date: { gte: start, lte: end },
-        },
-        select: {
-            productInventoryRecordId18: true,
-            date: true,
-            inventoryType: true,
-        },
-    });
+    type DeliveryRow = {
+        date: Date;
+        organizationName: string;
+        householdId18: string;
+        productName: string | null;
+        weightLbs: number | null;
+        inventoryType: string;
+        foodRescueProgram: string | null;
+    };
 
-    if (transactions.length === 0) return NextResponse.json([]);
+    const searchFilter = search ? `%${search}%` : null;
+    const searchClause = search
+        ? Prisma.sql`
+          AND (
+            d."householdName" ILIKE ${searchFilter}
+            OR COALESCE(p."pantryProductName", '') ILIKE ${searchFilter}
+            OR COALESCE(t."inventoryType", '') ILIKE ${searchFilter}
+          )
+        `
+        : Prisma.empty;
 
-    const transactionByRecordId = new Map<string, (typeof transactions)[number]>();
-    for (const t of transactions) {
-        const id = t.productInventoryRecordId18;
-        if (id && !transactionByRecordId.has(id)) transactionByRecordId.set(id, t);
-    }
-    const recordIds = Array.from(transactionByRecordId.keys());
+    const rows = await prisma.$queryRaw<DeliveryRow[]>`
+        SELECT
+            t."date" AS "date",
+            d."householdName" AS "organizationName",
+            d."householdId18" AS "householdId18",
+            p."pantryProductName" AS "productName",
+            p."pantryProductWeightLbs" AS "weightLbs",
+            t."inventoryType" AS "inventoryType",
+            p."lotFoodRescueProgram" AS "foodRescueProgram"
+        FROM "AllInventoryTransactions" t
+        INNER JOIN "AllPackagesByItem" p
+            ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+        INNER JOIN "AllProductPackageDestinations" d
+            ON d."productPackageId18" = p."productPackageId18"
+        WHERE t."date" >= ${start}
+          AND t."date" <= ${end}
+          ${searchClause}
+        ORDER BY t."date" DESC
+    `;
 
-    const packages = await prisma.packagesByItem.findMany({
-        where: {
-            productInventoryRecordId18: { in: recordIds },
-            productPackageId18: { not: null },
-        },
-        select: {
-            productInventoryRecordId18: true,
-            productPackageId18: true,
-            pantryProductName: true,
-            pantryProductWeightLbs: true,
-            lotFoodRescueProgram: true,
-        },
-    });
-
-    if (packages.length === 0) return NextResponse.json([]);
-
-    const packageIds = Array.from(
-        new Set(packages.map(p => p.productPackageId18).filter((id): id is string => Boolean(id)))
-    );
-
-    const destinations = await prisma.productPackageDestination.findMany({
-        where: { productPackageId18: { in: packageIds } },
-        select: {
-            productPackageId18: true,
-            householdName: true,
-            householdId18: true,
-        },
-    });
-
-    const destinationByPackageId = new Map<string, (typeof destinations)[number]>();
-    for (const d of destinations) destinationByPackageId.set(d.productPackageId18, d);
-
-    const distributionDeliveries = [];
-    for (const item of packages) {
-        const recordId = item.productInventoryRecordId18;
-        const packageId = item.productPackageId18;
-        if (!recordId || !packageId) continue;
-
-        const transactionInfo = transactionByRecordId.get(recordId);
-        const destinationInfo = destinationByPackageId.get(packageId);
-        if (!transactionInfo || !destinationInfo) continue;
-
-        const row = {
-            date: transactionInfo.date,
-            organizationName: destinationInfo.householdName,
-            householdId18: destinationInfo.householdId18,
-            productName: item.pantryProductName,
-            weightLbs: item.pantryProductWeightLbs,
-            inventoryType: transactionInfo.inventoryType,
-            foodRescueProgram: item.lotFoodRescueProgram,
-        };
-
-        if (search) {
-            const org = row.organizationName.toLowerCase();
-            const product = (row.productName || '').toLowerCase();
-            const type = (row.inventoryType || '').toLowerCase();
-            if (!org.includes(search) && !product.includes(search) && !type.includes(search)) {
-                continue;
-            }
-        }
-
-        distributionDeliveries.push(row);
-    }
-
-    distributionDeliveries.sort((a, b) => b.date.getTime() - a.date.getTime());
-    return NextResponse.json(distributionDeliveries);
+    return NextResponse.json(rows);
 }

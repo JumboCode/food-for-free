@@ -5,10 +5,6 @@ import {
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
 } from '~/lib/overviewAccess';
-import {
-    fetchPartnerDestinationsInRange,
-    sumWeightsByProductPackageId,
-} from '~/lib/overviewPartnerMetrics';
 
 const MONTH_NAMES = [
     'Jan',
@@ -63,54 +59,45 @@ export async function GET(request: NextRequest) {
         const aggregateByYear = yearsDiff > 1;
         const aggregateByDay = daysDiff <= 30 && !aggregateByYear;
 
+        type DailyRow = { day: Date; pounds: number | null };
+        const dailyRows = partnerFilter
+            ? await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    DATE_TRUNC('day', d."date") AS "day",
+                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
+                FROM "AllProductPackageDestinations" d
+                LEFT JOIN "AllPackagesByItem" p
+                    ON p."productPackageId18" = d."productPackageId18"
+                WHERE d."householdName" ILIKE ${partnerFilter}
+                  AND d."date" >= ${range.start}
+                  AND d."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."date")
+                ORDER BY DATE_TRUNC('day', d."date") ASC
+            `
+            : await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    DATE_TRUNC('day', "date") AS "day",
+                    SUM(COALESCE("weightLbs", 0)) AS "pounds"
+                FROM "AllInventoryTransactions"
+                WHERE "date" >= ${range.start}
+                  AND "date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', "date")
+                ORDER BY DATE_TRUNC('day', "date") ASC
+            `;
+
         const buckets: Record<string, number> = {};
-
-        if (partnerFilter) {
-            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
-            const packageIds = Array.from(
-                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
-            );
-            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
-
-            for (const row of destRows) {
-                const d = new Date(row.date);
-                const weight = weightsByPackage.get(row.productPackageId18) ?? 0;
-                let key: string;
-                if (aggregateByYear) {
-                    key = d.getFullYear().toString();
-                } else if (aggregateByDay) {
-                    key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-                } else {
-                    key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-                }
-                buckets[key] = (buckets[key] ?? 0) + weight;
+        for (const row of dailyRows) {
+            const d = new Date(row.day);
+            const weight = Number(row.pounds ?? 0);
+            let key: string;
+            if (aggregateByYear) {
+                key = d.getFullYear().toString();
+            } else if (aggregateByDay) {
+                key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            } else {
+                key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
             }
-        } else {
-            const where = {
-                date: {
-                    gte: range.start,
-                    lte: range.end,
-                },
-            };
-
-            const records = await prisma.inventoryTransaction.findMany({
-                where,
-                select: { date: true, weightLbs: true },
-            });
-
-            for (const r of records) {
-                const d = new Date(r.date);
-                const weight = r.weightLbs ?? 0;
-                let key: string;
-                if (aggregateByYear) {
-                    key = d.getFullYear().toString();
-                } else if (aggregateByDay) {
-                    key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-                } else {
-                    key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-                }
-                buckets[key] = (buckets[key] ?? 0) + weight;
-            }
+            buckets[key] = (buckets[key] ?? 0) + weight;
         }
 
         // Build ordered list of all periods in range so chart shows only range span

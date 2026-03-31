@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
         const search = searchParams.get('search') || '';
 
-        const records = await prisma.inventoryTransaction.findMany({
+        const records = await prisma.allInventoryTransactions.findMany({
             where: {
                 date: { gte: new Date(start), lte: new Date(end) },
                 OR: [

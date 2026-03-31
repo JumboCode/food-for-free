@@ -45,21 +45,16 @@ export async function GET(request: NextRequest) {
             where.destination = destination;
         }
 
-        const records = await prisma.inventoryTransaction.findMany({
+        const grouped = await prisma.allInventoryTransactions.groupBy({
+            by: ['inventoryType'],
             where,
-            select: { inventoryType: true },
+            _count: { _all: true },
         });
 
-        const byType: Record<string, number> = {};
-        for (const r of records) {
-            const type = (r.inventoryType ?? '').trim() || 'Other';
-            byType[type] = (byType[type] ?? 0) + 1;
-        }
-
         const colors = ['#B7D7BD', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8'];
-        const data = Object.entries(byType).map(([label, value], index) => ({
-            label,
-            value: Math.round(value),
+        const data = grouped.map((row, index) => ({
+            label: row.inventoryType.trim() || 'Other',
+            value: row._count._all,
             color: colors[index % colors.length],
         }));
 

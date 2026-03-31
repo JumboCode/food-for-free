@@ -5,10 +5,6 @@ import {
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
 } from '~/lib/overviewAccess';
-import {
-    fetchPartnerDestinationsInRange,
-    sumWeightsByProductPackageId,
-} from '~/lib/overviewPartnerMetrics';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -43,50 +39,42 @@ export async function GET(request: NextRequest) {
         const partnerFilter = scopeToPartnerFilter(scope);
 
         if (partnerFilter) {
-            const destRows = await fetchPartnerDestinationsInRange(partnerFilter, range);
-            const packageIds = Array.from(
-                new Set(destRows.map(r => r.productPackageId18).filter(Boolean))
-            );
-            const weightsByPackage = await sumWeightsByProductPackageId(packageIds);
-
-            let totalPoundsDelivered = 0;
-            const deliveryDays = new Set<string>();
-            for (const row of destRows) {
-                totalPoundsDelivered += weightsByPackage.get(row.productPackageId18) ?? 0;
-                deliveryDays.add(new Date(row.date).toISOString().slice(0, 10));
-            }
+            type PartnerStatsRow = {
+                totalPoundsDelivered: number | null;
+                deliveriesCompleted: number;
+            };
+            const rows = await prisma.$queryRaw<PartnerStatsRow[]>`
+                SELECT
+                    COALESCE(SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)), 0) AS "totalPoundsDelivered",
+                    COUNT(DISTINCT DATE_TRUNC('day', d."date"))::int AS "deliveriesCompleted"
+                FROM "AllProductPackageDestinations" d
+                LEFT JOIN "AllPackagesByItem" p
+                    ON p."productPackageId18" = d."productPackageId18"
+                WHERE d."householdName" ILIKE ${partnerFilter}
+                  AND d."date" >= ${range.start}
+                  AND d."date" <= ${range.end}
+            `;
+            const stats = rows[0];
 
             return NextResponse.json({
-                totalPoundsDelivered: Math.round(totalPoundsDelivered),
-                deliveriesCompleted: deliveryDays.size,
+                totalPoundsDelivered: Math.round(Number(stats?.totalPoundsDelivered ?? 0)),
+                deliveriesCompleted: Number(stats?.deliveriesCompleted ?? 0),
             });
         }
-
-        const where = {
-            date: {
-                gte: range.start,
-                lte: range.end,
-            },
-        };
-
-        const records = await prisma.inventoryTransaction.findMany({
-            where,
-            select: { date: true, weightLbs: true, destination: true },
-        });
-
-        let totalPoundsDelivered = 0;
-        const deliveryKeys = new Set<string>();
-
-        for (const r of records) {
-            totalPoundsDelivered += r.weightLbs ?? 0;
-            const day = new Date(r.date).toISOString().slice(0, 10);
-            const dest = r.destination ?? '';
-            deliveryKeys.add(`${day}|${dest}`);
-        }
+        type OverallStatsRow = { totalPoundsDelivered: number | null; deliveriesCompleted: number };
+        const rows = await prisma.$queryRaw<OverallStatsRow[]>`
+            SELECT
+                COALESCE(SUM(COALESCE("weightLbs", 0)), 0) AS "totalPoundsDelivered",
+                COUNT(DISTINCT (DATE_TRUNC('day', "date"), COALESCE("destination", '')))::int AS "deliveriesCompleted"
+            FROM "AllInventoryTransactions"
+            WHERE "date" >= ${range.start}
+              AND "date" <= ${range.end}
+        `;
+        const stats = rows[0];
 
         return NextResponse.json({
-            totalPoundsDelivered: Math.round(totalPoundsDelivered),
-            deliveriesCompleted: deliveryKeys.size,
+            totalPoundsDelivered: Math.round(Number(stats?.totalPoundsDelivered ?? 0)),
+            deliveriesCompleted: Number(stats?.deliveriesCompleted ?? 0),
         });
     } catch (err: unknown) {
         console.error('Overview stats error:', err);
