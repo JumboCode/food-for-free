@@ -12,19 +12,13 @@ interface DeliveryRecord {
     organizationName: string;
     productName: string;
     weightLbs: number;
-    inventoryType: string;
+    productType: string | null;
+    minimallyProcessedFood: boolean | null;
     foodRescueProgram: string;
 }
 
-/** Frontend-only: derive a simple processing label from food type for display */
-function getProcessingLabel(inventoryType: string | null | undefined): string {
-    if (!inventoryType || !inventoryType.trim()) return 'Not specified';
-    const t = inventoryType.toLowerCase();
-    if (t.includes('canned') || t.includes('packaged') || t.includes('frozen')) return 'Processed';
-    return 'Minimally processed';
-}
-
 const THEME_GREEN = '#B7D7BD';
+const ROWS_PER_PAGE = 25;
 
 function getPast12MonthsRange(): { start: Date; end: Date } {
     const end = new Date();
@@ -54,6 +48,7 @@ function DistributionContent() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [dateRange, setDateRange] = useState(() => parseDateRangeFromSearchParams(searchParams));
     const [exporting, setExporting] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // When navigating from overview with ?start=&end=, apply that range
     const startParam = searchParams.get('start');
@@ -66,6 +61,10 @@ function DistributionContent() {
         const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
         return () => clearTimeout(id);
     }, [searchTerm]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch, dateRange.start, dateRange.end]);
 
     const handleExport = async () => {
         setExporting(true);
@@ -125,6 +124,22 @@ function DistributionContent() {
         }
         fetchData();
     }, [dateRange.start, dateRange.end, debouncedSearch]);
+
+    const totalPages = Math.max(1, Math.ceil(data.length / ROWS_PER_PAGE));
+    const currentPageSafe = Math.min(currentPage, totalPages);
+    const startIdx = (currentPageSafe - 1) * ROWS_PER_PAGE;
+    const paginatedData = data.slice(startIdx, startIdx + ROWS_PER_PAGE);
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [currentPage, totalPages]);
+
+    const pageWindowStart = Math.max(1, currentPageSafe - 2);
+    const pageWindowEnd = Math.min(totalPages, pageWindowStart + 4);
+    const pageNumbers: number[] = [];
+    for (let page = pageWindowStart; page <= pageWindowEnd; page += 1) {
+        pageNumbers.push(page);
+    }
 
     return (
         <div className="min-h-screen bg-[#fafaf9]">
@@ -195,9 +210,9 @@ function DistributionContent() {
                                         </td>
                                     </tr>
                                 ) : data.length > 0 ? (
-                                    data.map((d, index) => (
+                                    paginatedData.map((d, index) => (
                                         <tr
-                                            key={`${d.householdId18}-${index}-${d.productName}-${d.date}`}
+                                            key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}`}
                                             className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors"
                                         >
                                             <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
@@ -225,7 +240,7 @@ function DistributionContent() {
                                                             color: '#744210',
                                                         }}
                                                     >
-                                                        {getProcessingLabel(d.inventoryType)}
+                                                        {d.productType?.trim() || 'Not specified'}
                                                     </span>
                                                     <span
                                                         className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border border-[#9fc5a9]/60"
@@ -235,7 +250,11 @@ function DistributionContent() {
                                                             color: '#608D6A',
                                                         }}
                                                     >
-                                                        {d.inventoryType?.trim() || '—'}
+                                                        {d.minimallyProcessedFood === true
+                                                            ? 'Minimally Processed'
+                                                            : d.minimallyProcessedFood === false
+                                                              ? 'Processed'
+                                                              : 'Not specified'}
                                                     </span>
                                                 </span>
                                             </td>
@@ -255,6 +274,46 @@ function DistributionContent() {
                         </table>
                     </div>
                 </div>
+                {!loading && data.length > 0 && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-gray-500">
+                            Showing {startIdx + 1}-{Math.min(startIdx + ROWS_PER_PAGE, data.length)}{' '}
+                            of {data.length}
+                        </p>
+                        <div className="inline-flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPageSafe === 1}
+                                className="h-9 px-3 rounded-md border border-gray-200 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                                Previous
+                            </button>
+                            {pageNumbers.map(page => (
+                                <button
+                                    key={page}
+                                    type="button"
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`h-9 min-w-9 px-2 rounded-md border text-sm ${
+                                        page === currentPageSafe
+                                            ? 'bg-[#B7D7BD] border-[#9fc5a9] text-gray-900'
+                                            : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPageSafe === totalPages}
+                                className="h-9 px-3 rounded-md border border-gray-200 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

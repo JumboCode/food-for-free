@@ -26,7 +26,7 @@ function getDefaultRange(): { start: Date; end: Date } {
 
 /**
  * GET /api/overview/food-types?start=...&end=...&destination=...
- * Returns count of transactions by inventoryType for the donut chart (food types donated).
+ * Returns composition (lbs) by product type and minimally processed flag.
  */
 export async function GET(request: NextRequest) {
     try {
@@ -49,20 +49,70 @@ export async function GET(request: NextRequest) {
                   NOT: { destination: '' },
               };
 
-        const grouped = await prisma.allInventoryTransactions.groupBy({
-            by: ['inventoryType'],
+        const foodTypeGrouped = await prisma.allInventoryTransactions.groupBy({
+            by: ['productType'],
             where,
-            _count: { _all: true },
+            _sum: { weightLbs: true },
         });
 
-        const colors = ['#B7D7BD', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8'];
-        const data = grouped.map((row, index) => ({
-            label: row.inventoryType.trim() || 'Other',
-            value: row._count._all,
-            color: colors[index % colors.length],
-        }));
+        const processingGrouped = await prisma.allInventoryTransactions.groupBy({
+            by: ['minimallyProcessedFood'],
+            where,
+            _sum: { weightLbs: true },
+        });
 
-        return NextResponse.json(data);
+        const foodTypeColors = ['#B7D7BD', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8', '#B39DDB'];
+        const processingColorMap: Record<string, string> = {
+            'Minimally Processed': '#B7D7BD',
+            Processed: '#E7A54E',
+            'Not Specified': '#CBD5E1',
+        };
+
+        const foodTypes = foodTypeGrouped
+            .map((row, index) => ({
+                label: row.productType?.trim() || 'Other',
+                value: Math.round(Number(row._sum.weightLbs ?? 0)),
+                color: foodTypeColors[index % foodTypeColors.length],
+            }))
+            .filter(entry => entry.value > 0)
+            .sort((a, b) => b.value - a.value);
+
+        const processing = processingGrouped
+            .map(row => {
+                const label =
+                    row.minimallyProcessedFood === true
+                        ? 'Minimally Processed'
+                        : row.minimallyProcessedFood === false
+                          ? 'Processed'
+                          : 'Not Specified';
+                return {
+                    label,
+                    value: Math.round(Number(row._sum.weightLbs ?? 0)),
+                    color: processingColorMap[label],
+                };
+            })
+            .filter(entry => entry.value > 0)
+            .sort((a, b) => b.value - a.value);
+
+        if (foodTypes.length === 0) {
+            foodTypes.push({
+                label: 'No data',
+                value: 0,
+                color: '#CBD5E1',
+            });
+        }
+        if (processing.length === 0) {
+            processing.push({
+                label: 'No data',
+                value: 0,
+                color: '#CBD5E1',
+            });
+        }
+
+        return NextResponse.json({
+            foodTypes,
+            processing,
+        });
     } catch (err: unknown) {
         console.error('Overview food-types error:', err);
         return NextResponse.json(

@@ -17,19 +17,6 @@ type PartnerOrgCard = {
     location: string;
     type: string;
 };
-
-const MOCK_FOOD_TYPES: FoodTypeEntry[] = [
-    { label: 'Produce', value: 340, color: '#A1C5B0' },
-    { label: 'Dairy', value: 210, color: '#6CAEE6' },
-    { label: 'Grains & Bread', value: 180, color: '#E7A54E' },
-    { label: 'Protein', value: 150, color: '#F9DC70' },
-    { label: 'Canned Goods', value: 120, color: '#D4A5C9' },
-];
-
-const MOCK_PROCESSING: FoodTypeEntry[] = [
-    { label: 'Minimally Processed', value: 620, color: '#A1C5B0' },
-    { label: 'Processed', value: 380, color: '#E7A54E' },
-];
 type DeliverySummaryItem = {
     id: number;
     date: Date;
@@ -65,7 +52,8 @@ const OverviewPage: React.FC = () => {
     const [totalPoundsDelivered, setTotalPoundsDelivered] = useState(0);
     const [deliveriesCompleted, setDeliveriesCompleted] = useState(0);
     const [deliverySummaryData, setDeliverySummaryData] = useState<DeliverySummaryItem[]>([]);
-    const [foodTypesData] = useState<FoodTypeEntry[]>(MOCK_FOOD_TYPES);
+    const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
+    const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
     const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
 
@@ -122,25 +110,34 @@ const OverviewPage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const [chartRes, statsRes, deliveriesRes] = await Promise.all([
+            const [chartRes, statsRes, deliveriesRes, compositionRes] = await Promise.all([
                 fetch(`/api/overview/pounds-by-month?${q}`),
                 fetch(`/api/overview/stats?${q}`),
                 fetch(`/api/overview/deliveries?${q}`),
+                fetch(`/api/overview/food-types?${q}`),
             ]);
 
             if (!chartRes.ok) throw new Error('Failed to load chart data');
             if (!statsRes.ok) throw new Error('Failed to load stats');
             if (!deliveriesRes.ok) throw new Error('Failed to load deliveries');
+            if (!compositionRes.ok) throw new Error('Failed to load food composition');
 
-            const [chartData, stats, deliveriesPayload] = await Promise.all([
+            const [chartData, stats, deliveriesPayload, compositionPayload] = await Promise.all([
                 chartRes.json(),
                 statsRes.json(),
                 deliveriesRes.json(),
+                compositionRes.json(),
             ]);
 
             setPoundsByMonthData(Array.isArray(chartData) ? chartData : []);
             setTotalPoundsDelivered(Number(stats.totalPoundsDelivered) ?? 0);
             setDeliveriesCompleted(Number(stats.deliveriesCompleted) ?? 0);
+            setFoodTypesData(
+                Array.isArray(compositionPayload.foodTypes) ? compositionPayload.foodTypes : []
+            );
+            setProcessingData(
+                Array.isArray(compositionPayload.processing) ? compositionPayload.processing : []
+            );
 
             const list = deliveriesPayload.deliveries ?? [];
             setDeliverySummaryData(
@@ -167,6 +164,8 @@ const OverviewPage: React.FC = () => {
             setTotalPoundsDelivered(0);
             setDeliveriesCompleted(0);
             setDeliverySummaryData([]);
+            setFoodTypesData([]);
+            setProcessingData([]);
         } finally {
             setLoading(false);
         }
@@ -480,7 +479,7 @@ const OverviewPage: React.FC = () => {
                                 </div>
                                 <div className="min-w-0 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
                                     <FoodTypesDonutChart
-                                        data={MOCK_PROCESSING}
+                                        data={processingData}
                                         title="Processing Breakdown"
                                     />
                                 </div>
