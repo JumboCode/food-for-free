@@ -19,11 +19,29 @@ export async function GET(
         const { organizationId } = await params;
         const client = await clerkClient();
 
+        const partner = await prisma.partner.findUnique({
+            where: {
+                clerkOrganizationId: organizationId,
+            },
+        });
+
+        if (!partner) {
+            return NextResponse.json({
+                members: [],
+                invitations: invitations.data.map(inv => ({
+                    id: inv.id,
+                    emailAddress: inv.emailAddress,
+                    role: inv.role,
+                    status: inv.status,
+                    createdAt: inv.createdAt.toString(),
+                })),
+            });
+        }
+
+        // Then find users by partnerId
         const users = await prisma.user.findMany({
             where: {
-                partner: {
-                    clerkOrganizationId: organizationId,
-                },
+                partnerId: partner.id,
             },
             orderBy: {
                 createdAt: 'desc',
@@ -36,21 +54,44 @@ export async function GET(
             limit: 100,
         });
 
-        const members = users.map(user => ({
-            id: user.id,
-            userId: user.clerkId,
-            organizationId,
-            role: user.role,
-            user: {
-                id: user.id,
-                firstName: null,
-                lastName: null,
-                email: user.email,
-            },
-        }));
+        // Fetch user details from Clerk to get firstName/lastName
+        const membersWithNames = await Promise.all(
+            users.map(async user => {
+                try {
+                    const clerkUser = await client.users.getUser(user.clerkId);
+                    return {
+                        id: user.id,
+                        userId: user.clerkId,
+                        organizationId,
+                        role: user.role,
+                        user: {
+                            id: user.id,
+                            firstName: clerkUser.firstName,
+                            lastName: clerkUser.lastName,
+                            email: user.email,
+                        },
+                    };
+                } catch (error) {
+                    console.error(`Failed to fetch Clerk user ${user.clerkId}:`, error);
+                    // Fallback if Clerk fetch fails
+                    return {
+                        id: user.id,
+                        userId: user.clerkId,
+                        organizationId,
+                        role: user.role,
+                        user: {
+                            id: user.id,
+                            firstName: null,
+                            lastName: null,
+                            email: user.email,
+                        },
+                    };
+                }
+            })
+        );
 
         return NextResponse.json({
-            members,
+            members: membersWithNames,
             invitations: invitations.data.map(inv => ({
                 id: inv.id,
                 emailAddress: inv.emailAddress,
