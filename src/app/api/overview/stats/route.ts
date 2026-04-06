@@ -61,16 +61,18 @@ export async function GET(request: NextRequest) {
                 deliveriesCompleted: Number(stats?.deliveriesCompleted ?? 0),
             });
         }
+        // Same weight semantics as partner view: package line weight × amount, not raw transaction.weightLbs.
+        // Do not filter on transaction.destination — it is often blank; org comes from destinations join.
         type OverallStatsRow = { totalPoundsDelivered: number | null; deliveriesCompleted: number };
         const rows = await prisma.$queryRaw<OverallStatsRow[]>`
             SELECT
-                COALESCE(SUM(COALESCE("weightLbs", 0)), 0) AS "totalPoundsDelivered",
-                COUNT(DISTINCT (DATE_TRUNC('day', "date"), COALESCE("destination", '')))::int AS "deliveriesCompleted"
-            FROM "AllInventoryTransactions"
-            WHERE "date" >= ${range.start}
-              AND "date" <= ${range.end}
-              AND "destination" IS NOT NULL
-              AND BTRIM("destination") <> ''
+                COALESCE(SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)), 0) AS "totalPoundsDelivered",
+                COUNT(DISTINCT (DATE_TRUNC('day', d."date"), d."householdId18"))::int AS "deliveriesCompleted"
+            FROM "AllProductPackageDestinations" d
+            LEFT JOIN "AllPackagesByItem" p
+                ON p."productPackageId18" = d."productPackageId18"
+            WHERE d."date" >= ${range.start}
+              AND d."date" <= ${range.end}
         `;
         const stats = rows[0];
 

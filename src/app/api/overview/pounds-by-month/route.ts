@@ -76,15 +76,15 @@ export async function GET(request: NextRequest) {
             `
             : await prisma.$queryRaw<DailyRow[]>`
                 SELECT
-                    DATE_TRUNC('day', "date") AS "day",
-                    SUM(COALESCE("weightLbs", 0)) AS "pounds"
-                FROM "AllInventoryTransactions"
-                WHERE "date" >= ${range.start}
-                  AND "date" <= ${range.end}
-                  AND "destination" IS NOT NULL
-                  AND BTRIM("destination") <> ''
-                GROUP BY DATE_TRUNC('day', "date")
-                ORDER BY DATE_TRUNC('day', "date") ASC
+                    DATE_TRUNC('day', d."date") AS "day",
+                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
+                FROM "AllProductPackageDestinations" d
+                LEFT JOIN "AllPackagesByItem" p
+                    ON p."productPackageId18" = d."productPackageId18"
+                WHERE d."date" >= ${range.start}
+                  AND d."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."date")
+                ORDER BY DATE_TRUNC('day', d."date") ASC
             `;
 
         const buckets: Record<string, number> = {};

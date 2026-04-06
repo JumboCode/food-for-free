@@ -70,16 +70,16 @@ export async function GET(request: NextRequest) {
         type DeliveryRow = { day: Date; destination: string | null; totalPounds: number | null };
         const rows = await prisma.$queryRaw<DeliveryRow[]>`
             SELECT
-                DATE_TRUNC('day', "date") AS "day",
-                "destination" AS "destination",
-                SUM(COALESCE("weightLbs", 0)) AS "totalPounds"
-            FROM "AllInventoryTransactions"
-            WHERE "date" >= ${range.start}
-              AND "date" <= ${range.end}
-              AND "destination" IS NOT NULL
-              AND BTRIM("destination") <> ''
-            GROUP BY DATE_TRUNC('day', "date"), "destination"
-            ORDER BY DATE_TRUNC('day', "date") DESC
+                DATE_TRUNC('day', d."date") AS "day",
+                d."householdName" AS "destination",
+                SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+            FROM "AllProductPackageDestinations" d
+            LEFT JOIN "AllPackagesByItem" p
+                ON p."productPackageId18" = d."productPackageId18"
+            WHERE d."date" >= ${range.start}
+              AND d."date" <= ${range.end}
+            GROUP BY DATE_TRUNC('day', d."date"), d."householdName"
+            ORDER BY DATE_TRUNC('day', d."date") DESC
             LIMIT 10
         `;
 
