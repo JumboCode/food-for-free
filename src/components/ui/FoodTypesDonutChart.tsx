@@ -21,6 +21,7 @@ export interface FoodTypeData {
 interface FoodTypesDonutChartProps {
     data?: FoodTypeData[];
     title?: string;
+    className?: string;
 }
 
 const renderActiveShape = (props: SectorProps) => {
@@ -66,17 +67,24 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 export function FoodTypesDonutChart({
     data = DEFAULT_DATA,
     title = 'Food Types Donated',
+    className = '',
 }: FoodTypesDonutChartProps) {
     const total = data.reduce((sum, d) => sum + d.value, 0);
     const dataWithTotal = data.map(d => ({ ...d, total }));
 
+    /** Fixed donut + legend row height so “Processing” matches “Food types” when one has fewer legend rows. */
+    const CHART_ROW_MIN = 'min-h-[300px] sm:min-h-[320px]';
+    const DONUT_BOX = 'h-[220px] w-[220px] shrink-0 sm:h-[240px] sm:w-[240px]';
+
     return (
-        <div className="flex w-full flex-col">
+        <div className={`flex h-full min-h-0 w-full flex-col ${className}`.trim()}>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {title}
             </h3>
-            <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:gap-6">
-                <div className="relative h-[220px] w-full min-w-0 max-w-[220px] sm:h-[240px] sm:max-w-[240px]">
+            <div
+                className={`mt-3 flex flex-1 flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-6 ${CHART_ROW_MIN}`}
+            >
+                <div className={`relative ${DONUT_BOX}`}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -109,24 +117,24 @@ export function FoodTypesDonutChart({
                     </div>
                 </div>
 
-                <div className="flex flex-1 flex-col justify-center gap-2 sm:gap-2.5">
+                <div className="flex w-full min-w-0 flex-1 flex-col justify-center gap-2 sm:max-w-none sm:gap-2.5">
                     {data.map((item, index) => {
                         const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                         return (
                             <div
                                 key={index}
-                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+                                className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
                             >
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex min-w-0 flex-1 items-start gap-2">
                                     <div
-                                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
                                         style={{ backgroundColor: item.color || '#94a3b8' }}
                                     />
-                                    <span className="truncate text-sm font-medium text-slate-800">
+                                    <span className="break-words text-sm font-medium leading-snug text-slate-800">
                                         {item.label}
                                     </span>
                                 </div>
-                                <div className="shrink-0 text-right">
+                                <div className="shrink-0 self-center text-right">
                                     <span className="text-xs font-medium tabular-nums text-slate-600">
                                         {item.value.toLocaleString()}
                                     </span>
