@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
 
+        if (organizationName && !organizationId) {
+            return NextResponse.json(
+                {
+                    error: 'Creating organizations from invites is disabled. Create the partner first with a Household Id 18.',
+                },
+                { status: 400 }
+            );
+        }
+
         // Validate that at least one of organizationId or organizationName is provided
         if (!organizationId && !organizationName) {
             return NextResponse.json(
@@ -44,10 +53,22 @@ export async function POST(req: NextRequest) {
             const org = await client.organizations.getOrganization({
                 organizationId: targetOrganizationId!,
             });
+            const householdId18 =
+                typeof org.publicMetadata?.householdId18 === 'string'
+                    ? org.publicMetadata.householdId18.trim()
+                    : '';
+
+            if (!householdId18) {
+                return NextResponse.json(
+                    { error: 'This organization is missing a Household Id 18.' },
+                    { status: 400 }
+                );
+            }
             await prisma.partner.upsert({
                 where: { clerkOrganizationId: org.id },
                 update: { organizationName: org.name },
                 create: {
+                    householdId18,
                     organizationName: org.name,
                     clerkOrganizationId: org.id,
                 },

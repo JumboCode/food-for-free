@@ -23,7 +23,7 @@ export async function syncUserPartnerFromClerkOrgMemberships(clerkUserId: string
         if (partner) {
             await prisma.user.update({
                 where: { clerkId: clerkUserId },
-                data: { partnerId: partner.id },
+                data: { partnerId: partner.householdId18 },
             });
             return;
         }

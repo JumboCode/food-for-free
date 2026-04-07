@@ -70,39 +70,28 @@ export async function POST(req: NextRequest) {
         await requireAdmin();
 
         const body = await req.json();
-        const { name, slug } = body;
+        const { name, householdId18 } = body;
 
         if (!name) {
             return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
         }
+        if (!householdId18 || !householdId18.trim()) {
+            return NextResponse.json({ error: 'Household Id 18 is required' }, { status: 400 });
+        }
 
         const client = await clerkClient();
-
-        // Check if organization with this slug already exists
-        if (slug) {
-            try {
-                const existing = await client.organizations.getOrganization({ slug });
-                if (existing) {
-                    return NextResponse.json(
-                        { error: 'Organization with this slug already exists' },
-                        { status: 409 }
-                    );
-                }
-            } catch {
-                // Organization doesn't exist, which is what we want
-            }
-        }
 
         // Create organization in Clerk
         const organization = await client.organizations.createOrganization({
             name,
-            slug: slug || undefined,
             createdBy: userId,
+            publicMetadata: { householdId18: householdId18.trim() },
         });
 
         // Create matching Partner in Neon so webhook can associate users with this org
         await prisma.partner.create({
             data: {
+                householdId18: householdId18.trim(),
                 organizationName: name,
                 clerkOrganizationId: organization.id,
             },

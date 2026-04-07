@@ -56,7 +56,7 @@ async function assignPartnerByClerkOrgId(
 
     await prisma.user.update({
         where: { clerkId: userId },
-        data: { partnerId: partner.id },
+        data: { partnerId: partner.householdId18 },
     });
     console.log('User assigned to partner:', userId, '→', partner.organizationName);
 }
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
 
                 if (user?.partnerId) {
                     const partner = await prisma.partner.findUnique({
-                        where: { id: user.partnerId },
+                        where: { householdId18: user.partnerId },
                     });
 
                     if (

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Settings2 } from 'lucide-react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
 import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
@@ -18,11 +18,11 @@ const THEME_GREEN = '#B7D7BD';
 
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
-    const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isManagePartnerModalOpen, setIsManagePartnerModalOpen] = useState(false);
 
     useEffect(() => {
         fetchOrganizations();
@@ -33,7 +33,8 @@ const AdminConsolePage: React.FC = () => {
             setIsLoading(true);
             const response = await fetch('/api/admin/organizations');
             if (!response.ok) {
-                throw new Error('Failed to fetch organizations');
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.error || 'Failed to fetch organizations');
             }
 
             const data = await response.json();
@@ -47,7 +48,7 @@ const AdminConsolePage: React.FC = () => {
     };
 
     //Handle creating new organization
-    const handleAddPartner = async (data: { name: string; slug?: string }) => {
+    const handleAddPartner = async (data: { name: string; householdId18: string }) => {
         try {
             const response = await fetch('/api/admin/organizations', {
                 method: 'POST',
@@ -55,10 +56,13 @@ const AdminConsolePage: React.FC = () => {
                 body: JSON.stringify(data),
             });
 
-            if (!response.ok) throw new Error('Failed to create organization');
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to create organization');
+            }
 
             await fetchOrganizations(); // Refresh the list
-            setIsAddPartnerModalOpen(false); // Close modal
+            setIsManagePartnerModalOpen(false); // Close modal
         } catch (error) {
             console.error('Error creating organization:', error);
             throw error;
@@ -67,6 +71,29 @@ const AdminConsolePage: React.FC = () => {
 
     const handleOrganizationClick = (organization: Organization) => {
         setSelectedOrganization(organization);
+    };
+
+    const handleDeletePartner = async (organizationId: string) => {
+        try {
+            const response = await fetch(`/api/admin/organizations/${organizationId}`, {
+                method: 'DELETE',
+            });
+
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to delete organization');
+            }
+
+            if (selectedOrganization?.id === organizationId) {
+                setSelectedOrganization(null);
+            }
+
+            await fetchOrganizations();
+        } catch (error) {
+            throw new Error(
+                error instanceof Error ? error.message : 'Failed to delete organization'
+            );
+        }
     };
 
     const filteredOrganizations = organizations.filter(
@@ -116,7 +143,7 @@ const AdminConsolePage: React.FC = () => {
                         </span>
                     </div>
 
-                    {/* Search + add */}
+                    {/* Search + manage */}
                     <div className="flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-1 min-w-[220px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -129,11 +156,11 @@ const AdminConsolePage: React.FC = () => {
                             />
                         </div>
                         <button
-                            onClick={() => setIsAddPartnerModalOpen(true)}
+                            onClick={() => setIsManagePartnerModalOpen(true)}
                             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-[#608D6A] hover:bg-[#4d7155] text-white text-sm font-medium transition-colors whitespace-nowrap"
                         >
-                            <Plus className="w-4 h-4" />
-                            Add partner
+                            <Settings2 className="w-4 h-4" />
+                            Manage partners
                         </button>
                     </div>
 
@@ -156,11 +183,17 @@ const AdminConsolePage: React.FC = () => {
                 </section>
             </div>
 
-            {/* Add Partner Modal */}
-            {isAddPartnerModalOpen && (
+            {/* Manage Partners Modal */}
+            {isManagePartnerModalOpen && (
                 <AddPartnerModal
-                    onClose={() => setIsAddPartnerModalOpen(false)}
+                    organizations={organizations.map(org => ({
+                        id: org.id,
+                        name: org.name,
+                        membersCount: org.membersCount,
+                    }))}
+                    onClose={() => setIsManagePartnerModalOpen(false)}
                     onSubmit={handleAddPartner}
+                    onDelete={handleDeletePartner}
                 />
             )}
 

@@ -16,11 +16,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   partnerId String?
-  partner   Partner? @relation("UserPartner", fields: [partnerId], references: [id])
+  partner   Partner? @relation("UserPartner", fields: [partnerId], references: [householdId18])
 }
 
 model Partner {
-  id                  String   @id @default(cuid())
+  householdId18       String   @id
   organizationName    String
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -68,7 +68,6 @@ model AllProductPackageDestinations {
   productPackageId18 String           @unique
   householdName      String
   householdId18      String
-  distributionStatus String?
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
@@ -77,7 +76,7 @@ model AllProductPackageDestinations {
 }
 
 model JustEatsBoxes {
-  distributionId18                     String    @id
+  id                                   Int       @id @default(autoincrement())
   productPackageName                   String
   productPackageRecordId               String
   numberPickedUp                       Int?
