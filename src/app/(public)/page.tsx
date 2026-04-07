@@ -2,60 +2,116 @@
 
 import Image from 'next/image';
 import { SignInButton, SignUpButton } from '@clerk/nextjs';
+import { motion, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion';
 
 export default function Home() {
+    const mouseX = useMotionValue(0.5);
+    const mouseY = useMotionValue(0.5);
+
+    const springX = useSpring(mouseX, { stiffness: 60, damping: 20 });
+    const springY = useSpring(mouseY, { stiffness: 60, damping: 20 });
+
+    const pctX = useTransform(springX, v => `${v * 100}%`);
+    const pctY = useTransform(springY, v => `${v * 100}%`);
+
+    const gradientBg = useMotionTemplate`radial-gradient(circle at ${pctX} ${pctY}, #E7F3EB 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)`;
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        mouseX.set((e.clientX - rect.left) / rect.width);
+        mouseY.set((e.clientY - rect.top) / rect.height);
+    };
+
     return (
-        <div
+        <motion.div
             className="min-h-screen relative overflow-hidden flex items-center justify-center px-6 lg:px-20 bg-[#E7F3EB]"
             style={{ fontFamily: 'Acumin Pro, sans-serif' }}
+            onMouseMove={handleMouseMove}
         >
             {/* Circular Gradient Overlay */}
             <div
-                className="absolute z-5 inset-1 top-1/2 left-1/2 
-              w-[110vw] h-[100vw] 
-              -translate-x-7/16 -translate-y-9/16 
-              rounded-full 
+                className="absolute z-5 top-1/2 left-1/2
+              w-[160vw] h-[160vw] sm:w-[130vw] sm:h-[130vw] lg:w-[110vw] lg:h-[100vw]
+              -translate-x-1/2 -translate-y-1/2 lg:-translate-x-7/16 lg:-translate-y-9/16
+              rounded-full
               bg-[radial-gradient(circle,_rgba(255,246,233,0.5)_17%,_rgba(143,193,169,0.3)_88%)]"
             ></div>
-            <div
-                className="absolute inset-0 -z-1"
-                style={{
-                    background:
-                        'radial-gradient(circle at bottom left, #E7F3EB 0%, rgba(54, 175, 117, 0.5) 25%, rgba(54, 175, 117, 0.2) 40%, transparent 65%)',
-                }}
-            />
+            <motion.div className="absolute inset-0 -z-1" style={{ background: gradientBg }} />
 
-            <div className="z-10 inset-2 max-w-7xl w-full grid lg:grid-cols-2 gap-12 items-center">
+            <div className="z-10 inset-2 max-w-7xl w-full grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
                 {/* Left Section - Text and Buttons */}
                 <div className="space-y-8">
                     <div className="space-y-4">
-                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#1C5E2C] leading-tight">
+                        <motion.h1
+                            className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#1C5E2C] leading-tight"
+                            initial={{ opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 1.1, ease: 'easeOut', delay: 0 }}
+                        >
                             Food for Free
                             <br />
                             Partner Portal
-                        </h1>
-                        <p className="text-lg md:text-xl text-[#1C5E2C]/80 max-w-md">
+                        </motion.h1>
+                        <motion.p
+                            className="text-lg md:text-xl text-[#1C5E2C]/80 max-w-md"
+                            initial={{ opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 1.1, ease: 'easeOut', delay: 0.15 }}
+                        >
                             Manage donations, users, and distributions in one place.
-                        </p>
+                        </motion.p>
                     </div>
 
-                    <div className="  flex flex-wrap gap-4">
+                    <motion.div
+                        className="flex flex-wrap gap-4"
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 1.1, ease: 'easeOut', delay: 0.3 }}
+                    >
                         <SignInButton forceRedirectUrl="/overview">
-                            <button className="bg-[#1C5E2C] text-white rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#154621] transition-colors shadow-md">
+                            <motion.button
+                                className="bg-[#1C5E2C] text-white rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 shadow-md"
+                                whileHover={{
+                                    backgroundColor: '#154621',
+                                    y: -3,
+                                    boxShadow: '0 8px 24px rgba(28, 94, 44, 0.35)',
+                                }}
+                                whileTap={{ scale: 0.96, y: 0 }}
+                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                            >
                                 Sign In
-                            </button>
+                            </motion.button>
                         </SignInButton>
                         <SignUpButton forceRedirectUrl="/overview">
-                            <button className="bg-transparent border-2 border-[#1C5E2C] text-[#1C5E2C] rounded-lg font-semibold text-base md:text-lg px-8 py-3.5 hover:bg-[#1C5E2C] hover:text-white transition-colors">
+                            <motion.button
+                                className="bg-transparent border-2 border-[#1C5E2C] text-[#1C5E2C] rounded-lg font-semibold text-base md:text-lg px-8 py-3.5"
+                                whileHover={{
+                                    backgroundColor: '#1C5E2C',
+                                    color: '#ffffff',
+                                    y: -3,
+                                    boxShadow: '0 8px 24px rgba(28, 94, 44, 0.25)',
+                                }}
+                                whileTap={{ scale: 0.96, y: 0 }}
+                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                            >
                                 Create Partner Account
-                            </button>
+                            </motion.button>
                         </SignUpButton>
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Right Section - Donut Chart/Logo */}
-                <div className="flex justify-center lg:justify-end">
-                    <div className="relative w-[400px] h-[400px] md:w-[500px] md:h-[500px]">
+                <motion.div
+                    className="flex justify-center lg:justify-end"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.7, ease: 'easeOut', delay: 0.2 }}
+                >
+                    <motion.div
+                        className="relative w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[500px] hidden lg:flex"
+                        animate={{ y: [0, -14, 0] }}
+                        transition={{ duration: 4, ease: 'easeInOut', repeat: Infinity }}
+                    >
                         <Image
                             src="https://i.imgur.com/lE2cImv.png"
                             alt="Food for Free Logo with Donut Chart"
@@ -64,9 +120,9 @@ export default function Home() {
                             className="w-full h-full object-contain"
                             priority
                         />
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 }
