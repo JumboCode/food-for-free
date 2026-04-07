@@ -68,6 +68,7 @@ model AllProductPackageDestinations {
   productPackageId18 String           @unique
   householdName      String
   householdId18      String
+  distributionStatus String?
   pantryVisitId18    String           @id @default("##################")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
@@ -76,7 +77,7 @@ model AllProductPackageDestinations {
 }
 
 model JustEatsBoxes {
-  id                                   Int       @id @default(autoincrement())
+  distributionId18                     String    @id
   productPackageName                   String
   productPackageRecordId               String
   numberPickedUp                       Int?
