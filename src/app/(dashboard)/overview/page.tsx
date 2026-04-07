@@ -18,7 +18,7 @@ type PartnerOrgCard = {
     type: string;
 };
 type DeliverySummaryItem = {
-    id: number;
+    id: string;
     date: Date;
     totalPounds: number;
     destination?: string | null;
@@ -142,16 +142,13 @@ const OverviewPage: React.FC = () => {
             const list = deliveriesPayload.deliveries ?? [];
             setDeliverySummaryData(
                 list.map(
-                    (
-                        d: {
-                            id: string;
-                            date: string;
-                            totalPounds: number;
-                            destination?: string | null;
-                        },
-                        i: number
-                    ) => ({
-                        id: i + 1,
+                    (d: {
+                        id: string;
+                        date: string;
+                        totalPounds: number;
+                        destination?: string | null;
+                    }) => ({
+                        id: d.id,
                         date: new Date(d.date),
                         totalPounds: d.totalPounds,
                         destination: d.destination ?? null,

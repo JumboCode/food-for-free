@@ -11,7 +11,7 @@ export type DeliverySummaryRowProps = {
     processingTag?: string | null;
     /** Food type e.g. Bread, Canned Corn */
     foodType?: string | null;
-    id: number;
+    id: string;
     onClick?: () => void;
     /** "distribution" = 5 cols (Date, Org, Food, Weight, Tags); default = 3 cols (Date, Partner, Pounds) + optional chevron */
     variant?: 'summary' | 'distribution';
