@@ -8,9 +8,9 @@ import 'react-day-picker/dist/style.css'; // make sure this is imported once glo
 interface MyCalendarProps {
     selectedRange?: { start: Date; end: Date };
     onRangeChange?: (range: { start: Date; end: Date }) => void;
-    /** When "Clear" is clicked, use this range (e.g. past 12 months). If not provided, uses past 12 months. */
+    /** Range applied when Reset is used. If omitted, defaults to the prior twelve months. */
     defaultRange?: { start: Date; end: Date };
-    /** Called when "Clear" is clicked, so the parent can e.g. reset filter pill state. */
+    /** Called after Reset applies the default range, e.g. to sync preset controls in the parent. */
     onClear?: () => void;
 }
 
@@ -160,6 +160,7 @@ export function MyCalendar({
     return (
         <div className="flex flex-col items-end">
             <button
+                type="button"
                 onClick={toggleDialog}
                 className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs sm:text-sm font-medium shadow-sm transition-colors border-[#FAC87D]/50 bg-[#FAC87D]/15 text-slate-800 hover:bg-[#FAC87D]/25 hover:border-[#FAC87D]/70"
                 aria-controls={dialogId}
@@ -173,7 +174,7 @@ export function MyCalendar({
                               selectedRange.to,
                               'MM/dd/yyyy'
                           )}`
-                        : 'Select date range'}
+                        : 'Specify dates'}
                 </span>
             </button>
 
@@ -188,14 +189,14 @@ export function MyCalendar({
                 <div className="calendar-picker-compact rounded-xl bg-white p-3 shadow-2xl sm:p-4 border border-slate-100">
                     <div className="mb-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Select date range
+                            Custom date range
                         </p>
                     </div>
 
                     <div className="flex gap-4 justify-center">
                         <div>
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
-                                Start date
+                                Period start
                             </p>
                             <DayPicker
                                 mode="single"
@@ -215,7 +216,7 @@ export function MyCalendar({
                         </div>
                         <div>
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
-                                End date
+                                Period end
                             </p>
                             <DayPicker
                                 mode="single"
@@ -243,22 +244,24 @@ export function MyCalendar({
                                     {format(selectedRange.to, 'MMM d, yyyy')}
                                 </span>
                             ) : (
-                                <span>Pick a start and end date.</span>
+                                <span>Select a period start and end date.</span>
                             )}
                         </div>
                         <div className="flex justify-end gap-3">
                             <button
+                                type="button"
                                 onClick={handleClear}
                                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50"
                             >
-                                Clear
+                                Reset
                             </button>
                             <button
+                                type="button"
                                 onClick={handleDone}
                                 className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-black hover:opacity-90 transition-opacity"
                                 style={{ backgroundColor: themeAccent }}
                             >
-                                Done
+                                Apply
                             </button>
                         </div>
                     </div>

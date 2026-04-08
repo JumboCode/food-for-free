@@ -25,13 +25,24 @@ type DeliverySummaryItem = {
     destination?: string | null;
 };
 
-// Past 12 months = from the day after 12 months ago through today (e.g. 3/9 last year – 3/8 this year)
+// Last 30 days inclusive (today minus 29 days through today), same as the “Last 30 days” preset
 const getDefaultDateRange = () => {
     const today = new Date();
-    const start = new Date(today);
-    start.setMonth(start.getMonth() - 12);
-    start.setDate(start.getDate() + 1);
-    return { start, end: today };
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    return { start, end };
+};
+
+/** Fiscal year Jul 1–Jun 30. Range is July 1 of the FY that contains `today` through today. */
+const getFiscalYearToDateRange = (now: Date) => {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const y = today.getFullYear();
+    const fiscalStartYear = today.getMonth() >= 6 ? y : y - 1;
+    return {
+        start: new Date(fiscalStartYear, 6, 1),
+        end: today,
+    };
 };
 
 const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
@@ -47,7 +58,7 @@ const OverviewPageContent: React.FC = () => {
     }>({ ready: false, isAdmin: false, partnerName: null });
 
     const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(getDefaultDateRange());
-    const [activeFilter, setActiveFilter] = useState<string | null>('past12months');
+    const [activeFilter, setActiveFilter] = useState<string | null>('last30days');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [poundsByMonthData, setPoundsByMonthData] = useState<PoundsData[]>([]);
@@ -186,7 +197,13 @@ const OverviewPageContent: React.FC = () => {
     };
 
     const setQuickFilter = (
-        filter: 'last30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'past12months' | 'allTime'
+        filter:
+            | 'last30days'
+            | 'thisMonth'
+            | 'thisYear'
+            | 'fiscalYearToDate'
+            | 'past12months'
+            | 'allTime'
     ) => {
         setActiveFilter(filter);
         const now = new Date();
@@ -207,17 +224,14 @@ const OverviewPageContent: React.FC = () => {
                     end: new Date(currentYear, currentMonth + 1, 0),
                 });
                 break;
-            case 'lastMonth':
-                setDateRange({
-                    start: new Date(currentYear, currentMonth - 1, 1),
-                    end: new Date(currentYear, currentMonth, 0),
-                });
-                break;
             case 'thisYear':
                 setDateRange({
                     start: new Date(currentYear, 0, 1),
                     end: new Date(currentYear, 11, 31),
                 });
+                break;
+            case 'fiscalYearToDate':
+                setDateRange(getFiscalYearToDateRange(now));
                 break;
             case 'past12months': {
                 const start = new Date(today);
@@ -283,6 +297,8 @@ const OverviewPageContent: React.FC = () => {
                                 Time range
                             </span>
                             <button
+                                type="button"
+                                title="Thirty consecutive calendar days, inclusive of today"
                                 onClick={() => setQuickFilter('last30days')}
                                 className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                                     activeFilter === 'last30days'
@@ -298,6 +314,8 @@ const OverviewPageContent: React.FC = () => {
                                 Last 30 days
                             </button>
                             <button
+                                type="button"
+                                title="From the first day of the current calendar month through today"
                                 onClick={() => setQuickFilter('thisMonth')}
                                 className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                                     activeFilter === 'thisMonth'
@@ -310,24 +328,11 @@ const OverviewPageContent: React.FC = () => {
                                         : undefined
                                 }
                             >
-                                This month
+                                Month to date
                             </button>
                             <button
-                                onClick={() => setQuickFilter('lastMonth')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'lastMonth'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'lastMonth'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Last month
-                            </button>
-                            <button
+                                type="button"
+                                title="January 1 through December 31 of the current calendar year"
                                 onClick={() => setQuickFilter('thisYear')}
                                 className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                                     activeFilter === 'thisYear'
@@ -340,9 +345,28 @@ const OverviewPageContent: React.FC = () => {
                                         : undefined
                                 }
                             >
-                                This year
+                                Year to date
                             </button>
                             <button
+                                type="button"
+                                title="From July 1 through today. Fiscal year is July 1–June 30."
+                                onClick={() => setQuickFilter('fiscalYearToDate')}
+                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                    activeFilter === 'fiscalYearToDate'
+                                        ? 'text-gray-900 border-transparent'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                }`}
+                                style={
+                                    activeFilter === 'fiscalYearToDate'
+                                        ? { backgroundColor: THEME_ORANGE }
+                                        : undefined
+                                }
+                            >
+                                Fiscal year
+                            </button>
+                            <button
+                                type="button"
+                                title="Twelve months ending today (rolling)"
                                 onClick={() => setQuickFilter('past12months')}
                                 className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                                     activeFilter === 'past12months'
@@ -358,6 +382,8 @@ const OverviewPageContent: React.FC = () => {
                                 Past 12 months
                             </button>
                             <button
+                                type="button"
+                                title="All delivery records on file"
                                 onClick={() => setQuickFilter('allTime')}
                                 className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                                     activeFilter === 'allTime'
@@ -370,18 +396,18 @@ const OverviewPageContent: React.FC = () => {
                                         : undefined
                                 }
                             >
-                                All time
+                                All records
                             </button>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                             <span className="hidden text-xs text-gray-500 sm:inline">
-                                Custom range
+                                Custom period
                             </span>
                             <MyCalendar
                                 selectedRange={dateRange}
                                 onRangeChange={handleDateRangeChange}
                                 defaultRange={getDefaultDateRange()}
-                                onClear={() => setActiveFilter('past12months')}
+                                onClear={() => setActiveFilter('last30days')}
                             />
                         </div>
                     </div>

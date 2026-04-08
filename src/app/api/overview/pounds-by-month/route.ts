@@ -32,10 +32,10 @@ function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date
 }
 
 function getDefaultRange(): { start: Date; end: Date } {
-    const end = new Date();
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const start = new Date(end);
-    start.setMonth(start.getMonth() - 12);
-    start.setDate(start.getDate() + 1);
+    start.setDate(start.getDate() - 29);
     return { start, end };
 }
 
