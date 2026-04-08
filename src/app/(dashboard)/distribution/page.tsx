@@ -55,6 +55,7 @@ function DistributionContent() {
         date: string;
         organizationName: string;
         totalPounds: string;
+        nutritionalTags: string[];
         foodsDelivered: { name: string; weight: string }[];
     } | null>(null);
 
@@ -68,6 +69,7 @@ function DistributionContent() {
                 date: string;
                 organizationName: string;
                 totalPounds: number;
+                nutritionalTags?: string[];
                 foodsDelivered: { name: string; weight: string }[];
             };
             setPopupData({
@@ -78,6 +80,7 @@ function DistributionContent() {
                 }),
                 organizationName: detail.organizationName,
                 totalPounds: `${Number(detail.totalPounds).toLocaleString()} lbs`,
+                nutritionalTags: detail.nutritionalTags ?? [],
                 foodsDelivered: detail.foodsDelivered,
             });
             setPopupOpen(true);

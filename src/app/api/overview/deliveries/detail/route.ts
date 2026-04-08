@@ -4,6 +4,26 @@ import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAcce
 
 type FoodRow = { productName: string | null; totalWeightLbs: number | null };
 
+type TagRow = { productType: string | null; minimallyProcessedFood: boolean | null };
+
+function buildNutritionalTags(rows: TagRow[]): string[] {
+    const types = new Set<string>();
+    let anyTrue = false;
+    let anyFalse = false;
+    for (const r of rows) {
+        const pt = r.productType?.trim();
+        if (pt) types.add(pt);
+        if (r.minimallyProcessedFood === true) anyTrue = true;
+        if (r.minimallyProcessedFood === false) anyFalse = true;
+    }
+    const tags = [...types].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    // Omit "Mixed processing" for this view; when both apply, show no aggregate processing tag.
+    if (anyTrue && !anyFalse) tags.push('Minimally processed');
+    else if (!anyTrue && anyFalse) tags.push('Processed');
+    else if (rows.length > 0 && !anyTrue && !anyFalse) tags.push('Not specified');
+    return tags;
+}
+
 /**
  * GET /api/overview/deliveries/detail?date=YYYY-MM-DD&org=OrgName
  * Returns itemized foods delivered for a specific date + organization.
@@ -50,10 +70,22 @@ export async function GET(request: NextRequest) {
 
         const totalPounds = foodRows.reduce((sum, r) => sum + Number(r.totalWeightLbs ?? 0), 0);
 
+        const tagRows = await prisma.$queryRaw<TagRow[]>`
+            SELECT DISTINCT t."productType", t."minimallyProcessedFood"
+            FROM "AllInventoryTransactions" t
+            INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+            INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+            WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
+              AND d."householdName" ILIKE ${org}
+        `;
+
+        const nutritionalTags = buildNutritionalTags(tagRows);
+
         return NextResponse.json({
             date: date.toISOString().slice(0, 10),
             organizationName: org,
             totalPounds: Math.round(totalPounds),
+            nutritionalTags,
             foodsDelivered: foodRows
                 .filter(r => r.productName)
                 .map(r => ({

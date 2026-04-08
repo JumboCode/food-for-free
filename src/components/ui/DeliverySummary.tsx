@@ -20,6 +20,7 @@ type PopupData = {
     date: string;
     organizationName: string;
     totalPounds: string;
+    nutritionalTags: string[];
     foodsDelivered: { name: string; weight: string }[];
 };
 
@@ -39,6 +40,7 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
                 date: string;
                 organizationName: string;
                 totalPounds: number;
+                nutritionalTags?: string[];
                 foodsDelivered: { name: string; weight: string }[];
             };
             setPopupData({
@@ -49,6 +51,7 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
                 }),
                 organizationName: data.organizationName,
                 totalPounds: `${Number(data.totalPounds).toLocaleString()} lbs`,
+                nutritionalTags: data.nutritionalTags ?? [],
                 foodsDelivered: data.foodsDelivered,
             });
             setPopupOpen(true);
