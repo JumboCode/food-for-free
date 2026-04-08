@@ -38,20 +38,22 @@ export async function GET(request: NextRequest) {
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const partnerFilter = scopeToPartnerFilter(scope);
 
+        // Use t.date (AllInventoryTransactions) for grouping — same source as the distribution
+        // table and detail endpoint, so the date in the ID always matches what the detail query filters on.
         if (partnerFilter) {
             type PartnerDeliveryRow = { day: Date; totalPounds: number | null };
             const rows = await prisma.$queryRaw<PartnerDeliveryRow[]>`
                 SELECT
-                    DATE_TRUNC('day', d."date") AS "day",
+                    DATE_TRUNC('day', t."date") AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
-                FROM "AllProductPackageDestinations" d
-                LEFT JOIN "AllPackagesByItem" p
-                    ON p."productPackageId18" = d."productPackageId18"
+                FROM "AllInventoryTransactions" t
+                INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
                 WHERE d."householdName" ILIKE ${partnerFilter}
-                  AND d."date" >= ${range.start}
-                  AND d."date" <= ${range.end}
-                GROUP BY DATE_TRUNC('day', d."date")
-                ORDER BY DATE_TRUNC('day', d."date") DESC
+                  AND t."date" >= ${range.start}
+                  AND t."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', t."date")
+                ORDER BY DATE_TRUNC('day', t."date") DESC
                 LIMIT 10
             `;
 
@@ -70,16 +72,16 @@ export async function GET(request: NextRequest) {
         type DeliveryRow = { day: Date; destination: string | null; totalPounds: number | null };
         const rows = await prisma.$queryRaw<DeliveryRow[]>`
             SELECT
-                DATE_TRUNC('day', d."date") AS "day",
+                DATE_TRUNC('day', t."date") AS "day",
                 d."householdName" AS "destination",
                 SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
-            FROM "AllProductPackageDestinations" d
-            LEFT JOIN "AllPackagesByItem" p
-                ON p."productPackageId18" = d."productPackageId18"
-            WHERE d."date" >= ${range.start}
-              AND d."date" <= ${range.end}
-            GROUP BY DATE_TRUNC('day', d."date"), d."householdName"
-            ORDER BY DATE_TRUNC('day', d."date") DESC
+            FROM "AllInventoryTransactions" t
+            INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+            INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+            WHERE t."date" >= ${range.start}
+              AND t."date" <= ${range.end}
+            GROUP BY DATE_TRUNC('day', t."date"), d."householdName"
+            ORDER BY DATE_TRUNC('day', t."date") DESC
             LIMIT 10
         `;
 

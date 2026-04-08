@@ -39,9 +39,9 @@ const partners: PartnerCardProps[] = [
     },
 ];
 const deliveries = [
-    { id: 1, date: new Date('2025-11-01'), totalPounds: 120 },
-    { id: 2, date: new Date('2025-11-05'), totalPounds: 95 },
-    { id: 3, date: new Date('2025-11-10'), totalPounds: 150 },
+    { id: '1', date: new Date('2025-11-01'), totalPounds: 120 },
+    { id: '2', date: new Date('2025-11-05'), totalPounds: 95 },
+    { id: '3', date: new Date('2025-11-10'), totalPounds: 150 },
 ];
 
 // Delivery popup sample data
@@ -174,7 +174,7 @@ export default function CalendarPage() {
                 organization="Food For Free"
                 name="Fresh Apples"
                 totalPounds={100}
-                id={1}
+                id="1"
             />
 
             <DeliverySummary deliveries={deliveries} historyLink="distribution" />
