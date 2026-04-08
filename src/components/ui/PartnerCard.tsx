@@ -8,6 +8,9 @@ export type PartnerCardProps = {
     type: string;
     disableClick?: boolean;
     onSelect?: (name: string) => void; // Add this
+    compact?: boolean;
+    /** `brand` = green strip; `neutral` = white list row (e.g. search vs chart greens). */
+    surface?: 'brand' | 'neutral';
     //If using this card for something else, change props here
 };
 
@@ -18,6 +21,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({
     type,
     disableClick = false,
     onSelect,
+    compact = false,
+    surface = 'brand',
 }) => {
     const [showPopup, setShowPopup] = useState<boolean>(false);
 
@@ -39,10 +44,22 @@ const PartnerCard: React.FC<PartnerCardProps> = ({
             {/*Card info goes here*/}
             <div
                 onClick={openPopup}
-                className="flex items-center justify-between px-6 py-4 bg-[#B7D7BD] hover:bg-[#E7F3EA] text-[#608D6A] hover:text-black border-b border-white cursor-pointer transition-all duration-200"
+                className={`flex cursor-pointer items-center justify-between transition-colors duration-200 ${
+                    surface === 'neutral'
+                        ? `bg-[#FAF9F7] hover:bg-[#F3F0EA] text-slate-800 ${
+                              compact ? 'px-3 py-2' : 'px-6 py-4'
+                          }`
+                        : `border-b border-white bg-[#B7D7BD] text-[#608D6A] hover:bg-[#E7F3EA] hover:text-black ${
+                              compact ? 'px-3 py-2' : 'px-6 py-4'
+                          }`
+                }`}
             >
-                <span className="font-medium">{name}</span>
-                <ChevronRight className="h-5 w-5" />
+                <span className={`font-medium ${compact ? 'text-sm' : ''}`}>{name}</span>
+                <ChevronRight
+                    className={`shrink-0 ${compact ? 'h-4 w-4' : 'h-5 w-5'} ${
+                        surface === 'neutral' ? 'text-slate-400' : ''
+                    }`}
+                />
             </div>
 
             {/* Popup info goes here */}

@@ -251,46 +251,47 @@ const OverviewPageContent: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#FAF9F7]">
-            <div className="mx-auto min-w-0 max-w-6xl px-8 py-10 space-y-5">
-                {/* Page header */}
-                <div className="mb-1">
-                    <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
-                        Statistics Overview
-                    </h1>
-                    {isPartnerDashboard && sessionCtx.partnerName ? (
-                        <p className="mt-2 text-sm text-gray-600">
-                            Showing deliveries for your organization:{' '}
-                            <span className="font-medium text-gray-900">
-                                {sessionCtx.partnerName}
-                            </span>
-                        </p>
-                    ) : selectedPartner ? (
-                        <p className="mt-2 text-sm text-gray-600">
-                            Partner view:{' '}
-                            <span className="font-medium text-gray-900">{selectedPartner}</span>
-                            <span className="mx-2 text-gray-300">·</span>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedPartner(null)}
-                                className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
-                            >
-                                View all organizations
-                            </button>
-                        </p>
+            <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-8 py-8 sm:py-10 lg:space-y-5">
+                {/* Page title left; admin org search right on large screens */}
+                <div className="mb-0 flex flex-col gap-3 max-lg:mb-6 lg:mb-1 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                            Statistics Overview
+                        </h1>
+                        {isPartnerDashboard && sessionCtx.partnerName ? (
+                            <p className="mt-2 text-sm text-gray-600">
+                                Showing deliveries for your organization:{' '}
+                                <span className="font-medium text-gray-900">
+                                    {sessionCtx.partnerName}
+                                </span>
+                            </p>
+                        ) : selectedPartner ? (
+                            <p className="mt-2 text-sm text-gray-600">
+                                Partner view:{' '}
+                                <span className="font-medium text-gray-900">{selectedPartner}</span>
+                                <span className="mx-2 text-gray-300">·</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedPartner(null)}
+                                    className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                >
+                                    View all organizations
+                                </button>
+                            </p>
+                        ) : null}
+                    </div>
+                    {sessionCtx.isAdmin ? (
+                        <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
+                            <SearchBarOverview
+                                organizations={partnerOrganizations}
+                                onSelectPartner={name => setSelectedPartner(name)}
+                            />
+                        </div>
                     ) : null}
                 </div>
 
-                {sessionCtx.isAdmin ? (
-                    <div className="max-w-md">
-                        <SearchBarOverview
-                            organizations={partnerOrganizations}
-                            onSelectPartner={name => setSelectedPartner(name)}
-                        />
-                    </div>
-                ) : null}
-
                 {/* lg+: single toolbar row. Below lg: stacked sections + wider date control */}
-                <div className="min-w-0 rounded-lg border border-gray-200 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm sm:px-4 sm:py-2.5">
+                <div className="min-w-0 rounded-lg border border-gray-300/90 bg-white px-3 py-2 shadow-sm ring-1 ring-black/[0.03] sm:px-4 sm:py-2.5">
                     <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
                         <div className="min-w-0 lg:flex-1">
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:hidden">
@@ -444,9 +445,9 @@ const OverviewPageContent: React.FC = () => {
 
                 {!loading && (
                     <>
-                        <div className="flex flex-col gap-10">
+                        <div className="flex flex-col gap-5 pt-0 sm:gap-6 lg:pt-3">
                             {/* Top stats + trend: compact key metrics column, chart takes rest */}
-                            <div className="grid grid-cols-1 gap-y-3 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] lg:gap-y-2 items-stretch">
+                            <div className="grid grid-cols-1 gap-y-3 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] lg:gap-y-3 items-stretch">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                                     Key metrics
                                 </p>
