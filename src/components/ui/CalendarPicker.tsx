@@ -3,7 +3,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { format, parse, isValid } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
 import { Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
+
+export type CalendarTriggerVariant = 'pill' | 'panel' | 'responsive';
 
 interface MyCalendarProps {
     selectedRange?: { start: Date; end: Date };
@@ -12,6 +15,11 @@ interface MyCalendarProps {
     defaultRange?: { start: Date; end: Date };
     /** Called after Reset applies the default range, e.g. to sync preset controls in the parent. */
     onClear?: () => void;
+    /**
+     * `pill` — compact rounded control (may truncate). `panel` — full-width block, two-line dates.
+     * `responsive` — panel below `lg`, pill from `lg` up (overview toolbar).
+     */
+    triggerVariant?: CalendarTriggerVariant;
 }
 
 function getPast12MonthsRange(): { start: Date; end: Date } {
@@ -27,7 +35,9 @@ export function MyCalendar({
     onRangeChange,
     defaultRange,
     onClear,
+    triggerVariant = 'pill',
 }: MyCalendarProps = {}) {
+    const isResponsive = triggerVariant === 'responsive';
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
     const [leftMonth, setLeftMonth] = useState<Date>(() =>
@@ -157,25 +167,81 @@ export function MyCalendar({
     const startMonth = new Date(new Date().getFullYear() - 10, 0);
     const endMonth = new Date(new Date().getFullYear() + 2, 11);
 
+    const rangeTitle =
+        selectedRange?.from && selectedRange?.to
+            ? `${format(selectedRange.from, 'MMMM d, yyyy')} – ${format(selectedRange.to, 'MMMM d, yyyy')}`
+            : undefined;
+
     return (
-        <div className="flex flex-col items-end">
+        <div
+            className={cn(
+                'flex min-w-0 max-w-full flex-col',
+                triggerVariant === 'panel' && 'items-stretch',
+                triggerVariant === 'pill' && 'items-stretch sm:items-end',
+                isResponsive && 'items-stretch lg:items-end'
+            )}
+        >
             <button
                 type="button"
                 onClick={toggleDialog}
-                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs sm:text-sm font-medium shadow-sm transition-colors border-[#FAC87D]/50 bg-[#FAC87D]/15 text-slate-800 hover:bg-[#FAC87D]/25 hover:border-[#FAC87D]/70"
+                title={rangeTitle}
+                className={cn(
+                    'flex min-w-0 max-w-full items-center gap-2 border text-left font-medium shadow-sm transition-colors border-[#FAC87D]/50 bg-[#FAC87D]/15 text-slate-800 hover:bg-[#FAC87D]/25 hover:border-[#FAC87D]/70',
+                    triggerVariant === 'panel' && 'w-full rounded-lg px-3 py-2.5 text-sm',
+                    triggerVariant === 'pill' &&
+                        'inline-flex rounded-full px-3 py-1.5 text-xs sm:max-w-[min(100%,20rem)] sm:text-sm',
+                    isResponsive &&
+                        'w-full rounded-lg px-3 py-2.5 text-sm lg:inline-flex lg:w-auto lg:max-w-[min(100%,20rem)] lg:rounded-full lg:px-3 lg:py-1.5 lg:text-xs xl:text-sm'
+                )}
                 aria-controls={dialogId}
                 aria-haspopup="dialog"
                 aria-expanded={isDialogOpen}
             >
-                <Calendar className="w-4 h-4 shrink-0" style={{ color: themeAccent }} />
-                <span className="truncate max-w-[150px] sm:max-w-[220px]">
-                    {selectedRange?.from && selectedRange?.to
-                        ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(
-                              selectedRange.to,
-                              'MM/dd/yyyy'
-                          )}`
-                        : 'Specify dates'}
-                </span>
+                <Calendar className="h-4 w-4 shrink-0" style={{ color: themeAccent }} />
+                {isResponsive && selectedRange?.from && selectedRange?.to ? (
+                    <>
+                        <div className="min-w-0 flex-1 leading-snug lg:hidden">
+                            <span className="block font-medium tabular-nums text-slate-900">
+                                {format(selectedRange.from, 'MMM d, yyyy')}
+                            </span>
+                            <span className="mt-0.5 block text-xs font-normal tabular-nums text-slate-600">
+                                through {format(selectedRange.to, 'MMM d, yyyy')}
+                            </span>
+                        </div>
+                        <span className="hidden min-w-0 flex-1 truncate lg:block">
+                            {`${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(
+                                selectedRange.to,
+                                'MM/dd/yyyy'
+                            )}`}
+                        </span>
+                    </>
+                ) : triggerVariant === 'panel' && selectedRange?.from && selectedRange?.to ? (
+                    <div className="min-w-0 flex-1 leading-snug">
+                        <span className="block font-medium tabular-nums text-slate-900">
+                            {format(selectedRange.from, 'MMM d, yyyy')}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-normal tabular-nums text-slate-600">
+                            through {format(selectedRange.to, 'MMM d, yyyy')}
+                        </span>
+                    </div>
+                ) : (
+                    <span
+                        className={cn(
+                            'min-w-0 flex-1',
+                            triggerVariant === 'panel' && 'text-sm text-slate-600',
+                            triggerVariant === 'pill' && 'truncate',
+                            isResponsive &&
+                                'text-sm text-slate-600 lg:truncate lg:text-xs xl:text-sm'
+                        )}
+                    >
+                        {selectedRange?.from && selectedRange?.to
+                            ? `${format(selectedRange.from, 'MM/dd/yyyy')} - ${format(
+                                  selectedRange.to,
+                                  'MM/dd/yyyy'
+                              )}`
+                            : 'Specify dates'}
+                    </span>
+                )}
             </button>
 
             <dialog

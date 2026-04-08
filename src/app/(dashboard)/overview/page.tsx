@@ -251,7 +251,7 @@ const OverviewPageContent: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#FAF9F7]">
-            <div className="mx-auto max-w-6xl px-8 py-10 space-y-5">
+            <div className="mx-auto min-w-0 max-w-6xl px-8 py-10 space-y-5">
                 {/* Page header */}
                 <div className="mb-1">
                     <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
@@ -289,121 +289,124 @@ const OverviewPageContent: React.FC = () => {
                     </div>
                 ) : null}
 
-                {/* Filters + date range - compact single row on desktop */}
-                <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm px-3 py-2 sm:px-4 sm:py-2.5">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 sm:mr-1">
-                                Time range
-                            </span>
-                            <button
-                                type="button"
-                                title="Thirty consecutive calendar days, inclusive of today"
-                                onClick={() => setQuickFilter('last30days')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'last30days'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'last30days'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Last 30 days
-                            </button>
-                            <button
-                                type="button"
-                                title="From the first day of the current calendar month through today"
-                                onClick={() => setQuickFilter('thisMonth')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'thisMonth'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'thisMonth'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Month to date
-                            </button>
-                            <button
-                                type="button"
-                                title="January 1 through December 31 of the current calendar year"
-                                onClick={() => setQuickFilter('thisYear')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'thisYear'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'thisYear'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Year to date
-                            </button>
-                            <button
-                                type="button"
-                                title="From July 1 through today. Fiscal year is July 1–June 30."
-                                onClick={() => setQuickFilter('fiscalYearToDate')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'fiscalYearToDate'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'fiscalYearToDate'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Fiscal year
-                            </button>
-                            <button
-                                type="button"
-                                title="Twelve months ending today (rolling)"
-                                onClick={() => setQuickFilter('past12months')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'past12months'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'past12months'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                Past 12 months
-                            </button>
-                            <button
-                                type="button"
-                                title="All delivery records on file"
-                                onClick={() => setQuickFilter('allTime')}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    activeFilter === 'allTime'
-                                        ? 'text-gray-900 border-transparent'
-                                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                }`}
-                                style={
-                                    activeFilter === 'allTime'
-                                        ? { backgroundColor: THEME_ORANGE }
-                                        : undefined
-                                }
-                            >
-                                All records
-                            </button>
+                {/* lg+: single toolbar row. Below lg: stacked sections + wider date control */}
+                <div className="min-w-0 rounded-lg border border-gray-200 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm sm:px-4 sm:py-2.5">
+                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
+                        <div className="min-w-0 lg:flex-1">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:hidden">
+                                Time Range
+                            </p>
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <span className="hidden text-xs font-semibold uppercase tracking-wide text-gray-500 lg:mr-1 lg:inline">
+                                    Time Range
+                                </span>
+                                <button
+                                    type="button"
+                                    title="Thirty consecutive calendar days, inclusive of today"
+                                    onClick={() => setQuickFilter('last30days')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'last30days'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'last30days'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    Last 30 days
+                                </button>
+                                <button
+                                    type="button"
+                                    title="From the first day of the current calendar month through today"
+                                    onClick={() => setQuickFilter('thisMonth')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'thisMonth'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'thisMonth'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    Month to date
+                                </button>
+                                <button
+                                    type="button"
+                                    title="January 1 through December 31 of the current calendar year"
+                                    onClick={() => setQuickFilter('thisYear')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'thisYear'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'thisYear'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    Full calendar year
+                                </button>
+                                <button
+                                    type="button"
+                                    title="From July 1 through today. Fiscal year is July 1–June 30."
+                                    onClick={() => setQuickFilter('fiscalYearToDate')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'fiscalYearToDate'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'fiscalYearToDate'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    Fiscal year
+                                </button>
+                                <button
+                                    type="button"
+                                    title="Twelve months ending today (rolling)"
+                                    onClick={() => setQuickFilter('past12months')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'past12months'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'past12months'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    Past 12 months
+                                </button>
+                                <button
+                                    type="button"
+                                    title="All delivery records on file"
+                                    onClick={() => setQuickFilter('allTime')}
+                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                        activeFilter === 'allTime'
+                                            ? 'text-gray-900 border-transparent'
+                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                    style={
+                                        activeFilter === 'allTime'
+                                            ? { backgroundColor: THEME_ORANGE }
+                                            : undefined
+                                    }
+                                >
+                                    All Time
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <span className="hidden text-xs text-gray-500 sm:inline">
-                                Custom period
-                            </span>
+                        <div className="min-w-0 w-full lg:flex lg:w-auto lg:shrink-0 lg:justify-end">
                             <MyCalendar
+                                triggerVariant="responsive"
                                 selectedRange={dateRange}
                                 onRangeChange={handleDateRangeChange}
                                 defaultRange={getDefaultDateRange()}
@@ -441,111 +444,115 @@ const OverviewPageContent: React.FC = () => {
 
                 {!loading && (
                     <>
-                        {/* Top stats + trend: compact key metrics column, chart takes rest */}
-                        <div className="grid grid-cols-1 gap-y-2 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] items-stretch">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Key metrics
-                            </p>
-                            <div className="hidden lg:block">
+                        <div className="flex flex-col gap-10">
+                            {/* Top stats + trend: compact key metrics column, chart takes rest */}
+                            <div className="grid grid-cols-1 gap-y-3 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] lg:gap-y-2 items-stretch">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Delivery trend
+                                    Key metrics
                                 </p>
-                            </div>
-                            <div className="grid grid-rows-3 gap-1.5 min-h-0 max-w-[280px] lg:max-w-none">
-                                <StatCard
-                                    label="Total Delivered"
-                                    value={totalPoundsDelivered.toLocaleString()}
-                                    unit="lbs"
-                                />
-                                <StatCard
-                                    label="Deliveries Completed"
-                                    value={deliveriesCompleted.toString()}
-                                />
-                                <StatCard
-                                    label="Avg per delivery"
-                                    value={
-                                        deliveriesCompleted
-                                            ? Math.round(
-                                                  totalPoundsDelivered / deliveriesCompleted
-                                              ).toLocaleString()
-                                            : '0'
-                                    }
-                                    unit="lbs"
-                                />
-                            </div>
-                            <div className="flex flex-col min-h-0">
-                                <div className="lg:hidden mb-1">
+                                <div className="hidden lg:block">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                                         Delivery trend
                                     </p>
                                 </div>
-                                <div className="flex-1 min-h-[200px]">
-                                    <PoundsByMonthChart
-                                        data={poundsByMonthData}
-                                        dateRange={dateRange}
-                                        activeFilter={activeFilter}
+                                <div className="grid min-h-0 w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-3">
+                                    <StatCard
+                                        label="Total Delivered"
+                                        value={totalPoundsDelivered.toLocaleString()}
+                                        unit="lbs"
                                     />
+                                    <StatCard
+                                        label="Deliveries Completed"
+                                        value={deliveriesCompleted.toString()}
+                                    />
+                                    <div className="col-span-2 lg:col-span-1">
+                                        <StatCard
+                                            label="Avg per delivery"
+                                            value={
+                                                deliveriesCompleted
+                                                    ? Math.round(
+                                                          totalPoundsDelivered / deliveriesCompleted
+                                                      ).toLocaleString()
+                                                    : '0'
+                                            }
+                                            unit="lbs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex min-h-0 flex-col max-lg:mt-1">
+                                    <div className="mb-1 max-lg:mb-2 lg:hidden">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Delivery trend
+                                        </p>
+                                    </div>
+                                    <div className="flex-1 min-h-[200px]">
+                                        <PoundsByMonthChart
+                                            data={poundsByMonthData}
+                                            dateRange={dateRange}
+                                            activeFilter={activeFilter}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Composition charts */}
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <div>
-                                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                                        Donation composition
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-gray-600">
-                                        Breakdown of food types and processing levels.
-                                    </p>
+                            {/* Composition charts */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Donation composition
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-gray-600">
+                                            Breakdown of food types and processing levels.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                                    <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                        <FoodTypesDonutChart
+                                            className="flex-1"
+                                            data={foodTypesData}
+                                            title="Food Types Donated"
+                                        />
+                                    </div>
+                                    <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                        <FoodTypesDonutChart
+                                            className="flex-1"
+                                            data={processingData}
+                                            title="Processing Breakdown"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-                                <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                    <FoodTypesDonutChart
-                                        className="flex-1"
-                                        data={foodTypesData}
-                                        title="Food Types Donated"
-                                    />
-                                </div>
-                                <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                    <FoodTypesDonutChart
-                                        className="flex-1"
-                                        data={processingData}
-                                        title="Processing Breakdown"
-                                    />
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Delivery summary */}
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <div>
-                                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                                        Recent deliveries
-                                    </p>
-                                    <p className="text-sm text-gray-600">
-                                        Snapshot of completed deliveries in the selected period.
-                                    </p>
+                            {/* Delivery summary */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Recent deliveries
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            Snapshot of completed deliveries in the selected period.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="w-full bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                <DeliverySummary
-                                    deliveries={deliverySummaryData}
-                                    historyLink="distribution"
-                                />
-                                <div className="flex justify-end mt-4">
-                                    <a
-                                        href={`/distribution?start=${formatDateParam(
-                                            dateRange.start
-                                        )}&end=${formatDateParam(dateRange.end)}`}
-                                        className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
-                                        style={{ backgroundColor: THEME_ORANGE }}
-                                    >
-                                        See full distribution history
-                                    </a>
+                                <div className="w-full bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                    <DeliverySummary
+                                        deliveries={deliverySummaryData}
+                                        historyLink="distribution"
+                                    />
+                                    <div className="flex justify-end mt-4">
+                                        <a
+                                            href={`/distribution?start=${formatDateParam(
+                                                dateRange.start
+                                            )}&end=${formatDateParam(dateRange.end)}`}
+                                            className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
+                                            style={{ backgroundColor: THEME_ORANGE }}
+                                        >
+                                            See full distribution history
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
