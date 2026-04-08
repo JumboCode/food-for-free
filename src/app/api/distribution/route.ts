@@ -16,17 +16,23 @@ export async function GET(req: NextRequest) {
 
         if (!start || !end) return NextResponse.json({ error: 'Dates required' }, { status: 400 });
 
-        const search = searchParams.get('search') || '';
+        const search = (searchParams.get('search') || '').trim();
+        const searchOr = search
+            ? [
+                  { destination: { contains: search, mode: 'insensitive' as const } },
+                  { pantryProductName: { contains: search, mode: 'insensitive' as const } },
+                  { inventoryType: { contains: search, mode: 'insensitive' as const } },
+                  { productType: { contains: search, mode: 'insensitive' as const } },
+                  { source: { contains: search, mode: 'insensitive' as const } },
+              ]
+            : undefined;
 
         const records = await prisma.allInventoryTransactions.findMany({
             where: {
                 date: { gte: new Date(start), lte: new Date(end) },
                 destination: { not: null },
                 NOT: { destination: '' },
-                OR: [
-                    { destination: { contains: search, mode: 'insensitive' } },
-                    { pantryProductName: { contains: search, mode: 'insensitive' } },
-                ],
+                ...(searchOr ? { OR: searchOr } : {}),
             },
             orderBy: { date: 'desc' },
         });

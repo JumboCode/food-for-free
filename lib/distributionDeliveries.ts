@@ -33,6 +33,16 @@ export async function queryDistributionDeliveries(
             d."householdName" ILIKE ${searchFilter}
             OR COALESCE(p."pantryProductName", '') ILIKE ${searchFilter}
             OR COALESCE(t."inventoryType", '') ILIKE ${searchFilter}
+            OR COALESCE(t."productType", '') ILIKE ${searchFilter}
+            OR COALESCE(t."source", '') ILIKE ${searchFilter}
+            OR COALESCE(p."lotFoodRescueProgram", '') ILIKE ${searchFilter}
+            OR (
+              CASE
+                WHEN t."minimallyProcessedFood" IS TRUE THEN 'Minimally Processed'
+                WHEN t."minimallyProcessedFood" IS FALSE THEN 'Processed'
+                ELSE 'Not Specified'
+              END
+            ) ILIKE ${searchFilter}
           )
         `
         : Prisma.empty;

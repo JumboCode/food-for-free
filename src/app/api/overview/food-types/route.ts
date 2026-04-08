@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
 import {
+    COMPOSITION_EMPTY_SEGMENT_COLOR,
+    FOOD_TYPE_DONUT_COLORS,
+    PROCESSING_DONUT_COLOR_BY_LABEL,
+    type FoodTypeCompositionEntry,
+} from '~/lib/chartCompositionColors';
+import {
     getOverviewScope,
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
@@ -75,23 +81,16 @@ export async function GET(request: NextRequest) {
             GROUP BY t."minimallyProcessedFood"
         `;
 
-        const foodTypeColors = ['#B7D7BD', '#6CAEE6', '#F9DC70', '#E7A54E', '#F4A6B8', '#B39DDB'];
-        const processingColorMap: Record<string, string> = {
-            'Minimally Processed': '#B7D7BD',
-            Processed: '#E7A54E',
-            'Not Specified': '#CBD5E1',
-        };
-
-        const foodTypes = foodTypeGrouped
+        const foodTypes: FoodTypeCompositionEntry[] = foodTypeGrouped
             .map((row, index) => ({
                 label: row.productType?.trim() || 'Other',
                 value: Math.round(Number(row.pounds ?? 0)),
-                color: foodTypeColors[index % foodTypeColors.length],
+                color: FOOD_TYPE_DONUT_COLORS[index % FOOD_TYPE_DONUT_COLORS.length] as string,
             }))
             .filter(entry => entry.value > 0)
             .sort((a, b) => b.value - a.value);
 
-        const processing = processingGrouped
+        const processing: FoodTypeCompositionEntry[] = processingGrouped
             .map(row => {
                 const label =
                     row.minimallyProcessedFood === true
@@ -102,7 +101,7 @@ export async function GET(request: NextRequest) {
                 return {
                     label,
                     value: Math.round(Number(row.pounds ?? 0)),
-                    color: processingColorMap[label],
+                    color: PROCESSING_DONUT_COLOR_BY_LABEL[label],
                 };
             })
             .filter(entry => entry.value > 0)
@@ -112,14 +111,14 @@ export async function GET(request: NextRequest) {
             foodTypes.push({
                 label: 'No data',
                 value: 0,
-                color: '#CBD5E1',
+                color: COMPOSITION_EMPTY_SEGMENT_COLOR,
             });
         }
         if (processing.length === 0) {
             processing.push({
                 label: 'No data',
                 value: 0,
-                color: '#CBD5E1',
+                color: COMPOSITION_EMPTY_SEGMENT_COLOR,
             });
         }
 

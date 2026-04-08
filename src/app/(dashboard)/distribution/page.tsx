@@ -6,6 +6,15 @@ import { Search, Loader2, Download, ChevronRight } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import DeliveryDetailPopup from '@/components/ui/DeliveryDetailPopup';
+import {
+    chipStyleFromDonutHex,
+    foodTypeColorLookupFromComposition,
+    foodTypeLabelForRow,
+    processingChipStyle,
+    processingDisplayLabel,
+    resolveFoodTypeDonutHex,
+    type FoodTypeCompositionEntry,
+} from '~/lib/chartCompositionColors';
 
 interface DeliveryRecord {
     householdId18: string;
@@ -57,6 +66,9 @@ function DistributionContent() {
         totalPounds: string;
         foodsDelivered: { name: string; weight: string }[];
     } | null>(null);
+    const [foodTypeColorLookup, setFoodTypeColorLookup] = useState<Map<string, string>>(
+        () => new Map()
+    );
 
     const handleRowClick = async (record: DeliveryRecord) => {
         const dateStr = new Date(record.date).toISOString().slice(0, 10);
@@ -139,26 +151,60 @@ function DistributionContent() {
         }
     };
 
+    /** Food-type chip colors match the overview donut for this date range only — not recomputed on search. */
     useEffect(() => {
-        async function fetchData() {
+        const ac = new AbortController();
+        async function fetchCompositionColors() {
+            try {
+                const rangeParams = new URLSearchParams({
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                });
+                const res = await fetch(`/api/overview/food-types?${rangeParams.toString()}`, {
+                    signal: ac.signal,
+                });
+                if (!res.ok) return;
+                const composition = (await res.json()) as {
+                    foodTypes?: FoodTypeCompositionEntry[];
+                };
+                if (ac.signal.aborted) return;
+                const list = Array.isArray(composition.foodTypes) ? composition.foodTypes : [];
+                setFoodTypeColorLookup(foodTypeColorLookupFromComposition(list));
+            } catch (err) {
+                if (err instanceof Error && err.name === 'AbortError') return;
+                console.error(err);
+            }
+        }
+        void fetchCompositionColors();
+        return () => ac.abort();
+    }, [dateRange.start, dateRange.end]);
+
+    useEffect(() => {
+        const ac = new AbortController();
+        async function fetchDeliveries() {
             setLoading(true);
             try {
-                const params = new URLSearchParams({
+                const deliveriesParams = new URLSearchParams({
                     start: dateRange.start.toISOString(),
                     end: dateRange.end.toISOString(),
                     search: debouncedSearch,
                 });
-                const response = await fetch(`/api/admin/deliveries?${params.toString()}`);
-                if (!response.ok) throw new Error('Failed to fetch data.');
-                const json = await response.json();
+                const res = await fetch(`/api/admin/deliveries?${deliveriesParams.toString()}`, {
+                    signal: ac.signal,
+                });
+                if (!res.ok) throw new Error('Failed to fetch data.');
+                const json = await res.json();
+                if (ac.signal.aborted) return;
                 setData(json);
             } catch (err) {
+                if (err instanceof Error && err.name === 'AbortError') return;
                 console.error(err);
             } finally {
-                setLoading(false);
+                if (!ac.signal.aborted) setLoading(false);
             }
         }
-        fetchData();
+        void fetchDeliveries();
+        return () => ac.abort();
     }, [dateRange.start, dateRange.end, debouncedSearch]);
 
     const totalPages = Math.max(1, Math.ceil(data.length / ROWS_PER_PAGE));
@@ -186,7 +232,9 @@ function DistributionContent() {
                             Distribution
                         </h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            Past deliveries. Search to filter; export uses the date range above.
+                            Past deliveries. Search matches organization, food, inventory type, and
+                            tags (food type, processing, food rescue program, source). Export uses
+                            the same date range.
                         </p>
                     </div>
 
@@ -194,7 +242,7 @@ function DistributionContent() {
                         <div className="relative w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
-                                placeholder="Search…"
+                                placeholder="Search org, food, inventory type, tags…"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
@@ -251,63 +299,76 @@ function DistributionContent() {
                                             </td>
                                         </tr>
                                     ) : data.length > 0 ? (
-                                        paginatedData.map((d, index) => (
-                                            <tr
-                                                key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}`}
-                                                className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors cursor-pointer group"
-                                                onClick={() => {
-                                                    void handleRowClick(d);
-                                                }}
-                                            >
-                                                <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
-                                                    {format(new Date(d.date), 'M/d/yyyy')}
-                                                </td>
-                                                <td
-                                                    className="py-3.5 pl-5 pr-2 text-sm font-medium text-gray-900 truncate max-w-[200px]"
-                                                    title={d.organizationName}
+                                        paginatedData.map((d, index) => {
+                                            const typeLabel = foodTypeLabelForRow(d.productType);
+                                            const typeHex = resolveFoodTypeDonutHex(
+                                                d.productType,
+                                                foodTypeColorLookup
+                                            );
+                                            const typeChip = chipStyleFromDonutHex(typeHex);
+                                            const procLabel = processingDisplayLabel(
+                                                d.minimallyProcessedFood
+                                            );
+                                            const procChip = processingChipStyle(
+                                                d.minimallyProcessedFood
+                                            );
+                                            return (
+                                                <tr
+                                                    key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}`}
+                                                    className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors cursor-pointer group"
+                                                    onClick={() => {
+                                                        void handleRowClick(d);
+                                                    }}
                                                 >
-                                                    {d.organizationName}
-                                                </td>
-                                                <td className="py-3.5 pl-2 pr-5 text-sm text-gray-700 truncate max-w-[200px]">
-                                                    {d.productName?.trim() || '—'}
-                                                </td>
-                                                <td className="py-3.5 px-5 text-sm font-medium text-gray-900 text-right tabular-nums">
-                                                    {Number(d.weightLbs).toLocaleString()} lbs
-                                                </td>
-                                                <td className="py-3.5 px-5">
-                                                    <span className="inline-flex flex-wrap items-center gap-2">
-                                                        <span
-                                                            className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border border-[#e8c878]/60"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    'rgba(250, 200, 125, 0.35)',
-                                                                color: '#744210',
-                                                            }}
-                                                        >
-                                                            {d.productType?.trim() ||
-                                                                'Not specified'}
+                                                    <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
+                                                        {format(new Date(d.date), 'M/d/yyyy')}
+                                                    </td>
+                                                    <td
+                                                        className="py-3.5 pl-5 pr-2 text-sm font-medium text-gray-900 truncate max-w-[200px]"
+                                                        title={d.organizationName}
+                                                    >
+                                                        {d.organizationName}
+                                                    </td>
+                                                    <td className="py-3.5 pl-2 pr-5 text-sm text-gray-700 truncate max-w-[200px]">
+                                                        {d.productName?.trim() || '—'}
+                                                    </td>
+                                                    <td className="py-3.5 px-5 text-sm font-medium text-gray-900 text-right tabular-nums">
+                                                        {Number(d.weightLbs).toLocaleString()} lbs
+                                                    </td>
+                                                    <td className="py-3.5 px-5">
+                                                        <span className="inline-flex flex-wrap items-center gap-2">
+                                                            <span
+                                                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border"
+                                                                style={{
+                                                                    backgroundColor:
+                                                                        typeChip.backgroundColor,
+                                                                    borderColor:
+                                                                        typeChip.borderColor,
+                                                                    color: typeChip.color,
+                                                                }}
+                                                            >
+                                                                {typeLabel}
+                                                            </span>
+                                                            <span
+                                                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border"
+                                                                style={{
+                                                                    backgroundColor:
+                                                                        procChip.backgroundColor,
+                                                                    borderColor:
+                                                                        procChip.borderColor,
+                                                                    color: procChip.color,
+                                                                }}
+                                                            >
+                                                                {procLabel}
+                                                            </span>
                                                         </span>
-                                                        <span
-                                                            className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border border-[#9fc5a9]/60"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    'rgba(183, 215, 189, 0.35)',
-                                                                color: '#608D6A',
-                                                            }}
-                                                        >
-                                                            {d.minimallyProcessedFood === true
-                                                                ? 'Minimally Processed'
-                                                                : d.minimallyProcessedFood === false
-                                                                  ? 'Processed'
-                                                                  : 'Not specified'}
-                                                        </span>
-                                                    </span>
-                                                </td>
-                                                <td className="py-3.5 px-3 text-gray-400 group-hover:text-gray-600">
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+                                                    <td className="py-3.5 px-3 text-gray-400 group-hover:text-gray-600">
+                                                        <ChevronRight className="w-4 h-4" />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
                                             <td
