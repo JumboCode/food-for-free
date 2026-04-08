@@ -63,20 +63,21 @@ model AllPackagesByItem {
 }
 
 model AllProductPackageDestinations {
-  date               DateTime
-  productPackageName String
-  productPackageId18 String           @unique
-  householdName      String
-  householdId18      String
-  pantryVisitId18    String           @id @default("##################")
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @default(now())
+  date                 DateTime
+  productPackageName   String
+  productPackageId18   String           @unique
+  householdName        String
+  householdId18        String
+  pantryVisitId18      String           @id @default("##################")
+  distributionStatus   String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @default(now())
 
   @@index([householdId18])
 }
 
 model JustEatsBoxes {
-  id                                   Int       @id @default(autoincrement())
+  distributionId18                     String    @id
   productPackageName                   String
   productPackageRecordId               String
   numberPickedUp                       Int?
