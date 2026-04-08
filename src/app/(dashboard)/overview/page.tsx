@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
@@ -37,7 +38,8 @@ const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
 
 const THEME_ORANGE = '#FAC87D';
 
-const OverviewPage: React.FC = () => {
+const OverviewPageContent: React.FC = () => {
+    const searchParams = useSearchParams();
     const [sessionCtx, setSessionCtx] = useState<{
         ready: boolean;
         isAdmin: boolean;
@@ -77,6 +79,12 @@ const OverviewPage: React.FC = () => {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        const dest = searchParams.get('destination')?.trim();
+        if (dest) setSelectedPartner(dest);
+    }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams]);
 
     useEffect(() => {
         if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
@@ -524,5 +532,17 @@ const OverviewPage: React.FC = () => {
         </div>
     );
 };
+
+const OverviewPage: React.FC = () => (
+    <Suspense
+        fallback={
+            <div className="min-h-[40vh] flex items-center justify-center text-sm text-gray-500">
+                Loading overview…
+            </div>
+        }
+    >
+        <OverviewPageContent />
+    </Suspense>
+);
 
 export default OverviewPage;

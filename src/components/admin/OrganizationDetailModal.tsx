@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Mail } from 'lucide-react';
+import Link from 'next/link';
+import { X, User, Mail, BarChart3 } from 'lucide-react';
 
 interface Organization {
     id: string;
@@ -225,16 +226,18 @@ export function OrganizationDetailModal({
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="px-8 border-b border-gray-200">
-                    <div className="flex gap-6 text-sm">
-                        <button className="px-0 py-3 font-medium text-[#608D6A] border-b-2 border-[#B7D7BD]">
-                            Users
-                        </button>
-                        <button className="px-0 py-3 font-medium text-gray-400 hover:text-gray-600">
-                            Statistics
-                        </button>
-                    </div>
+                <div className="px-8 py-3 border-b border-gray-100 bg-[#FAFDFB]">
+                    <Link
+                        href={`/overview?destination=${encodeURIComponent(organization.name)}`}
+                        onClick={() => onClose()}
+                        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#9fc5a9] bg-white text-sm font-medium text-[#608D6A] hover:bg-[#F7FAF7] transition-colors"
+                    >
+                        <BarChart3 className="h-4 w-4" />
+                        View statistics overview
+                    </Link>
+                    <p className="mt-2 text-xs text-gray-500">
+                        Opens the overview dashboard filtered to this partner&apos;s delivery data.
+                    </p>
                 </div>
 
                 {/* Users header + Add User Button */}
@@ -353,92 +356,6 @@ export function OrganizationDetailModal({
                         </table>
                     )}
                 </div>
-
-                {/* <div className="flex-1 overflow-auto">
-          {isLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading users...</div>
-          ) : users.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No users yet. Invite someone to get started.
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#608D6A] text-white sticky top-0">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-[#B7D7BD] transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.status === "Active"
-                            ? "bg-[#B7D7BD] text-[#608D6A]"
-                            : "bg-[#FBE6C4] text-[#D4A574]"
-                        }`}
-                      >
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div
-                        ref={activeMenuUserId === user.id ? menuTriggerRef : undefined}
-                        className="relative inline-block"
-                      >
-                        <button
-                          onClick={() =>
-                            setActiveMenuUserId(activeMenuUserId === user.id ? null : user.id)
-                          }
-                          className="text-gray-400 hover:text-[#608D6A] transition-colors"
-                        >
-                          <MoreVertical className="h-5 w-5" />
-                        </button>
-                        {activeMenuUserId === user.id && (
-                          <UserActionsMenu
-                            triggerRef={menuTriggerRef}
-                            user={user}
-                            onResendInvitation={
-                              user.status === "Invited" && user.invitationId
-                                ? () => {
-                                    void handleResendInvitation();
-                                    setActiveMenuUserId(null);
-                                  }
-                                : undefined
-                            }
-                            onDelete={() => {
-                              handleDeleteUser(user);
-                              setActiveMenuUserId(null);
-                            }}
-                            onClose={() => setActiveMenuUserId(null)}
-                          />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div> */}
             </div>
 
             {/* Delete Confirmation Modal */}

@@ -29,103 +29,37 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Validate that at least one of organizationId or organizationName is provided
-        if (!organizationId && !organizationName) {
-            return NextResponse.json(
-                { error: 'Either organizationId or organizationName must be provided' },
-                { status: 400 }
-            );
-        }
-
-        // Reject if both are provided (ambiguous)
-        if (organizationId && organizationName) {
-            return NextResponse.json(
-                { error: 'Provide either organizationId or organizationName, not both' },
-                { status: 400 }
-            );
+        if (!organizationId) {
+            return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
         }
 
         const client = await clerkClient();
-        let targetOrganizationId = organizationId;
+        const targetOrganizationId = organizationId;
 
-        // Invites keyed by Clerk org id must still have a Partner row or the membership webhook cannot link users.
-        if (organizationId && !organizationName) {
-            const org = await client.organizations.getOrganization({
-                organizationId: targetOrganizationId!,
-            });
-            const householdId18 =
-                typeof org.publicMetadata?.householdId18 === 'string'
-                    ? org.publicMetadata.householdId18.trim()
-                    : '';
+        // Invites keyed by Clerk org id must still have a Partner row or webhook cannot link users.
+        const org = await client.organizations.getOrganization({
+            organizationId: targetOrganizationId!,
+        });
+        const householdId18 =
+            typeof org.publicMetadata?.householdId18 === 'string'
+                ? org.publicMetadata.householdId18.trim()
+                : '';
 
-            if (!householdId18) {
-                return NextResponse.json(
-                    { error: 'This organization is missing a Household Id 18.' },
-                    { status: 400 }
-                );
-            }
-            await prisma.partner.upsert({
-                where: { clerkOrganizationId: org.id },
-                update: { organizationName: org.name },
-                create: {
-                    householdId18,
-                    organizationName: org.name,
-                    clerkOrganizationId: org.id,
-                },
-            });
+        if (!householdId18) {
+            return NextResponse.json(
+                { error: 'This organization is missing a Household Id 18.' },
+                { status: 400 }
+            );
         }
-
-        // If organizationName is provided, reuse the organization in Clerk (or create it if missing)
-        if (organizationName) {
-            try {
-                // Check if organization already exists
-                const slug = organizationName.toLowerCase().replace(/\s+/g, '-');
-                let existingOrganizationId: string | null = null;
-
-                try {
-                    const existing = await client.organizations.getOrganization({ slug });
-                    existingOrganizationId = existing.id;
-                    targetOrganizationId = existing.id;
-
-                    // Ensure matching Partner exists in Neon for webhook association
-                    await prisma.partner.upsert({
-                        where: { clerkOrganizationId: existing.id },
-                        update: { organizationName },
-                        create: {
-                            organizationName,
-                            clerkOrganizationId: existing.id,
-                        },
-                    });
-                } catch {
-                    // Organization doesn't exist, proceed with creation
-                }
-
-                if (!existingOrganizationId) {
-                    const newOrg = await client.organizations.createOrganization({
-                        name: organizationName,
-                        createdBy: userId,
-                    });
-
-                    // Create matching Partner in Neon so webhook can associate invited users with this org
-                    await prisma.partner.upsert({
-                        where: { clerkOrganizationId: newOrg.id },
-                        update: { organizationName },
-                        create: {
-                            organizationName,
-                            clerkOrganizationId: newOrg.id,
-                        },
-                    });
-
-                    targetOrganizationId = newOrg.id;
-                }
-            } catch (error) {
-                console.error('Error creating organization:', error);
-                return NextResponse.json(
-                    { error: 'Failed to create organization' },
-                    { status: 500 }
-                );
-            }
-        }
+        await prisma.partner.upsert({
+            where: { clerkOrganizationId: org.id },
+            update: { organizationName: org.name },
+            create: {
+                householdId18,
+                organizationName: org.name,
+                clerkOrganizationId: org.id,
+            },
+        });
 
         // Create invitation
         const invitation = await client.organizations.createOrganizationInvitation({
