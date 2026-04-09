@@ -209,12 +209,14 @@ export function OrganizationDetailModal({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-[#B7D7BD]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/30 p-3 backdrop-blur-sm sm:p-4">
+            <div className="my-auto flex max-h-[min(90vh,calc(100vh-1.5rem))] w-full min-h-0 min-w-0 max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#B7D7BD] bg-white shadow-xl sm:max-h-[90vh]">
                 {/* Header */}
-                <div className="px-8 pt-6 pb-4 border-b border-gray-100 flex justify-between items-start">
-                    <div>
-                        <h2 className="text-xl font-semibold text-gray-900">{organization.name}</h2>
+                <div className="flex items-start justify-between border-b border-gray-100 px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-6">
+                    <div className="min-w-0 pr-2">
+                        <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                            {organization.name}
+                        </h2>
                         <p className="mt-1 text-xs text-gray-500">Partner organization</p>
                     </div>
                     <button
@@ -226,7 +228,7 @@ export function OrganizationDetailModal({
                     </button>
                 </div>
 
-                <div className="px-8 py-3 border-b border-gray-100 bg-[#FAFDFB]">
+                <div className="border-b border-gray-100 bg-[#FAFDFB] px-4 py-3 sm:px-6 lg:px-8">
                     <Link
                         href={`/overview?destination=${encodeURIComponent(organization.name)}`}
                         onClick={() => onClose()}
@@ -241,23 +243,24 @@ export function OrganizationDetailModal({
                 </div>
 
                 {/* Users header + Add User Button */}
-                <div className="px-8 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
-                    <div>
+                <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:items-center sm:px-6 lg:px-8 lg:pt-5">
+                    <div className="min-w-0 flex-1 pr-2">
                         <h3 className="text-sm font-semibold text-gray-800">Users</h3>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="mt-1 text-xs text-gray-500">
                             Invite and manage people with access to this partner.
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setIsAddUserModalOpen(true)}
-                        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[#608D6A] hover:bg-[#4d7155] text-white text-xs font-medium transition-colors"
+                        className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4d7155]"
                     >
                         Add user
                     </button>
                 </div>
 
                 {/* User Table */}
-                <div className="flex-1 overflow-auto">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
                     {isLoading ? (
                         <div className="p-8 text-center text-gray-500">Loading users...</div>
                     ) : users.length === 0 ? (
@@ -265,19 +268,19 @@ export function OrganizationDetailModal({
                             No users yet. Invite someone to get started.
                         </div>
                     ) : (
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-100 sticky top-0">
+                        <table className="w-full min-w-[520px] table-fixed divide-y divide-gray-200">
+                            <thead className="sticky top-0 bg-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                    <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Name
                                     </th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                    <th className="w-[38%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Email
                                     </th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                    <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Status
                                     </th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                    <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Actions
                                     </th>
                                 </tr>
@@ -286,17 +289,21 @@ export function OrganizationDetailModal({
                                 {users.map(user => (
                                     <tr
                                         key={user.id}
-                                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                                        className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${
                                             activeMenuUserId === user.id ? 'bg-[#FFF7E6]' : ''
                                         }`}
                                     >
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {user.name}
+                                        <td className="px-3 py-4 text-sm text-gray-900 sm:px-4 lg:px-6">
+                                            <span className="line-clamp-2 break-words">
+                                                {user.name}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {user.email}
+                                        <td className="px-3 py-4 text-sm text-gray-600 sm:px-4 lg:px-6">
+                                            <span className="block truncate" title={user.email}>
+                                                {user.email}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm">
+                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
                                             <span
                                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                                                     user.status === 'Active'
@@ -307,14 +314,14 @@ export function OrganizationDetailModal({
                                                 {user.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm">
+                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
                                             <div
                                                 ref={
                                                     activeMenuUserId === user.id
                                                         ? menuTriggerRef
                                                         : undefined
                                                 }
-                                                className="relative inline-block"
+                                                className="relative inline-block text-left"
                                             >
                                                 <button
                                                     onClick={() =>

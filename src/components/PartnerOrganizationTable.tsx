@@ -1,16 +1,25 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React from 'react';
 
 import PartnerOrganizationRow, { PartnerDataRow } from '@/components/ui/PartnerOrganizationRow';
 
 const PartnerOrganizationTable: React.FC<{ data: PartnerDataRow[] }> = ({ data }) => {
     return (
-        <div>
-            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_60px] items-center px-6 py-3 bg-[#fafaf8] text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <div>Organization name</div>
-                <div className="text-center">Number of users</div>
-                <div className="text-right">Details</div>
+        <div className="w-full min-w-[280px]">
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.15fr)_56px] items-center gap-x-2 sm:gap-x-4 px-3 py-3 sm:px-6 bg-[#fafaf8] text-[10px] font-semibold text-gray-500 uppercase tracking-wide lg:text-xs">
+                <div className="min-w-0">
+                    <span className="lg:hidden">Org name</span>
+                    <span className="hidden lg:inline">Organization name</span>
+                </div>
+                <div className="min-w-0 text-center">
+                    <span className="lg:hidden"># of users</span>
+                    <span className="hidden lg:inline">Number of users</span>
+                </div>
+                <div className="shrink-0 text-right">
+                    <span className="lg:hidden">View</span>
+                    <span className="hidden lg:inline">Details</span>
+                </div>
             </div>
             <div className="divide-y divide-gray-100">
                 {data.map(partner => (

@@ -110,10 +110,10 @@ const AdminConsolePage: React.FC = () => {
     }));
 
     return (
-        <div className="min-h-screen bg-[#FAF9F7]">
-            <div className="max-w-6xl mx-auto px-8 py-10">
-                <div className="mb-8">
-                    <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+        <div className="min-h-screen min-w-0 max-w-full bg-[#FAF9F7]">
+            <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+                <div className="mb-6 sm:mb-8">
+                    <h1 className="text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] font-semibold tracking-tight text-gray-900">
                         Admin Console
                     </h1>
                     <p className="mt-1 text-sm text-gray-500">
@@ -122,9 +122,9 @@ const AdminConsolePage: React.FC = () => {
                 </div>
 
                 {/* Partner Organizations Section */}
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
+                <section className="min-w-0 space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <div className="min-w-0">
                             <h2 className="text-sm font-semibold text-gray-800 tracking-wide uppercase">
                                 Partner organizations
                             </h2>
@@ -133,7 +133,7 @@ const AdminConsolePage: React.FC = () => {
                             </p>
                         </div>
                         <span
-                            className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-[#608D6A]"
+                            className="inline-flex w-fit shrink-0 items-center rounded-full border px-3 py-1 text-xs font-medium text-[#608D6A]"
                             style={{
                                 borderColor: THEME_GREEN,
                                 backgroundColor: 'rgba(183, 215, 189, 0.25)',
@@ -144,28 +144,29 @@ const AdminConsolePage: React.FC = () => {
                     </div>
 
                     {/* Search + manage */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1 min-w-[220px]">
+                    <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                        <div className="relative min-w-0 flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search by name or slug…"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
                             />
                         </div>
                         <button
+                            type="button"
                             onClick={() => setIsManagePartnerModalOpen(true)}
-                            className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-[#608D6A] hover:bg-[#4d7155] text-white text-sm font-medium transition-colors whitespace-nowrap"
+                            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4d7155] md:w-auto"
                         >
-                            <Settings2 className="w-4 h-4" />
+                            <Settings2 className="h-4 w-4 shrink-0" />
                             Manage partners
                         </button>
                     </div>
 
                     {/* Partner Organizations Table */}
-                    <div className="rounded-xl border border-[#B7D7BD] bg-white shadow-sm overflow-hidden mt-2">
+                    <div className="mt-2 overflow-x-auto rounded-xl border border-[#B7D7BD] bg-white shadow-sm">
                         {isLoading ? (
                             <div className="p-8 text-center text-gray-500 text-sm">
                                 Loading organizations…
