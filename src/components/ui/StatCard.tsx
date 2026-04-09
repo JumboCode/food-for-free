@@ -1,17 +1,32 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface StatCardProps {
     label: string;
     value: string | number;
     unit?: string;
     icon?: React.ReactElement;
+    /** When true, card fills its grid cell (lg+); use with equal-height stat rows. */
+    fillHeight?: boolean;
+    className?: string;
 }
 
-export function StatCard({ label, value, unit, icon }: StatCardProps) {
+export function StatCard({ label, value, unit, icon, fillHeight, className }: StatCardProps) {
     return (
-        <Card className="relative w-full overflow-hidden border border-slate-100 bg-white/70 shadow-sm py-0 gap-0">
+        <Card
+            className={cn(
+                'relative w-full overflow-hidden border border-slate-100 bg-white/70 shadow-sm py-0 gap-0',
+                fillHeight && 'flex min-h-0 flex-col max-lg:h-auto lg:h-full lg:min-h-0',
+                className
+            )}
+        >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-300" />
-            <CardContent className="min-w-0 px-3 py-1.5 sm:px-4 sm:py-2 flex flex-col justify-center">
+            <CardContent
+                className={cn(
+                    'min-w-0 px-3 py-1.5 sm:px-4 sm:py-2 flex flex-col justify-center',
+                    fillHeight && 'min-h-0 max-lg:flex-none lg:flex-1'
+                )}
+            >
                 <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -22,9 +37,7 @@ export function StatCard({ label, value, unit, icon }: StatCardProps) {
                                 {value}
                             </span>
                             {unit && (
-                                <span className="text-xs font-medium text-slate-500">
-                                    {unit}
-                                </span>
+                                <span className="text-xs font-medium text-slate-500">{unit}</span>
                             )}
                         </div>
                     </div>

@@ -456,29 +456,31 @@ const OverviewPageContent: React.FC = () => {
                                         Delivery trend
                                     </p>
                                 </div>
-                                <div className="grid min-h-0 w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-3">
+                                <div className="grid min-h-0 h-full w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-[repeat(3,minmax(0,1fr))]">
                                     <StatCard
+                                        fillHeight
                                         label="Total Delivered"
                                         value={totalPoundsDelivered.toLocaleString()}
                                         unit="lbs"
                                     />
                                     <StatCard
+                                        fillHeight
                                         label="Deliveries Completed"
                                         value={deliveriesCompleted.toString()}
                                     />
-                                    <div className="col-span-2 lg:col-span-1">
-                                        <StatCard
-                                            label="Avg per delivery"
-                                            value={
-                                                deliveriesCompleted
-                                                    ? Math.round(
-                                                          totalPoundsDelivered / deliveriesCompleted
-                                                      ).toLocaleString()
-                                                    : '0'
-                                            }
-                                            unit="lbs"
-                                        />
-                                    </div>
+                                    <StatCard
+                                        fillHeight
+                                        className="col-span-2 lg:col-span-1"
+                                        label="Avg per delivery"
+                                        value={
+                                            deliveriesCompleted
+                                                ? Math.round(
+                                                      totalPoundsDelivered / deliveriesCompleted
+                                                  ).toLocaleString()
+                                                : '0'
+                                        }
+                                        unit="lbs"
+                                    />
                                 </div>
                                 <div className="flex min-h-0 flex-col max-lg:mt-1">
                                     <div className="mb-1 max-lg:mb-2 lg:hidden">
