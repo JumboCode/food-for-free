@@ -6,7 +6,9 @@ export type DistributionDeliveryRow = {
     organizationName: string;
     householdId18: string;
     productName: string | null;
-    weightLbs: number | null;
+    distributionAmount: number;
+    unitWeightLbs: number | null;
+    weightLbs: number;
     inventoryType: string;
     productType: string | null;
     minimallyProcessedFood: boolean | null;
@@ -58,7 +60,9 @@ export async function queryDistributionDeliveries(
             d."householdName" AS "organizationName",
             d."householdId18" AS "householdId18",
             p."pantryProductName" AS "productName",
-            p."pantryProductWeightLbs" AS "weightLbs",
+            COALESCE(p."distributionAmount", 1) AS "distributionAmount",
+            p."pantryProductWeightLbs" AS "unitWeightLbs",
+            (COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "weightLbs",
             t."inventoryType" AS "inventoryType",
             t."productType" AS "productType",
             t."minimallyProcessedFood" AS "minimallyProcessedFood",

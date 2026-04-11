@@ -20,12 +20,28 @@ interface DeliveryRecord {
     date: string;
     organizationName: string;
     productName: string;
+    /** Units for this line (1 when source left amount blank). */
+    distributionAmount: number;
+    /** Weight per unit in pounds. */
+    unitWeightLbs: number | null;
+    /** Line total weight in pounds (unit × amount). */
     weightLbs: number;
     productType: string | null;
     minimallyProcessedFood: boolean | null;
     foodRescueProgram: string | null;
     inventoryType?: string;
     source?: string | null;
+}
+
+function formatLbsCell(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(Number(value))) return '—';
+    const n = Number(value);
+    const rounded = Math.round(n * 100) / 100;
+    const s =
+        Math.abs(rounded - Math.round(rounded)) < 1e-9
+            ? String(Math.round(rounded))
+            : rounded.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return `${s} lbs`;
 }
 
 type ProcessingFilterKey = 'minimal' | 'processed' | 'unspecified';
@@ -302,7 +318,9 @@ function DistributionContent() {
                 'Date',
                 'Organization',
                 'Food',
-                'Weight (lbs)',
+                'Amount',
+                'Unit weight (lbs)',
+                'Total weight (lbs)',
                 'Food type',
                 'Processing',
                 'Inventory type',
@@ -316,6 +334,12 @@ function DistributionContent() {
                         csvEscapeCell(format(new Date(d.date), 'yyyy-MM-dd')),
                         csvEscapeCell(d.organizationName),
                         csvEscapeCell(d.productName?.trim() || ''),
+                        csvEscapeCell(Number(d.distributionAmount ?? 1)),
+                        csvEscapeCell(
+                            d.unitWeightLbs == null || Number.isNaN(Number(d.unitWeightLbs))
+                                ? ''
+                                : Number(d.unitWeightLbs)
+                        ),
                         csvEscapeCell(Number(d.weightLbs ?? 0)),
                         csvEscapeCell(foodTypeLabelForRow(d.productType)),
                         csvEscapeCell(processingDisplayLabel(d.minimallyProcessedFood)),
@@ -803,22 +827,25 @@ function DistributionContent() {
 
                     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full border-collapse" style={{ minWidth: 720 }}>
+                            <table className="w-full border-collapse" style={{ minWidth: 920 }}>
                                 <thead>
                                     <tr className="bg-gray-50 border-b border-gray-200">
-                                        <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[110px]">
+                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[102px]">
                                             Date
                                         </th>
-                                        <th className="text-left py-3 pl-5 pr-2 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[200px]">
-                                            Organization
-                                        </th>
-                                        <th className="text-left py-3 pl-2 pr-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[200px]">
+                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-40 max-w-xs">
                                             Food
                                         </th>
-                                        <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[100px]">
-                                            Weight
+                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-48">
+                                            Organization
                                         </th>
-                                        <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[240px]">
+                                        <th className="align-middle text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider tabular-nums w-[88px]">
+                                            Amount
+                                        </th>
+                                        <th className="align-middle text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider tabular-nums w-[104px]">
+                                            Total
+                                        </th>
+                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-44">
                                             Tags
                                         </th>
                                     </tr>
@@ -827,7 +854,7 @@ function DistributionContent() {
                                     {loading ? (
                                         <tr>
                                             <td
-                                                colSpan={5}
+                                                colSpan={6}
                                                 className="py-20 text-center text-gray-500"
                                             >
                                                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
@@ -837,7 +864,7 @@ function DistributionContent() {
                                     ) : data.length > 0 && filteredData.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={5}
+                                                colSpan={6}
                                                 className="py-20 text-center text-gray-500 text-sm"
                                             >
                                                 No rows match the selected attribute filters. Try
@@ -858,30 +885,56 @@ function DistributionContent() {
                                             const procChip = processingChipStyle(
                                                 d.minimallyProcessedFood
                                             );
+                                            const foodLabel = d.productName?.trim() || '—';
+                                            const amt = Number(d.distributionAmount ?? 1);
+                                            const unitHint =
+                                                d.unitWeightLbs != null &&
+                                                !Number.isNaN(Number(d.unitWeightLbs))
+                                                    ? `${formatLbsCell(d.unitWeightLbs)} each`
+                                                    : undefined;
                                             return (
                                                 <tr
-                                                    key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}`}
+                                                    key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}-${amt}`}
                                                     className="border-b border-gray-100 last:border-b-0"
                                                 >
-                                                    <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
+                                                    <td className="align-top py-3 px-4 text-sm text-gray-600 tabular-nums">
                                                         {format(new Date(d.date), 'M/d/yyyy')}
                                                     </td>
                                                     <td
-                                                        className="py-3.5 pl-5 pr-2 text-sm font-medium text-gray-900 truncate max-w-[200px]"
-                                                        title={d.organizationName}
+                                                        className="align-top py-3 px-4 text-sm text-gray-700 min-w-0 max-w-xs"
+                                                        title={
+                                                            foodLabel !== '—'
+                                                                ? foodLabel
+                                                                : undefined
+                                                        }
                                                     >
+                                                        <span
+                                                            className="block min-w-0 max-w-full truncate"
+                                                            title={
+                                                                foodLabel !== '—'
+                                                                    ? foodLabel
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {foodLabel}
+                                                        </span>
+                                                    </td>
+                                                    <td className="align-top py-3 px-4 text-sm font-medium text-gray-900 wrap-break-word">
                                                         {d.organizationName}
                                                     </td>
-                                                    <td className="py-3.5 pl-2 pr-5 text-sm text-gray-700 truncate max-w-[200px]">
-                                                        {d.productName?.trim() || '—'}
+                                                    <td className="align-top py-3 px-4 text-sm text-gray-800 text-right tabular-nums">
+                                                        {amt.toLocaleString()}
                                                     </td>
-                                                    <td className="py-3.5 px-5 text-sm font-medium text-gray-900 text-right tabular-nums">
-                                                        {Number(d.weightLbs).toLocaleString()} lbs
+                                                    <td
+                                                        className="align-top py-3 px-4 text-sm font-medium text-gray-900 text-right tabular-nums"
+                                                        title={unitHint}
+                                                    >
+                                                        {formatLbsCell(d.weightLbs)}
                                                     </td>
-                                                    <td className="py-3.5 px-5">
-                                                        <span className="inline-flex flex-wrap items-center gap-2">
+                                                    <td className="align-top py-3 px-4">
+                                                        <div className="flex flex-col items-start gap-1.5">
                                                             <span
-                                                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border"
+                                                                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
                                                                 style={{
                                                                     backgroundColor:
                                                                         typeChip.backgroundColor,
@@ -893,7 +946,7 @@ function DistributionContent() {
                                                                 {typeLabel}
                                                             </span>
                                                             <span
-                                                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border"
+                                                                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
                                                                 style={{
                                                                     backgroundColor:
                                                                         procChip.backgroundColor,
@@ -904,7 +957,7 @@ function DistributionContent() {
                                                             >
                                                                 {procLabel}
                                                             </span>
-                                                        </span>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -912,7 +965,7 @@ function DistributionContent() {
                                     ) : (
                                         <tr>
                                             <td
-                                                colSpan={5}
+                                                colSpan={6}
                                                 className="py-20 text-center text-gray-500 text-sm"
                                             >
                                                 No deliveries match your search and date range.
