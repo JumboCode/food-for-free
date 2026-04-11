@@ -8,10 +8,19 @@ import { prisma } from '@/../lib/prisma';
  */
 export async function isAdmin(userIdOverride?: string | null): Promise<boolean> {
     const userId = userIdOverride ?? (await auth()).userId;
+
+    console.log('isAdmin check:', { userId });
+
     if (!userId) return false;
 
     const dbUser = await prisma.user.findUnique({
         where: { clerkId: userId },
+    });
+
+    console.log('Database user:', {
+        found: !!dbUser,
+        role: dbUser?.role,
+        clerkId: dbUser?.clerkId,
     });
 
     return dbUser?.role === 'ADMIN';

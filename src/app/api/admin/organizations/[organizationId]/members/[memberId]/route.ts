@@ -24,7 +24,10 @@ export async function DELETE(
             userId: memberId,
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            message: 'User removed from organization successfully',
+        });
     } catch (error) {
         console.error('Error removing member:', error);
 

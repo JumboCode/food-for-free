@@ -20,6 +20,7 @@ interface User {
     status: 'Active' | 'Invited';
     role?: string;
     invitationId?: string;
+    membershipId?: string;
 }
 
 interface OrganizationMember {
@@ -68,6 +69,12 @@ export function OrganizationDetailModal({
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
     const [showInvitationSent, setShowInvitationSent] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editFirstName, setEditFirstName] = useState('');
+    const [editLastName, setEditLastName] = useState('');
+    const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+    const [editError, setEditError] = useState<string | null>(null);
+
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
     const fetchOrganizationUsers = useCallback(async () => {
@@ -89,11 +96,12 @@ export function OrganizationDetailModal({
                 const fullName = `${firstName} ${lastName}`.trim();
 
                 return {
-                    id: member.id,
+                    id: member.userId,
                     name: fullName || member.user.email,
                     email: member.user.email,
                     status: 'Active',
                     role: member.role,
+                    membershipId: member.userId,
                 };
             });
 
@@ -161,51 +169,140 @@ export function OrganizationDetailModal({
         }
     };
 
-    const handleResendInvitation = async () => {
-        setShowInvitationSent(true);
+    const handleResendInvitation = async (email: string) => {
+        try {
+            //Call API
+            const response = await fetch('/api/admin/invitations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    organizationId: organization.id,
+                }),
+            });
 
-        //hide it after 3 seconds
-        setTimeout(() => setShowInvitationSent(false), 3000);
+            //If API failed, throw error
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to resend invitation');
+            }
 
-        //Also call the API
-        // try {
-        //     const response = await fetch(`/api/admin/invitations/${invitationId}/resend`, {
-        //         method: 'POST',
-        //     });
-        //     if (!response.ok) throw new Error('Failed to resend invitation');
-        //     await fetchOrganizationUsers();
-        // } catch (error) {
-        //     console.error('Error resending invitation:', error);
-        // }
+            setNewUserEmail(email);
+            setShowInvitationSent(true);
+
+            //hide it after 3 seconds
+            setTimeout(() => setShowInvitationSent(false), 3000);
+        } catch (error) {
+            console.error('Error resending invitation:', error);
+        }
     };
 
     const handleDeleteUser = (user: User) => {
         setDeleteConfirmUser(user);
     };
 
+    const handleEditUser = (user: User) => {
+        setEditingUser(user);
+        // Parse the full name
+        const names = user.name.split(' ');
+        setEditFirstName(names[0] || '');
+        setEditLastName(names.slice(1).join(' ') || '');
+    };
+
+    const handleSaveEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setEditError(null);
+
+        if (!editFirstName.trim()) {
+            setEditError('First name is required');
+            return;
+        }
+
+        try {
+            setIsEditSubmitting(true);
+            const response = await fetch(`/api/admin/users/${editingUser?.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    firstName: editFirstName.trim(),
+                    lastName: editLastName.trim(),
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update user');
+            }
+
+            await fetchOrganizationUsers();
+            await onUpdate();
+            setEditingUser(null);
+            setEditFirstName('');
+            setEditLastName('');
+            alert('User updated successfully!');
+        } catch (error) {
+            setEditError(error instanceof Error ? error.message : 'Failed to update user');
+        } finally {
+            setIsEditSubmitting(false);
+        }
+    };
+
     const confirmDelete = async () => {
         if (!deleteConfirmUser) return;
 
-        //frontend only, just show alert
-        alert(`Deleted: ${deleteConfirmUser.name} (Frontend only)`);
-        setDeleteConfirmUser(null);
+        console.log('Delete user:', {
+            userId: deleteConfirmUser.id,
+            membershipId: deleteConfirmUser.membershipId,
+            status: deleteConfirmUser.status,
+            invitationId: deleteConfirmUser.invitationId,
+        });
 
-        //calling the API commented out for now since we are using dummy data and don't want to accidentally delete real users while testing
-        // try {
-        //     if (deleteConfirmUser.status === 'Invited' && deleteConfirmUser.invitationId) {
-        //         await fetch(`/api/admin/invitations/${deleteConfirmUser.invitationId}`, {
-        //             method: 'DELETE',
-        //         });
-        //     } else {
-        //         await fetch(`/api/admin/organizations/${organization.id}/members/${deleteConfirmUser.id}`, {
-        //             method: 'DELETE'
-        //         });
-        //     }
-        //     await fetchOrganizationUsers();
-        //     await onUpdate();
-        // } catch (error) {
-        //     console.error('Error deleting user:', error);
-        // }
+        try {
+            if (deleteConfirmUser.status === 'Invited' && deleteConfirmUser.invitationId) {
+                // Revoke invitation
+                console.log('Deleting invitation:', deleteConfirmUser.invitationId);
+                const response = await fetch(
+                    `/api/admin/invitations/${deleteConfirmUser.invitationId}`,
+                    {
+                        method: 'DELETE',
+                    }
+                );
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Delete invitation failed:', errorData);
+                    throw new Error('Failed to revoke invitation');
+                }
+            } else {
+                // Remove membership
+                const membershipIdToDelete = deleteConfirmUser.membershipId || deleteConfirmUser.id;
+                console.log(
+                    'Deleting membership:',
+                    membershipIdToDelete,
+                    'from org:',
+                    organization.id
+                );
+
+                const response = await fetch(
+                    `/api/admin/organizations/${organization.id}/members/${membershipIdToDelete}`,
+                    { method: 'DELETE' }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Delete member failed:', errorData);
+                    throw new Error('Failed to remove member');
+                }
+            }
+
+            await fetchOrganizationUsers();
+            await onUpdate();
+            setDeleteConfirmUser(null);
+            alert('User removed successfully!');
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('Failed to remove user');
+            setDeleteConfirmUser(null);
+        }
     };
 
     return (
@@ -343,11 +440,17 @@ export function OrganizationDetailModal({
                                                             user.status === 'Invited' &&
                                                             user.invitationId
                                                                 ? () => {
-                                                                      void handleResendInvitation();
+                                                                      void handleResendInvitation(
+                                                                          user.email
+                                                                      );
                                                                       setActiveMenuUserId(null);
                                                                   }
                                                                 : undefined
                                                         }
+                                                        onEdit={() => {
+                                                            handleEditUser(user);
+                                                            setActiveMenuUserId(null);
+                                                        }}
                                                         onDelete={() => {
                                                             handleDeleteUser(user);
                                                             setActiveMenuUserId(null);
@@ -508,6 +611,97 @@ export function OrganizationDetailModal({
                     </div>
                 </div>
             )}
+            {editingUser && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-base font-semibold text-gray-900">Edit User</h3>
+                            <button
+                                onClick={() => {
+                                    setEditingUser(null);
+                                    setEditError(null);
+                                    setEditFirstName('');
+                                    setEditLastName('');
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100"
+                                aria-label="Close modal"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveEdit} className="p-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label
+                                        htmlFor="firstName"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                        First Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="firstName"
+                                        value={editFirstName}
+                                        onChange={e => setEditFirstName(e.target.value)}
+                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                        placeholder="John"
+                                        disabled={isEditSubmitting}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        htmlFor="lastName"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                        Last Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="lastName"
+                                        value={editLastName}
+                                        onChange={e => setEditLastName(e.target.value)}
+                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                        placeholder="Doe"
+                                        disabled={isEditSubmitting}
+                                    />
+                                </div>
+
+                                {editError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-sm text-red-600">{editError}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingUser(null);
+                                        setEditError(null);
+                                        setEditFirstName('');
+                                        setEditLastName('');
+                                    }}
+                                    className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50"
+                                    disabled={isEditSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 h-9 text-sm font-medium text-gray-800 rounded-lg border border-[#9fc5a9] hover:bg-[#9fc5a9]/80 disabled:opacity-50"
+                                    style={{ backgroundColor: THEME_GREEN }}
+                                    disabled={isEditSubmitting}
+                                >
+                                    {isEditSubmitting ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -521,12 +715,14 @@ function UserActionsMenu({
     triggerRef,
     user,
     onResendInvitation,
+    onEdit,
     onDelete,
     onClose,
 }: {
     triggerRef: React.RefObject<HTMLDivElement | null>;
     user: User;
     onResendInvitation?: () => void;
+    onEdit: () => void;
     onDelete: () => void;
     onClose: () => void;
 }) {
@@ -578,13 +774,14 @@ function UserActionsMenu({
         >
             <button
                 onClick={() => {
-                    alert(`Edit user: ${user.name} (Frontend only)`);
+                    onEdit();
                     onClose();
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
             >
                 Edit
             </button>
+
             <button
                 onClick={onDelete}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
