@@ -47,7 +47,7 @@ export function AddPartnerModal({
             return;
         }
         if (!householdId18.trim()) {
-            setError('Household Id 18 is required');
+            setError('Household ID 18 is required');
             return;
         }
 
@@ -167,12 +167,12 @@ export function AddPartnerModal({
                                             type="button"
                                             tabIndex={0}
                                             className="inline-flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
-                                            aria-label="Household Id 18 help"
+                                            aria-label="Household ID 18 help"
                                         >
                                             <Info className="h-3.5 w-3.5 normal-case" />
                                         </button>
                                         <span className="pointer-events-none absolute z-20 left-1/2 top-[calc(100%+8px)] hidden w-64 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-gray-600 shadow-md group-hover:block group-focus-within:block">
-                                            Please paste the Household Id 18 associated with this
+                                            Please paste the Household ID 18 associated with this
                                             partner organization. This information can be found in
                                             YourMarket.
                                         </span>

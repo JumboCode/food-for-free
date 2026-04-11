@@ -82,21 +82,6 @@ export default function Home() {
                                 Sign In
                             </motion.button>
                         </SignInButton>
-                        <SignUpButton forceRedirectUrl="/overview">
-                            <motion.button
-                                className="bg-transparent border-2 border-[#1C5E2C] text-[#1C5E2C] rounded-lg font-semibold text-base md:text-lg px-8 py-3.5"
-                                whileHover={{
-                                    backgroundColor: '#1C5E2C',
-                                    color: '#ffffff',
-                                    y: -3,
-                                    boxShadow: '0 8px 24px rgba(28, 94, 44, 0.25)',
-                                }}
-                                whileTap={{ scale: 0.96, y: 0 }}
-                                transition={{ duration: 0.18, ease: 'easeOut' }}
-                            >
-                                Create Partner Account
-                            </motion.button>
-                        </SignUpButton>
                     </motion.div>
                 </div>
 
