@@ -61,8 +61,8 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
     }, [itemsProp, isAdminResolved]);
 
     return (
-        <aside className="fixed left-0 bg-white h-screen top-0 w-16 sm:w-56 flex flex-col border-r border-gray-100">
-            <Link href="/overview" className="flex items-center gap-3 px-4 sm:px-5 pt-6 pb-4">
+        <aside className="fixed left-0 bg-white h-screen top-0 w-16 lg:w-56 flex flex-col border-r border-gray-100">
+            <Link href="/overview" className="flex items-center gap-3 px-4 lg:px-5 pt-6 pb-4">
                 <Image
                     src="/food-for-free-logo.png"
                     alt="Food For Free"
@@ -70,13 +70,13 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                     height={36}
                     className="flex-shrink-0"
                 />
-                <div className="hidden sm:flex flex-col">
+                <div className="hidden lg:flex flex-col">
                     <span className="text-base font-bold leading-tight">Food For Free</span>
                     <span className="text-xs text-gray-400">Partner Portal</span>
                 </div>
             </Link>
 
-            <nav className="flex flex-col flex-1 px-2 sm:px-3 space-y-1 mt-2">
+            <nav className="flex flex-col flex-1 px-2 lg:px-3 space-y-1 mt-2">
                 {items.map(item => {
                     const isActive = pathname === item.href;
 
@@ -88,7 +88,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                                 ${isActive ? 'bg-[#FAC87D]' : 'hover:bg-gray-50'}`}
                         >
                             <div className="h-5 w-5 text-[#1C5E2C] flex-shrink-0">{item.icon}</div>
-                            <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                            <span className="hidden lg:inline text-sm font-medium text-gray-700">
                                 {item.label}
                             </span>
                         </Link>
@@ -96,11 +96,11 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                 })}
             </nav>
 
-            <div className="px-2 sm:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
+            <div className="px-2 lg:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
                 <div
                     ref={profileRef}
                     onClick={handleProfileAreaClick}
-                    className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-50 transition"
+                    className="flex items-center justify-center lg:justify-start gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-50 transition"
                 >
                     <UserButton
                         showName={false}
@@ -110,7 +110,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
                             },
                         }}
                     />
-                    <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                    <span className="hidden lg:inline text-sm font-medium text-gray-700">
                         My Profile
                     </span>
                 </div>

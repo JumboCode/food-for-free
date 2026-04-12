@@ -345,7 +345,7 @@ function DistributionContent() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative w-72 min-w-[12rem]">
+                        <div className="relative min-w-[12rem] w-full max-w-md sm:w-72 sm:max-w-none sm:flex-none">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 placeholder="Search org, food, Just Eats, inventory type, tags…"
@@ -605,14 +605,11 @@ function DistributionContent() {
                                 </div>
                             ) : null}
                         </div> */}
-                        <div
-                            className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg"
-                            ref={filterPanelRef}
-                        >
+                        <div className="relative inline-block shrink-0" ref={filterPanelRef}>
                             <button
                                 type="button"
                                 onClick={() => setFilterPanelOpen(o => !o)}
-                                className="h-10 w-full sm:w-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
+                                className="h-10 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
                                 aria-expanded={filterPanelOpen}
                                 aria-haspopup="dialog"
                             >
@@ -626,7 +623,7 @@ function DistributionContent() {
                             </button>
                             {filterPanelOpen ? (
                                 <div
-                                    className="absolute left-0 top-full z-50 mt-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl ring-1 ring-black/5"
+                                    className="absolute left-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),22rem)] sm:w-96 max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl ring-1 ring-black/5"
                                     style={{
                                         maxHeight: 'min(70vh, 32rem)',
                                     }}
@@ -791,9 +788,10 @@ function DistributionContent() {
                             ) : null}
                         </div>
                         <button
+                            type="button"
                             onClick={handleExport}
                             disabled={exporting}
-                            className="h-10 px-5 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
+                            className="h-10 shrink-0 px-5 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
                             style={{ backgroundColor: THEME_GREEN }}
                         >
                             {exporting ? (
