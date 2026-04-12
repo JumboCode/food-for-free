@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
-import { queryDistributionDeliveries } from '~/lib/distributionDeliveries';
+import {
+    queryDistributionDeliveries,
+    queryJustEatsDistributionDeliveries,
+} from '~/lib/distributionDeliveries';
 
 function getPast12MonthsRange(): { start: Date; end: Date } {
     const end = new Date();
@@ -36,12 +39,24 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid date range' }, { status: 400 });
     }
 
-    const rows = await queryDistributionDeliveries(prisma, {
-        start,
-        end,
-        search,
-        orgFilter: undefined,
-    });
+    const [bulk, justEats] = await Promise.all([
+        queryDistributionDeliveries(prisma, {
+            start,
+            end,
+            search,
+            orgFilter: undefined,
+        }),
+        queryJustEatsDistributionDeliveries(prisma, {
+            start,
+            end,
+            search,
+            orgFilter: undefined,
+        }),
+    ]);
 
-    return NextResponse.json(rows);
+    const merged = [...bulk, ...justEats].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return NextResponse.json(merged);
 }

@@ -5,13 +5,23 @@ interface StatCardProps {
     label: string;
     value: string | number;
     unit?: string;
+    /** Shown after the unit (e.g. delivery count in parentheses). */
+    suffix?: string;
     icon?: React.ReactElement;
     /** When true, card fills its grid cell (lg+); use with equal-height stat rows. */
     fillHeight?: boolean;
     className?: string;
 }
 
-export function StatCard({ label, value, unit, icon, fillHeight, className }: StatCardProps) {
+export function StatCard({
+    label,
+    value,
+    unit,
+    suffix,
+    icon,
+    fillHeight,
+    className,
+}: StatCardProps) {
     return (
         <Card
             className={cn(
@@ -32,13 +42,18 @@ export function StatCard({ label, value, unit, icon, fillHeight, className }: St
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                             {label}
                         </p>
-                        <div className="mt-0.5 flex flex-wrap items-baseline gap-1">
+                        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1 gap-y-0">
                             <span className="text-lg sm:text-xl font-semibold text-slate-900 tabular-nums">
                                 {value}
                             </span>
                             {unit && (
                                 <span className="text-xs font-medium text-slate-500">{unit}</span>
                             )}
+                            {suffix ? (
+                                <span className="text-xs font-medium text-slate-500 tabular-nums">
+                                    {suffix}
+                                </span>
+                            ) : null}
                         </div>
                     </div>
                     {icon && (

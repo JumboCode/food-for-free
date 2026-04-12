@@ -64,6 +64,8 @@ const OverviewPageContent: React.FC = () => {
     const [poundsByMonthData, setPoundsByMonthData] = useState<PoundsData[]>([]);
     const [totalPoundsDelivered, setTotalPoundsDelivered] = useState(0);
     const [deliveriesCompleted, setDeliveriesCompleted] = useState(0);
+    const [justEatsPoundsDelivered, setJustEatsPoundsDelivered] = useState(0);
+    const [justEatsTotalDeliveries, setJustEatsTotalDeliveries] = useState(0);
     const [deliverySummaryData, setDeliverySummaryData] = useState<DeliverySummaryItem[]>([]);
     const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
     const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
@@ -117,6 +119,8 @@ const OverviewPageContent: React.FC = () => {
     const isPartnerDashboard =
         sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
 
+    const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
+
     const fetchOverviewData = useCallback(async () => {
         if (!sessionCtx.ready) return;
 
@@ -151,6 +155,8 @@ const OverviewPageContent: React.FC = () => {
             setPoundsByMonthData(Array.isArray(chartData) ? chartData : []);
             setTotalPoundsDelivered(Number(stats.totalPoundsDelivered) ?? 0);
             setDeliveriesCompleted(Number(stats.deliveriesCompleted) ?? 0);
+            setJustEatsPoundsDelivered(Number(stats.justEatsPoundsDelivered) ?? 0);
+            setJustEatsTotalDeliveries(Number(stats.justEatsTotalDeliveries) ?? 0);
             setFoodTypesData(
                 Array.isArray(compositionPayload.foodTypes) ? compositionPayload.foodTypes : []
             );
@@ -179,6 +185,8 @@ const OverviewPageContent: React.FC = () => {
             setPoundsByMonthData([]);
             setTotalPoundsDelivered(0);
             setDeliveriesCompleted(0);
+            setJustEatsPoundsDelivered(0);
+            setJustEatsTotalDeliveries(0);
             setDeliverySummaryData([]);
             setFoodTypesData([]);
             setProcessingData([]);
@@ -456,30 +464,24 @@ const OverviewPageContent: React.FC = () => {
                                         Delivery trend
                                     </p>
                                 </div>
-                                <div className="grid min-h-0 h-full w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-[repeat(3,minmax(0,1fr))]">
+                                <div className="grid min-h-0 h-full w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-[repeat(3,minmax(0,1fr))] lg:gap-2">
                                     <StatCard
                                         fillHeight
-                                        label="Total Delivered"
+                                        label="Bulk & Rescue Pounds Delivered"
                                         value={totalPoundsDelivered.toLocaleString()}
                                         unit="lbs"
                                     />
                                     <StatCard
                                         fillHeight
-                                        label="Deliveries Completed"
-                                        value={deliveriesCompleted.toString()}
+                                        label="Just Eats Pounds Delivered"
+                                        value={justEatsPoundsDelivered.toLocaleString()}
+                                        unit="lbs"
                                     />
                                     <StatCard
                                         fillHeight
                                         className="col-span-2 lg:col-span-1"
-                                        label="Avg per delivery"
-                                        value={
-                                            deliveriesCompleted
-                                                ? Math.round(
-                                                      totalPoundsDelivered / deliveriesCompleted
-                                                  ).toLocaleString()
-                                                : '0'
-                                        }
-                                        unit="lbs"
+                                        label="Total Deliveries (Bulk, Rescue, Just Eats)"
+                                        value={totalDeliveriesAllPrograms.toLocaleString()}
                                     />
                                 </div>
                                 <div className="flex min-h-0 flex-col max-lg:mt-1">

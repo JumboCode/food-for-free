@@ -14,7 +14,12 @@ export type DistributionDeliveryRow = {
     minimallyProcessedFood: boolean | null;
     foodRescueProgram: string | null;
     source: string | null;
+    program: 'bulk_rescue' | 'just_eats';
+    /** Stable id when present (Just Eats: `distributionId18`). */
+    lineId: string | null;
 };
+
+type BulkRowDb = Omit<DistributionDeliveryRow, 'program' | 'lineId'>;
 
 type Db = Pick<PrismaClient, '$queryRaw'>;
 
@@ -54,7 +59,7 @@ export async function queryDistributionDeliveries(
         : Prisma.empty;
 
     // Do not require t.destination: source exports often leave it blank; org is d.householdName via join.
-    return db.$queryRaw<DistributionDeliveryRow[]>`
+    const rows = await db.$queryRaw<BulkRowDb[]>`
         SELECT
             t."date" AS "date",
             d."householdName" AS "organizationName",
@@ -79,4 +84,63 @@ export async function queryDistributionDeliveries(
           ${searchClause}
         ORDER BY t."date" DESC
     `;
+    return rows.map(r => ({
+        ...r,
+        program: 'bulk_rescue' as const,
+        lineId: null,
+    }));
+}
+
+type JustEatsRowDb = Omit<DistributionDeliveryRow, 'program'>;
+
+/**
+ * Just Eats box lines: fixed 1 unit @ 25 lbs (display semantics per product request).
+ */
+export async function queryJustEatsDistributionDeliveries(
+    db: Db,
+    params: {
+        start: Date;
+        end: Date;
+        search: string;
+        orgFilter: string | undefined;
+    }
+): Promise<DistributionDeliveryRow[]> {
+    const search = params.search.trim().toLowerCase();
+    const searchFilter = search ? `%${search}%` : null;
+    const searchClause = search
+        ? Prisma.sql`
+          AND (
+            j."householdName" ILIKE ${searchFilter}
+            OR COALESCE(j."productPackageName", '') ILIKE ${searchFilter}
+          )
+        `
+        : Prisma.empty;
+
+    const orgClause = params.orgFilter
+        ? Prisma.sql` AND j."householdName" ILIKE ${params.orgFilter} `
+        : Prisma.empty;
+
+    const rows = await db.$queryRaw<JustEatsRowDb[]>`
+        SELECT
+            j."pantryVisitDateTime" AS "date",
+            j."householdName" AS "organizationName",
+            j."householdId" AS "householdId18",
+            NULLIF(BTRIM(j."productPackageName"), '') AS "productName",
+            1 AS "distributionAmount",
+            25::double precision AS "unitWeightLbs",
+            25::double precision AS "weightLbs",
+            'Just Eats' AS "inventoryType",
+            NULL::text AS "productType",
+            NULL::boolean AS "minimallyProcessedFood",
+            NULL::text AS "foodRescueProgram",
+            NULL::text AS "source",
+            j."distributionId18" AS "lineId"
+        FROM "JustEatsBoxes" j
+        WHERE j."pantryVisitDateTime" >= ${params.start}
+          AND j."pantryVisitDateTime" <= ${params.end}
+          ${orgClause}
+          ${searchClause}
+        ORDER BY j."pantryVisitDateTime" DESC
+    `;
+    return rows.map(r => ({ ...r, program: 'just_eats' as const }));
 }

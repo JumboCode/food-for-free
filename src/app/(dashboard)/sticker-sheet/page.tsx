@@ -145,7 +145,7 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold">Summary Dashboard</h1>
             <h1 className="mb-10"></h1>
             <StatCard label="Total Delivered" value="725" unit="lbs" />
-            <StatCard label="Deliveries Completed" value="25" />
+            <StatCard label="Bulk & Rescue Deliveries Completed" value="25" />
             <h1 className="mb-10"></h1>
 
             {/* Monthly Donations Chart */}

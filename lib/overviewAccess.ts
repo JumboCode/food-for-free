@@ -7,7 +7,7 @@ export type OverviewScope =
     | { kind: 'no_db_user' }
     | { kind: 'partner_no_org' }
     | { kind: 'admin'; destination: string | undefined }
-    | { kind: 'partner'; destination: string };
+    | { kind: 'partner'; destination: string; partnerHouseholdId18: string };
 
 /**
  * Resolves which destination/org name overview metrics apply to.
@@ -34,13 +34,23 @@ export async function getOverviewScope(
     const orgName = user.partner?.organizationName?.trim();
     if (!orgName) return { kind: 'partner_no_org' };
 
-    return { kind: 'partner', destination: orgName };
+    return {
+        kind: 'partner',
+        destination: orgName,
+        partnerHouseholdId18: user.partner.householdId18,
+    };
 }
 
 /** Partner-scoped filter for All* metrics (householdName) and InventoryTransaction.destination when set. */
 export function scopeToPartnerFilter(scope: OverviewScope): string | undefined {
     if (scope.kind === 'admin') return scope.destination;
     if (scope.kind === 'partner') return scope.destination;
+    return undefined;
+}
+
+/** Partner account: Salesforce household id for `JustEatsBoxes.householdId` joins. */
+export function scopeToPartnerHouseholdId18(scope: OverviewScope): string | undefined {
+    if (scope.kind === 'partner') return scope.partnerHouseholdId18;
     return undefined;
 }
 

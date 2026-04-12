@@ -19,7 +19,7 @@ interface DeliveryRecord {
     householdId18: string;
     date: string;
     organizationName: string;
-    productName: string;
+    productName: string | null;
     /** Units for this line (1 when source left amount blank). */
     distributionAmount: number;
     /** Weight per unit in pounds. */
@@ -31,6 +31,22 @@ interface DeliveryRecord {
     foodRescueProgram: string | null;
     inventoryType?: string;
     source?: string | null;
+    program?: 'bulk_rescue' | 'just_eats';
+    lineId?: string | null;
+}
+
+function rowProgram(row: DeliveryRecord): 'bulk_rescue' | 'just_eats' {
+    return row.program ?? 'bulk_rescue';
+}
+
+function programExportLabel(row: DeliveryRecord): string {
+    return rowProgram(row) === 'just_eats' ? 'Just Eats' : 'Bulk & Rescue';
+}
+
+type ProgramFilterKey = 'bulk_rescue' | 'just_eats';
+
+function toggleProgramList(list: ProgramFilterKey[], value: ProgramFilterKey): ProgramFilterKey[] {
+    return list.includes(value) ? list.filter(x => x !== value) : [...list, value];
 }
 
 function formatLbsCell(value: number | null | undefined): string {
@@ -78,8 +94,18 @@ const THEME_GREEN = '#B7D7BD';
 const THEME_ORANGE = '#FAC87D';
 const ROWS_PER_PAGE = 25;
 
+/** Last 30 calendar days inclusive (today minus 29 days through today), same as overview “Last 30 days”. */
+function getLast30DaysRange(): { start: Date; end: Date } {
+    const today = new Date();
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    return { start, end };
+}
+
 function getPast12MonthsRange(): { start: Date; end: Date } {
-    const end = new Date();
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const start = new Date(end);
     start.setMonth(start.getMonth() - 12);
     start.setDate(start.getDate() + 1);
@@ -100,7 +126,7 @@ function getFiscalYearToDateRange(now: Date) {
 function parseDateRangeFromSearchParams(searchParams: ReturnType<typeof useSearchParams>) {
     const startParam = searchParams.get('start');
     const endParam = searchParams.get('end');
-    const defaultRange = getPast12MonthsRange();
+    const defaultRange = getLast30DaysRange();
     const start =
         startParam && isValid(parseISO(startParam)) ? parseISO(startParam) : defaultRange.start;
     const end = endParam && isValid(parseISO(endParam)) ? parseISO(endParam) : defaultRange.end;
@@ -125,7 +151,7 @@ function DistributionContent() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [dateRange, setDateRange] = useState(() => parseDateRangeFromSearchParams(searchParams));
     const [activeFilter, setActiveFilter] = useState<string | null>(() =>
-        hasUrlDateRange(searchParams) ? null : 'past12months'
+        hasUrlDateRange(searchParams) ? null : 'last30days'
     );
     const [exporting, setExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -141,13 +167,14 @@ function DistributionContent() {
     const [filterInventoryTypes, setFilterInventoryTypes] = useState<string[]>([]);
     const [filterFoodRescue, setFilterFoodRescue] = useState<string[]>([]);
     const [filterSources, setFilterSources] = useState<string[]>([]);
+    const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
 
     // When navigating from overview with ?start=&end=, apply that range
     const startParam = searchParams.get('start');
     const endParam = searchParams.get('end');
     useEffect(() => {
         setDateRange(parseDateRangeFromSearchParams(searchParams));
-        setActiveFilter(hasUrlDateRange(searchParams) ? null : 'past12months');
+        setActiveFilter(hasUrlDateRange(searchParams) ? null : 'last30days');
     }, [searchParams, startParam, endParam]);
 
     const handleDateRangeChange = (range: { start: Date; end: Date }) => {
@@ -192,13 +219,9 @@ function DistributionContent() {
             case 'fiscalYearToDate':
                 setDateRange(getFiscalYearToDateRange(now));
                 break;
-            case 'past12months': {
-                const start = new Date(today);
-                start.setMonth(start.getMonth() - 12);
-                start.setDate(start.getDate() + 1);
-                setDateRange({ start, end: today });
+            case 'past12months':
+                setDateRange(getPast12MonthsRange());
                 break;
-            }
             case 'allTime':
                 setDateRange({
                     start: new Date(2000, 0, 1),
@@ -219,6 +242,7 @@ function DistributionContent() {
         debouncedSearch,
         dateRange.start,
         dateRange.end,
+        filterPrograms,
         filterOrgs,
         filterProductTypes,
         filterProcessing,
@@ -264,6 +288,8 @@ function DistributionContent() {
 
     const filteredData = useMemo(() => {
         return data.filter(row => {
+            const prog = rowProgram(row);
+            if (filterPrograms.length > 0 && !filterPrograms.includes(prog)) return false;
             if (filterOrgs.length > 0 && !filterOrgs.includes(row.organizationName)) return false;
             const pt = foodTypeLabelForRow(row.productType);
             if (filterProductTypes.length > 0 && !filterProductTypes.includes(pt)) return false;
@@ -280,6 +306,7 @@ function DistributionContent() {
         });
     }, [
         data,
+        filterPrograms,
         filterOrgs,
         filterProductTypes,
         filterProcessing,
@@ -289,6 +316,7 @@ function DistributionContent() {
     ]);
 
     const activeAttributeFilterCount =
+        filterPrograms.length +
         filterOrgs.length +
         filterProductTypes.length +
         filterProcessing.length +
@@ -297,6 +325,7 @@ function DistributionContent() {
         filterSources.length;
 
     const clearAttributeFilters = () => {
+        setFilterPrograms([]);
         setFilterOrgs([]);
         setFilterProductTypes([]);
         setFilterProcessing([]);
@@ -316,6 +345,7 @@ function DistributionContent() {
         try {
             const headers = [
                 'Date',
+                'Program',
                 'Organization',
                 'Food',
                 'Amount',
@@ -332,6 +362,7 @@ function DistributionContent() {
                 lines.push(
                     [
                         csvEscapeCell(format(new Date(d.date), 'yyyy-MM-dd')),
+                        csvEscapeCell(programExportLabel(d)),
                         csvEscapeCell(d.organizationName),
                         csvEscapeCell(d.productName?.trim() || ''),
                         csvEscapeCell(Number(d.distributionAmount ?? 1)),
@@ -447,10 +478,12 @@ function DistributionContent() {
                             Distribution
                         </h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            Past deliveries. Search matches organization, food, inventory type, and
-                            tags. Use Filters to narrow by organization, food type, processing,
-                            inventory type, food rescue program, and source. Export CSV reflects the
-                            table (date range, search, and attribute filters).
+                            Past deliveries include Bulk &amp; Rescue inventory lines and Just Eats
+                            box deliveries (1 unit, 25 lbs each). Search matches organization, food,
+                            inventory type, and tags. Use Filters to narrow by program,
+                            organization, food type, processing, inventory type, food rescue
+                            program, and source. Export CSV reflects the table (date range, search,
+                            and attribute filters).
                         </p>
                     </div>
 
@@ -458,7 +491,7 @@ function DistributionContent() {
                         <div className="relative w-72 min-w-[12rem]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
-                                placeholder="Search org, food, inventory type, tags…"
+                                placeholder="Search org, food, Just Eats, inventory type, tags…"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
@@ -501,11 +534,42 @@ function DistributionContent() {
                                         ) : null}
                                     </div>
                                     <p className="mb-3 text-xs text-gray-500">
-                                        Narrow results by organization, food type, processing, and
-                                        more. Empty sections mean &quot;any&quot;; checked values
-                                        are combined with OR within a group and AND across groups.
+                                        Narrow results by program, organization, food type,
+                                        processing, and more. Empty sections mean &quot;any&quot;;
+                                        checked values are combined with OR within a group and AND
+                                        across groups.
                                     </p>
                                     <div className="space-y-4">
+                                        <div>
+                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                Program
+                                            </p>
+                                            <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                {(
+                                                    [
+                                                        ['bulk_rescue', 'Bulk & Rescue'],
+                                                        ['just_eats', 'Just Eats'],
+                                                    ] as const
+                                                ).map(([key, label]) => (
+                                                    <label
+                                                        key={key}
+                                                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-800"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300"
+                                                            checked={filterPrograms.includes(key)}
+                                                            onChange={() =>
+                                                                setFilterPrograms(prev =>
+                                                                    toggleProgramList(prev, key)
+                                                                )
+                                                            }
+                                                        />
+                                                        {label}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <div>
                                             <p className="mb-1.5 text-xs font-medium text-gray-700">
                                                 Organization
@@ -818,8 +882,8 @@ function DistributionContent() {
                                     triggerVariant="responsive"
                                     selectedRange={dateRange}
                                     onRangeChange={handleDateRangeChange}
-                                    defaultRange={getPast12MonthsRange()}
-                                    onClear={() => setActiveFilter('past12months')}
+                                    defaultRange={getLast30DaysRange()}
+                                    onClear={() => setActiveFilter('last30days')}
                                 />
                             </div>
                         </div>
@@ -873,28 +937,27 @@ function DistributionContent() {
                                         </tr>
                                     ) : filteredData.length > 0 ? (
                                         paginatedData.map((d, index) => {
+                                            const isJustEats = rowProgram(d) === 'just_eats';
                                             const typeLabel = foodTypeLabelForRow(d.productType);
-                                            const typeHex = resolveFoodTypeDonutHex(
-                                                d.productType,
-                                                foodTypeColorLookup
-                                            );
-                                            const typeChip = chipStyleFromDonutHex(typeHex);
                                             const procLabel = processingDisplayLabel(
-                                                d.minimallyProcessedFood
-                                            );
-                                            const procChip = processingChipStyle(
                                                 d.minimallyProcessedFood
                                             );
                                             const foodLabel = d.productName?.trim() || '—';
                                             const amt = Number(d.distributionAmount ?? 1);
                                             const unitHint =
+                                                !isJustEats &&
                                                 d.unitWeightLbs != null &&
                                                 !Number.isNaN(Number(d.unitWeightLbs))
                                                     ? `${formatLbsCell(d.unitWeightLbs)} each`
-                                                    : undefined;
+                                                    : isJustEats
+                                                      ? '25 lbs per unit'
+                                                      : undefined;
+                                            const rowKey = d.lineId
+                                                ? `je-${d.lineId}`
+                                                : `br-${d.householdId18}-${String(d.date)}-${d.productName ?? ''}-${amt}-${startIdx + index}`;
                                             return (
                                                 <tr
-                                                    key={`${d.householdId18}-${startIdx + index}-${d.productName}-${d.date}-${amt}`}
+                                                    key={rowKey}
                                                     className="border-b border-gray-100 last:border-b-0"
                                                 >
                                                     <td className="align-top py-3 px-4 text-sm text-gray-600 tabular-nums">
@@ -933,30 +996,41 @@ function DistributionContent() {
                                                     </td>
                                                     <td className="align-top py-3 px-4">
                                                         <div className="flex flex-col items-start gap-1.5">
-                                                            <span
-                                                                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
-                                                                style={{
-                                                                    backgroundColor:
-                                                                        typeChip.backgroundColor,
-                                                                    borderColor:
-                                                                        typeChip.borderColor,
-                                                                    color: typeChip.color,
-                                                                }}
-                                                            >
-                                                                {typeLabel}
-                                                            </span>
-                                                            <span
-                                                                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
-                                                                style={{
-                                                                    backgroundColor:
-                                                                        procChip.backgroundColor,
-                                                                    borderColor:
-                                                                        procChip.borderColor,
-                                                                    color: procChip.color,
-                                                                }}
-                                                            >
-                                                                {procLabel}
-                                                            </span>
+                                                            {isJustEats ? (
+                                                                <span
+                                                                    className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border whitespace-nowrap"
+                                                                    style={{
+                                                                        backgroundColor:
+                                                                            THEME_ORANGE,
+                                                                        borderColor: '#e8b85a',
+                                                                        color: '#1f2937',
+                                                                    }}
+                                                                >
+                                                                    Just Eats
+                                                                </span>
+                                                            ) : (
+                                                                <>
+                                                                    <span
+                                                                        className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
+                                                                        style={chipStyleFromDonutHex(
+                                                                            resolveFoodTypeDonutHex(
+                                                                                d.productType,
+                                                                                foodTypeColorLookup
+                                                                            )
+                                                                        )}
+                                                                    >
+                                                                        {typeLabel}
+                                                                    </span>
+                                                                    <span
+                                                                        className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
+                                                                        style={processingChipStyle(
+                                                                            d.minimallyProcessedFood
+                                                                        )}
+                                                                    >
+                                                                        {procLabel}
+                                                                    </span>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
