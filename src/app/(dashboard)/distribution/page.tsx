@@ -108,9 +108,6 @@ function DistributionContent() {
     const [filterOrgs, setFilterOrgs] = useState<string[]>([]);
     const [filterProductTypes, setFilterProductTypes] = useState<string[]>([]);
     const [filterProcessing, setFilterProcessing] = useState<ProcessingFilterKey[]>([]);
-    const [filterInventoryTypes, setFilterInventoryTypes] = useState<string[]>([]);
-    const [filterFoodRescue, setFilterFoodRescue] = useState<string[]>([]);
-    const [filterSources, setFilterSources] = useState<string[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
 
     useEffect(() => {
@@ -128,9 +125,6 @@ function DistributionContent() {
         filterOrgs,
         filterProductTypes,
         filterProcessing,
-        filterInventoryTypes,
-        filterFoodRescue,
-        filterSources,
     ]);
 
     useEffect(() => {
@@ -178,42 +172,21 @@ function DistributionContent() {
             const pk = processingKey(row.minimallyProcessedFood);
             if (filterProcessing.length > 0 && !filterProcessing.includes(pk)) return false;
             const inv = (row.inventoryType ?? '').trim() || EMPTY_VALUE;
-            if (filterInventoryTypes.length > 0 && !filterInventoryTypes.includes(inv))
-                return false;
-            const fr = normOptionalString(row.foodRescueProgram);
-            if (filterFoodRescue.length > 0 && !filterFoodRescue.includes(fr)) return false;
-            const src = normOptionalString(row.source);
-            if (filterSources.length > 0 && !filterSources.includes(src)) return false;
             return true;
         });
-    }, [
-        data,
-        filterPrograms,
-        filterOrgs,
-        filterProductTypes,
-        filterProcessing,
-        filterInventoryTypes,
-        filterFoodRescue,
-        filterSources,
-    ]);
+    }, [data, filterPrograms, filterOrgs, filterProductTypes, filterProcessing]);
 
     const activeAttributeFilterCount =
         filterPrograms.length +
         filterOrgs.length +
         filterProductTypes.length +
-        filterProcessing.length +
-        filterInventoryTypes.length +
-        filterFoodRescue.length +
-        filterSources.length;
+        filterProcessing.length;
 
     const clearAttributeFilters = () => {
         setFilterPrograms([]);
         setFilterOrgs([]);
         setFilterProductTypes([]);
         setFilterProcessing([]);
-        setFilterInventoryTypes([]);
-        setFilterFoodRescue([]);
-        setFilterSources([]);
     };
 
     const labelEmptySentinel = (v: string) => (v === EMPTY_VALUE ? '(none)' : v);
@@ -381,7 +354,7 @@ function DistributionContent() {
                                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
                             />
                         </div>
-                        <div className="relative" ref={filterPanelRef}>
+                        {/* <div className="relative" ref={filterPanelRef}>
                             <button
                                 type="button"
                                 onClick={() => setFilterPanelOpen(o => !o)}
@@ -623,6 +596,191 @@ function DistributionContent() {
                                                         />
                                                         <span className="break-words">
                                                             {labelEmptySentinel(src)}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div> */}
+                        <div
+                            className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg"
+                            ref={filterPanelRef}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setFilterPanelOpen(o => !o)}
+                                className="h-10 w-full sm:w-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
+                                aria-expanded={filterPanelOpen}
+                                aria-haspopup="dialog"
+                            >
+                                <Filter className="h-4 w-4 text-gray-600" aria-hidden />
+                                Filters
+                                {activeAttributeFilterCount > 0 ? (
+                                    <span className="min-w-[1.25rem] rounded-full bg-[#B7D7BD] px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums text-gray-900">
+                                        {activeAttributeFilterCount}
+                                    </span>
+                                ) : null}
+                            </button>
+                            {filterPanelOpen ? (
+                                <div
+                                    className="absolute left-0 top-full z-50 mt-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl ring-1 ring-black/5"
+                                    style={{
+                                        maxHeight: 'min(70vh, 32rem)',
+                                    }}
+                                    role="dialog"
+                                    aria-label="Attribute filters"
+                                >
+                                    <div className="mb-3 flex items-center justify-between gap-2">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Filter by attribute
+                                        </p>
+                                        {activeAttributeFilterCount > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={clearAttributeFilters}
+                                                className="text-xs font-medium text-[#1C5E2C] underline underline-offset-2 hover:text-[#164a22]"
+                                            >
+                                                Clear all
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    <p className="mb-3 text-xs text-gray-500">
+                                        Empty sections mean &quot;any&quot;; checked values are
+                                        combined with OR within a group and AND across groups.
+                                    </p>
+                                    <div className="space-y-4">
+                                        {/* Program */}
+                                        <div>
+                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                Program
+                                            </p>
+                                            <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                {(
+                                                    [
+                                                        ['bulk_rescue', 'Bulk & Rescue'],
+                                                        ['just_eats', 'Just Eats'],
+                                                    ] as const
+                                                ).map(([key, label]) => (
+                                                    <label
+                                                        key={key}
+                                                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-800"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                            checked={filterPrograms.includes(key)}
+                                                            onChange={() =>
+                                                                setFilterPrograms(prev =>
+                                                                    toggleProgramList(prev, key)
+                                                                )
+                                                            }
+                                                        />
+                                                        <span className="min-w-0 break-words">
+                                                            {label}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Organization */}
+                                        <div>
+                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                Organization
+                                            </p>
+                                            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                {filterOptions.orgs.length === 0 ? (
+                                                    <p className="text-xs text-gray-400">
+                                                        No values
+                                                    </p>
+                                                ) : (
+                                                    filterOptions.orgs.map(org => (
+                                                        <label
+                                                            key={org}
+                                                            className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                                checked={filterOrgs.includes(org)}
+                                                                onChange={() =>
+                                                                    setFilterOrgs(prev =>
+                                                                        toggleInList(prev, org)
+                                                                    )
+                                                                }
+                                                            />
+                                                            <span className="min-w-0 break-words">
+                                                                {org}
+                                                            </span>
+                                                        </label>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Food type */}
+                                        <div>
+                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                Food type
+                                            </p>
+                                            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                {filterOptions.productTypes.map(pt => (
+                                                    <label
+                                                        key={pt}
+                                                        className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                            checked={filterProductTypes.includes(
+                                                                pt
+                                                            )}
+                                                            onChange={() =>
+                                                                setFilterProductTypes(prev =>
+                                                                    toggleInList(prev, pt)
+                                                                )
+                                                            }
+                                                        />
+                                                        <span className="min-w-0 break-words">
+                                                            {pt}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Processing */}
+                                        <div>
+                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                Processing
+                                            </p>
+                                            <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                {(
+                                                    [
+                                                        ['minimal', 'Minimally Processed'],
+                                                        ['processed', 'Processed'],
+                                                        ['unspecified', 'Not Specified'],
+                                                    ] as const
+                                                ).map(([key, label]) => (
+                                                    <label
+                                                        key={key}
+                                                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-800"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                            checked={filterProcessing.includes(key)}
+                                                            onChange={() =>
+                                                                setFilterProcessing(prev =>
+                                                                    toggleProcessingList(prev, key)
+                                                                )
+                                                            }
+                                                        />
+                                                        <span className="min-w-0 break-words">
+                                                            {label}
                                                         </span>
                                                     </label>
                                                 ))}

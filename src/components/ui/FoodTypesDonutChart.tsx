@@ -2,6 +2,7 @@
 
 import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps } from 'recharts';
 import { Apple } from 'lucide-react';
+import React, { useState } from 'react';
 
 // Sample data for when no data is provided
 const DEFAULT_DATA = [
@@ -21,7 +22,6 @@ export interface FoodTypeData {
 interface FoodTypesDonutChartProps {
     data?: FoodTypeData[];
     title?: string;
-    className?: string;
 }
 
 const renderActiveShape = (props: SectorProps) => {
@@ -46,18 +46,31 @@ const renderActiveShape = (props: SectorProps) => {
 type CustomTooltipProps = {
     active?: boolean;
     payload?: Array<{ payload: FoodTypeData & { total?: number } }>;
+    setIsTooltipActive: (active: boolean) => void;
 };
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
+function CustomTooltip({ active, payload, setIsTooltipActive }: CustomTooltipProps) {
+    React.useEffect(() => {
+        setIsTooltipActive(!!active);
+    }, [active, setIsTooltipActive]);
     if (!active || !payload?.length) return null;
     const item = payload[0].payload as FoodTypeData;
     const total = payload[0].payload.total;
     const pct =
         typeof total === 'number' && total > 0 ? ((item.value / total) * 100).toFixed(1) : '—';
     return (
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
-            <p className="text-sm font-medium text-slate-800">{item.label}</p>
-            <p className="text-xs text-slate-500">
+        <div
+            className="rounded-lg border border-gray-400 bg-white px-4 py-3 shadow-lg"
+            style={{
+                opacity: 1,
+                color: '#1a202c',
+                fontWeight: 600,
+                fontSize: '1rem',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            }}
+        >
+            <p style={{ margin: 0 }}>{item.label}</p>
+            <p style={{ margin: 0, fontWeight: 400, fontSize: '0.95rem', color: '#4a5568' }}>
                 {Number(item.value).toLocaleString()} lbs ({pct}%)
             </p>
         </div>
@@ -67,24 +80,19 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 export function FoodTypesDonutChart({
     data = DEFAULT_DATA,
     title = 'Food Types Donated',
-    className = '',
 }: FoodTypesDonutChartProps) {
     const total = data.reduce((sum, d) => sum + d.value, 0);
     const dataWithTotal = data.map(d => ({ ...d, total }));
 
-    /** Fixed donut + legend row height so “Processing” matches “Food types” when one has fewer legend rows. */
-    const CHART_ROW_MIN = 'min-h-[300px] sm:min-h-[320px]';
-    const DONUT_BOX = 'h-[220px] w-[220px] shrink-0 sm:h-[240px] sm:w-[240px]';
-
+    // Remove tooltip fade logic
     return (
-        <div className={`flex h-full min-h-0 w-full flex-col ${className}`.trim()}>
+        <div className="flex w-full flex-col">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {title}
             </h3>
-            <div
-                className={`mt-3 flex flex-1 flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-6 ${CHART_ROW_MIN}`}
-            >
-                <div className={`relative ${DONUT_BOX}`}>
+            <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:gap-6">
+                {/* Wrap chart and overlay in a single relative container */}
+                <div className="relative h-[220px] w-full min-w-0 max-w-[220px] sm:h-[240px] sm:max-w-[240px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -104,37 +112,50 @@ export function FoodTypesDonutChart({
                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
-                            <Tooltip content={<CustomTooltip />} />
+                            <Tooltip
+                                content={<CustomTooltip setIsTooltipActive={() => {}} />}
+                                wrapperStyle={{ pointerEvents: 'auto', zIndex: 10 }}
+                            />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {/* Center overlay absolutely positioned within relative container, always visible */}
+                    <div
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                        style={{ zIndex: 0 }}
+                    >
                         <div className="flex flex-col items-center">
-                            <Apple className="h-7 w-7 text-slate-300 sm:h-8 sm:w-8" />
-                            <span className="mt-0.5 text-xs font-medium tabular-nums text-slate-500">
+                            <Apple
+                                className="h-7 w-7 text-slate-500 sm:h-8 sm:w-8"
+                                style={{ opacity: 1 }}
+                            />
+                            <span
+                                className="mt-0.5 text-xs font-medium tabular-nums text-slate-700"
+                                style={{ opacity: 1 }}
+                            >
                                 {total.toLocaleString()} lbs
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex w-full min-w-0 flex-1 flex-col justify-center gap-2 sm:max-w-none sm:gap-2.5">
+                <div className="flex flex-1 flex-col justify-center gap-2 sm:gap-2.5">
                     {data.map((item, index) => {
                         const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                         return (
                             <div
                                 key={index}
-                                className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
                             >
-                                <div className="flex min-w-0 flex-1 items-start gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
                                     <div
-                                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                                        className="h-2.5 w-2.5 shrink-0 rounded-full"
                                         style={{ backgroundColor: item.color || '#94a3b8' }}
                                     />
-                                    <span className="break-words text-sm font-medium leading-snug text-slate-800">
+                                    <span className="truncate text-sm font-medium text-slate-800">
                                         {item.label}
                                     </span>
                                 </div>
-                                <div className="shrink-0 self-center text-right">
+                                <div className="shrink-0 text-right">
                                     <span className="text-xs font-medium tabular-nums text-slate-600">
                                         {item.value.toLocaleString()}
                                     </span>

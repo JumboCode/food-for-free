@@ -1,13 +1,12 @@
-import SideNavBar from '@/components/ui/SideNavbar';
 import { FilterProvider } from '@/contexts/FilterContext';
+import { isAdmin } from '@/lib/admin';
+import { DashboardFrame } from './DashboardFrame';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const admin = await isAdmin();
     return (
         <FilterProvider>
-            <SideNavBar />
-            <div className="ml-16 w-[calc(100%-4rem)] min-h-screen min-w-0 bg-[#FAF9F5] sm:ml-56 sm:w-[calc(100%-14rem)]">
-                <main className="min-w-0 max-w-full">{children}</main>
-            </div>
+            <DashboardFrame isAdmin={admin}>{children}</DashboardFrame>
         </FilterProvider>
     );
 }
