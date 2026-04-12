@@ -31,13 +31,14 @@ export async function getOverviewScope(
         return { kind: 'admin', destination };
     }
 
-    const orgName = user.partner?.organizationName?.trim();
-    if (!orgName) return { kind: 'partner_no_org' };
+    const partner = user.partner;
+    const orgName = partner?.organizationName?.trim();
+    if (!partner || !orgName) return { kind: 'partner_no_org' };
 
     return {
         kind: 'partner',
         destination: orgName,
-        partnerHouseholdId18: user.partner.householdId18,
+        partnerHouseholdId18: partner.householdId18,
     };
 }
 

@@ -1,5 +1,13 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
+import type { OverviewScope } from '~/lib/overviewAccess';
+
+/** Org name filter for distribution SQL (ILIKE). Undefined = all orgs (admin, no destination). */
+export function distributionOrgScopeFromOverview(scope: OverviewScope): string | undefined {
+    if (scope.kind === 'admin') return scope.destination;
+    if (scope.kind === 'partner') return scope.destination;
+    return undefined;
+}
 
 export type DistributionDeliveryRow = {
     date: Date;

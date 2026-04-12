@@ -435,9 +435,12 @@ function DistributionContent() {
                     end: dateRange.end.toISOString(),
                     search: debouncedSearch,
                 });
-                const res = await fetch(`/api/admin/deliveries?${deliveriesParams.toString()}`, {
-                    signal: ac.signal,
-                });
+                const res = await fetch(
+                    `/api/distribution/deliveries?${deliveriesParams.toString()}`,
+                    {
+                        signal: ac.signal,
+                    }
+                );
                 if (!res.ok) throw new Error('Failed to fetch data.');
                 const json = await res.json();
                 if (ac.signal.aborted) return;
