@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { X, User, Mail, BarChart3 } from 'lucide-react';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 interface Organization {
     id: string;
@@ -185,6 +186,10 @@ export function OrganizationDetailModal({
         setDeleteConfirmUser(user);
     };
 
+    const overviewHref = isDistributorPartnerOrgName(organization.name)
+        ? '/overview'
+        : `/overview?destination=${encodeURIComponent(organization.name)}`;
+
     const confirmDelete = async () => {
         if (!deleteConfirmUser) return;
 
@@ -240,7 +245,7 @@ export function OrganizationDetailModal({
 
                 <div className="border-b border-gray-100 bg-[#FAFDFB] px-4 py-3 sm:px-6 lg:px-8">
                     <Link
-                        href={`/overview?destination=${encodeURIComponent(organization.name)}`}
+                        href={overviewHref}
                         onClick={() => onClose()}
                         className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#9fc5a9] bg-white text-sm font-medium text-[#608D6A] hover:bg-[#F7FAF7] transition-colors"
                     >
@@ -248,7 +253,9 @@ export function OrganizationDetailModal({
                         View statistics overview
                     </Link>
                     <p className="mt-2 text-xs text-gray-500">
-                        Opens the overview dashboard filtered to this partner&apos;s delivery data.
+                        {isDistributorPartnerOrgName(organization.name)
+                            ? 'Opens the full statistics overview (aggregated across all partners). Food For Free is the distributor, not a receiving organization in delivery data.'
+                            : 'Opens the overview dashboard filtered to this partner&apos;s delivery data.'}
                     </p>
                 </div>
 
