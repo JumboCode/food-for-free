@@ -514,18 +514,20 @@ const OverviewPageContent: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
                                     <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                        <FoodTypesDonutChart
-                                            className="flex-1"
-                                            data={foodTypesData}
-                                            title="Food Types Donated"
-                                        />
+                                        <div className="flex-1">
+                                            <FoodTypesDonutChart
+                                                data={foodTypesData}
+                                                title="Food Types Donated"
+                                            />
+                                        </div>
                                     </div>
                                     <div className="flex min-h-0 min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                        <FoodTypesDonutChart
-                                            className="flex-1"
-                                            data={processingData}
-                                            title="Processing Breakdown"
-                                        />
+                                        <div className="flex-1">
+                                            <FoodTypesDonutChart
+                                                data={processingData}
+                                                title="Processing Breakdown"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
