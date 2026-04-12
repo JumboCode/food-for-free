@@ -55,9 +55,18 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
     const pct =
         typeof total === 'number' && total > 0 ? ((item.value / total) * 100).toFixed(1) : '—';
     return (
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
-            <p className="text-sm font-medium text-slate-800">{item.label}</p>
-            <p className="text-xs text-slate-500">
+        <div
+            className="rounded-lg border border-gray-400 bg-white px-4 py-3 shadow-lg"
+            style={{
+                opacity: 1,
+                color: '#1a202c',
+                fontWeight: 600,
+                fontSize: '1rem',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            }}
+        >
+            <p style={{ margin: 0 }}>{item.label}</p>
+            <p style={{ margin: 0, fontWeight: 400, fontSize: '0.95rem', color: '#4a5568' }}>
                 {Number(item.value).toLocaleString()} lbs ({pct}%)
             </p>
         </div>
