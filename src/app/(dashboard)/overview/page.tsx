@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
@@ -346,13 +347,13 @@ const OverviewPageContent: React.FC = () => {
                                         historyLink="distribution"
                                     />
                                     <div className="flex justify-end mt-4">
-                                        <a
+                                        <Link
                                             href="/distribution"
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
                                             style={{ backgroundColor: THEME_ORANGE }}
                                         >
                                             See full distribution history
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
