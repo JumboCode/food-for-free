@@ -4,6 +4,7 @@ import {
     getOverviewScope,
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
+    scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
@@ -36,13 +37,44 @@ export async function GET(request: NextRequest) {
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
+        const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
         const partnerFilter = scopeToPartnerFilter(scope);
 
         // Use t.date (AllInventoryTransactions) for grouping — same source as the distribution
         // table and detail endpoint, so the date in the ID always matches what the detail query filters on.
-        if (partnerFilter) {
+        if (partnerHouseholdId18) {
             type PartnerDeliveryRow = { day: Date; totalPounds: number | null };
             const rows = await prisma.$queryRaw<PartnerDeliveryRow[]>`
+                SELECT
+                    DATE_TRUNC('day', t."date") AS "day",
+                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                FROM "AllInventoryTransactions" t
+                INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+                WHERE d."householdId18" = ${partnerHouseholdId18}
+                  AND t."date" >= ${range.start}
+                  AND t."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', t."date")
+                ORDER BY DATE_TRUNC('day', t."date") DESC
+                LIMIT 10
+            `;
+
+            const destLabel = partnerFilter ?? partnerHouseholdId18;
+            return NextResponse.json({
+                deliveries: rows.map(r => {
+                    const day = new Date(r.day).toISOString().slice(0, 10);
+                    return {
+                        id: `${day}|${destLabel}`,
+                        date: new Date(r.day).toISOString(),
+                        totalPounds: Math.round(Number(r.totalPounds ?? 0)),
+                        destination: destLabel,
+                    };
+                }),
+            });
+        }
+        if (partnerFilter) {
+            type AdminScopedDeliveryRow = { day: Date; totalPounds: number | null };
+            const rows = await prisma.$queryRaw<AdminScopedDeliveryRow[]>`
                 SELECT
                     DATE_TRUNC('day', t."date") AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"

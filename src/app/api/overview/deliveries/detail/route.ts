@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
 import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAccess';
 
@@ -53,6 +54,11 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        const destinationPredicate =
+            scope.kind === 'partner'
+                ? Prisma.sql`d."householdId18" = ${scope.partnerHouseholdId18}`
+                : Prisma.sql`d."householdName" ILIKE ${org}`;
+
         // Mirror the same join as queryDistributionDeliveries so t.date (AllInventoryTransactions)
         // is used for filtering — matching the date shown in the distribution table rows.
         const foodRows = await prisma.$queryRaw<FoodRow[]>`
@@ -63,7 +69,7 @@ export async function GET(request: NextRequest) {
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
             WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
-              AND d."householdName" ILIKE ${org}
+              AND ${destinationPredicate}
             GROUP BY p."pantryProductName"
             ORDER BY SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) DESC
         `;
@@ -76,7 +82,7 @@ export async function GET(request: NextRequest) {
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
             WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
-              AND d."householdName" ILIKE ${org}
+              AND ${destinationPredicate}
         `;
 
         const nutritionalTags = buildNutritionalTags(tagRows);

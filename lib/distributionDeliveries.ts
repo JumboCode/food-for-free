@@ -38,6 +38,8 @@ export async function queryDistributionDeliveries(
         end: Date;
         search: string;
         orgFilter: string | undefined;
+        /** When set (partner scope), filter by destination household id — matches overview stats. */
+        partnerHouseholdId18?: string | undefined;
     }
 ): Promise<DistributionDeliveryRow[]> {
     const search = params.search.trim().toLowerCase();
@@ -62,9 +64,12 @@ export async function queryDistributionDeliveries(
         `
         : Prisma.empty;
 
-    const orgClause = params.orgFilter
-        ? Prisma.sql` AND d."householdName" ILIKE ${params.orgFilter} `
-        : Prisma.empty;
+    const destClause =
+        params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
+            ? Prisma.sql` AND d."householdId18" = ${params.partnerHouseholdId18} `
+            : params.orgFilter
+              ? Prisma.sql` AND d."householdName" ILIKE ${params.orgFilter} `
+              : Prisma.empty;
 
     // Do not require t.destination: source exports often leave it blank; org is d.householdName via join.
     const rows = await db.$queryRaw<BulkRowDb[]>`
@@ -88,7 +93,7 @@ export async function queryDistributionDeliveries(
             ON d."productPackageId18" = p."productPackageId18"
         WHERE t."date" >= ${params.start}
           AND t."date" <= ${params.end}
-          ${orgClause}
+          ${destClause}
           ${searchClause}
         ORDER BY t."date" DESC
     `;
@@ -111,6 +116,7 @@ export async function queryJustEatsDistributionDeliveries(
         end: Date;
         search: string;
         orgFilter: string | undefined;
+        partnerHouseholdId18?: string | undefined;
     }
 ): Promise<DistributionDeliveryRow[]> {
     const search = params.search.trim().toLowerCase();
@@ -124,9 +130,12 @@ export async function queryJustEatsDistributionDeliveries(
         `
         : Prisma.empty;
 
-    const orgClause = params.orgFilter
-        ? Prisma.sql` AND j."householdName" ILIKE ${params.orgFilter} `
-        : Prisma.empty;
+    const destClause =
+        params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
+            ? Prisma.sql` AND j."householdId" = ${params.partnerHouseholdId18} `
+            : params.orgFilter
+              ? Prisma.sql` AND j."householdName" ILIKE ${params.orgFilter} `
+              : Prisma.empty;
 
     const rows = await db.$queryRaw<JustEatsRowDb[]>`
         SELECT
@@ -146,7 +155,7 @@ export async function queryJustEatsDistributionDeliveries(
         FROM "JustEatsBoxes" j
         WHERE j."pantryVisitDateTime" >= ${params.start}
           AND j."pantryVisitDateTime" <= ${params.end}
-          ${orgClause}
+          ${destClause}
           ${searchClause}
         ORDER BY j."pantryVisitDateTime" DESC
     `;
