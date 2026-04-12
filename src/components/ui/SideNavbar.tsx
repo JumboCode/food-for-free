@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChartLine, Gift, Users } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
@@ -25,6 +26,14 @@ const defaultItems: NavItem[] = [
 const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
     const pathname = usePathname();
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const profileRef = useRef<HTMLDivElement>(null);
+
+    const handleProfileAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const btn = profileRef.current?.querySelector('button');
+        if (btn && !btn.contains(e.target as Node)) {
+            btn.click();
+        }
+    };
 
     useEffect(() => {
         fetch('/api/user/context')
@@ -42,7 +51,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
 
     return (
         <aside className="fixed left-0 bg-white h-screen top-0 w-16 sm:w-56 flex flex-col border-r border-gray-100">
-            <a href="/overview" className="flex items-center gap-3 px-4 sm:px-5 pt-6 pb-4">
+            <Link href="/overview" className="flex items-center gap-3 px-4 sm:px-5 pt-6 pb-4">
                 <Image
                     src="/food-for-free-logo.png"
                     alt="Food For Free"
@@ -54,14 +63,14 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
                     <span className="text-base font-bold leading-tight">Food For Free</span>
                     <span className="text-xs text-gray-400">Partner Portal</span>
                 </div>
-            </a>
+            </Link>
 
             <nav className="flex flex-col flex-1 px-2 sm:px-3 space-y-1 mt-2">
                 {items.map(item => {
                     const isActive = pathname === item.href;
 
                     return (
-                        <a
+                        <Link
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-2 px-3 py-3 rounded-xl transition
@@ -71,13 +80,17 @@ const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
                             <span className="hidden sm:inline text-sm font-medium text-gray-700">
                                 {item.label}
                             </span>
-                        </a>
+                        </Link>
                     );
                 })}
             </nav>
 
             <div className="px-2 sm:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
-                <div className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2">
+                <div
+                    ref={profileRef}
+                    onClick={handleProfileAreaClick}
+                    className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-50 transition"
+                >
                     <UserButton
                         showName={false}
                         appearance={{

@@ -68,6 +68,7 @@ export function OrganizationDetailModal({
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
     const [showInvitationSent, setShowInvitationSent] = useState(false);
+    const [resendEmail, setResendEmail] = useState<string | null>(null);
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
     const fetchOrganizationUsers = useCallback(async () => {
@@ -161,22 +162,23 @@ export function OrganizationDetailModal({
         }
     };
 
-    const handleResendInvitation = async () => {
+    const handleResendInvitation = async (invId: string, email: string) => {
+        setResendEmail(email);
         setShowInvitationSent(true);
+        setTimeout(() => {
+            setShowInvitationSent(false);
+            setResendEmail(null);
+        }, 3000);
 
-        //hide it after 3 seconds
-        setTimeout(() => setShowInvitationSent(false), 3000);
-
-        //Also call the API
-        // try {
-        //     const response = await fetch(`/api/admin/invitations/${invitationId}/resend`, {
-        //         method: 'POST',
-        //     });
-        //     if (!response.ok) throw new Error('Failed to resend invitation');
-        //     await fetchOrganizationUsers();
-        // } catch (error) {
-        //     console.error('Error resending invitation:', error);
-        // }
+        try {
+            const response = await fetch(`/api/admin/invitations/${invId}/resend`, {
+                method: 'POST',
+            });
+            if (!response.ok) throw new Error('Failed to resend invitation');
+            await fetchOrganizationUsers();
+        } catch (error) {
+            console.error('Error resending invitation:', error);
+        }
     };
 
     const handleDeleteUser = (user: User) => {
@@ -186,26 +188,34 @@ export function OrganizationDetailModal({
     const confirmDelete = async () => {
         if (!deleteConfirmUser) return;
 
-        //frontend only, just show alert
-        alert(`Deleted: ${deleteConfirmUser.name} (Frontend only)`);
+        const userToDelete = deleteConfirmUser;
         setDeleteConfirmUser(null);
 
-        //calling the API commented out for now since we are using dummy data and don't want to accidentally delete real users while testing
-        // try {
-        //     if (deleteConfirmUser.status === 'Invited' && deleteConfirmUser.invitationId) {
-        //         await fetch(`/api/admin/invitations/${deleteConfirmUser.invitationId}`, {
-        //             method: 'DELETE',
-        //         });
-        //     } else {
-        //         await fetch(`/api/admin/organizations/${organization.id}/members/${deleteConfirmUser.id}`, {
-        //             method: 'DELETE'
-        //         });
-        //     }
-        //     await fetchOrganizationUsers();
-        //     await onUpdate();
-        // } catch (error) {
-        //     console.error('Error deleting user:', error);
-        // }
+        try {
+            let res: Response;
+            if (userToDelete.status === 'Invited' && userToDelete.invitationId) {
+                res = await fetch(
+                    `/api/admin/invitations/${userToDelete.invitationId}?organizationId=${encodeURIComponent(organization.id)}`,
+                    { method: 'DELETE' }
+                );
+            } else {
+                res = await fetch(
+                    `/api/admin/organizations/${organization.id}/members/${userToDelete.id}`,
+                    { method: 'DELETE' }
+                );
+            }
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error((data as { error?: string }).error ?? 'Failed to remove user');
+            }
+
+            await fetchOrganizationUsers();
+            await onUpdate();
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            setError(error instanceof Error ? error.message : 'Failed to remove user');
+        }
     };
 
     return (
@@ -258,6 +268,23 @@ export function OrganizationDetailModal({
                         Add user
                     </button>
                 </div>
+
+                {/* Error banner */}
+                {error && !isAddUserModalOpen && (
+                    <div className="px-4 pt-3 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                            <p className="text-xs text-red-600">{error}</p>
+                            <button
+                                type="button"
+                                aria-label="Dismiss error"
+                                onClick={() => setError(null)}
+                                className="text-red-400 hover:text-red-600"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* User Table */}
                 <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
@@ -343,7 +370,10 @@ export function OrganizationDetailModal({
                                                             user.status === 'Invited' &&
                                                             user.invitationId
                                                                 ? () => {
-                                                                      void handleResendInvitation();
+                                                                      void handleResendInvitation(
+                                                                          user.invitationId!,
+                                                                          user.email
+                                                                      );
                                                                       setActiveMenuUserId(null);
                                                                   }
                                                                 : undefined
@@ -495,8 +525,8 @@ export function OrganizationDetailModal({
                             <Mail className="h-5 w-5 text-[#608D6A]" />
                         </div>
                         <p className="text-sm text-gray-600 mb-6">
-                            We sent a message to {newUserEmail || 'the user'} with a link for them
-                            to join {organization.name}.
+                            We sent a message to {resendEmail ?? (newUserEmail || 'the user')} with
+                            a link for them to join {organization.name}.
                         </p>
                         <button
                             onClick={() => setShowInvitationSent(false)}

@@ -16,18 +16,17 @@ export async function DELETE(
         await requireAdmin();
 
         const { invitationId } = await params;
+        const organizationId = req.nextUrl.searchParams.get('organizationId') ?? '';
+
+        if (!organizationId) {
+            return NextResponse.json({ error: 'organizationId is required' }, { status: 400 });
+        }
+
         const client = await clerkClient();
 
-        // Get the invitation first to find organizationId
-        const invitation = await client.organizations.getOrganizationInvitation({
-            invitationId,
-            organizationId: '',
-        });
-
-        // Revoke the invitation with organizationId
         await client.organizations.revokeOrganizationInvitation({
             invitationId,
-            organizationId: invitation.organizationId, // ← Add this!
+            organizationId,
             requestingUserId: userId,
         });
 

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, Download, Filter } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
-import { MyCalendar } from '@/components/ui/CalendarPicker';
+import { format } from 'date-fns';
+import FilterBar from '@/components/ui/FilterBar';
+import { useFilterContext } from '@/contexts/FilterContext';
 import {
     chipStyleFromDonutHex,
     foodTypeColorLookupFromComposition,
@@ -20,11 +20,8 @@ interface DeliveryRecord {
     date: string;
     organizationName: string;
     productName: string | null;
-    /** Units for this line (1 when source left amount blank). */
     distributionAmount: number;
-    /** Weight per unit in pounds. */
     unitWeightLbs: number | null;
-    /** Line total weight in pounds (unit × amount). */
     weightLbs: number;
     productType: string | null;
     minimallyProcessedFood: boolean | null;
@@ -90,69 +87,16 @@ function toggleProcessingList(list: ProcessingFilterKey[], value: ProcessingFilt
 }
 
 const THEME_GREEN = '#B7D7BD';
-/** Same accent as overview time-range presets */
 const THEME_ORANGE = '#FAC87D';
 const ROWS_PER_PAGE = 25;
 
-/** Last 30 calendar days inclusive (today minus 29 days through today), same as overview “Last 30 days”. */
-function getLast30DaysRange(): { start: Date; end: Date } {
-    const today = new Date();
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const start = new Date(end);
-    start.setDate(start.getDate() - 29);
-    return { start, end };
-}
-
-function getPast12MonthsRange(): { start: Date; end: Date } {
-    const now = new Date();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const start = new Date(end);
-    start.setMonth(start.getMonth() - 12);
-    start.setDate(start.getDate() + 1);
-    return { start, end };
-}
-
-/** Fiscal year Jul 1–Jun 30 through today (overview presets). */
-function getFiscalYearToDateRange(now: Date) {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const y = today.getFullYear();
-    const fiscalStartYear = today.getMonth() >= 6 ? y : y - 1;
-    return {
-        start: new Date(fiscalStartYear, 6, 1),
-        end: today,
-    };
-}
-
-function parseDateRangeFromSearchParams(searchParams: ReturnType<typeof useSearchParams>) {
-    const startParam = searchParams.get('start');
-    const endParam = searchParams.get('end');
-    const defaultRange = getLast30DaysRange();
-    const start =
-        startParam && isValid(parseISO(startParam)) ? parseISO(startParam) : defaultRange.start;
-    const end = endParam && isValid(parseISO(endParam)) ? parseISO(endParam) : defaultRange.end;
-    if (start > end) return defaultRange;
-    return { start, end };
-}
-
-function hasUrlDateRange(searchParams: ReturnType<typeof useSearchParams>): boolean {
-    const startParam = searchParams.get('start');
-    const endParam = searchParams.get('end');
-    return Boolean(
-        startParam && endParam && isValid(parseISO(startParam)) && isValid(parseISO(endParam))
-    );
-}
-
 function DistributionContent() {
-    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [dateRange, setDateRange] = useState(() => parseDateRangeFromSearchParams(searchParams));
-    const [activeFilter, setActiveFilter] = useState<string | null>(() =>
-        hasUrlDateRange(searchParams) ? null : 'last30days'
-    );
+    const { dateRange } = useFilterContext();
     const [exporting, setExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [foodTypeColorLookup, setFoodTypeColorLookup] = useState<Map<string, string>>(
@@ -168,68 +112,6 @@ function DistributionContent() {
     const [filterFoodRescue, setFilterFoodRescue] = useState<string[]>([]);
     const [filterSources, setFilterSources] = useState<string[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
-
-    // When navigating from overview with ?start=&end=, apply that range
-    const startParam = searchParams.get('start');
-    const endParam = searchParams.get('end');
-    useEffect(() => {
-        setDateRange(parseDateRangeFromSearchParams(searchParams));
-        setActiveFilter(hasUrlDateRange(searchParams) ? null : 'last30days');
-    }, [searchParams, startParam, endParam]);
-
-    const handleDateRangeChange = (range: { start: Date; end: Date }) => {
-        setDateRange(range);
-        setActiveFilter(null);
-    };
-
-    const setQuickFilter = (
-        filter:
-            | 'last30days'
-            | 'thisMonth'
-            | 'thisYear'
-            | 'fiscalYearToDate'
-            | 'past12months'
-            | 'allTime'
-    ) => {
-        setActiveFilter(filter);
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        switch (filter) {
-            case 'last30days': {
-                const thirtyDaysAgo = new Date(today);
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-                setDateRange({ start: thirtyDaysAgo, end: today });
-                break;
-            }
-            case 'thisMonth':
-                setDateRange({
-                    start: new Date(currentYear, currentMonth, 1),
-                    end: new Date(currentYear, currentMonth + 1, 0),
-                });
-                break;
-            case 'thisYear':
-                setDateRange({
-                    start: new Date(currentYear, 0, 1),
-                    end: new Date(currentYear, 11, 31),
-                });
-                break;
-            case 'fiscalYearToDate':
-                setDateRange(getFiscalYearToDateRange(now));
-                break;
-            case 'past12months':
-                setDateRange(getPast12MonthsRange());
-                break;
-            case 'allTime':
-                setDateRange({
-                    start: new Date(2000, 0, 1),
-                    end: today,
-                });
-                break;
-        }
-    };
 
     useEffect(() => {
         const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
@@ -397,7 +279,6 @@ function DistributionContent() {
         }
     };
 
-    /** Food-type chip colors match the overview donut for this date range only — not recomputed on search. */
     useEffect(() => {
         const ac = new AbortController();
         async function fetchCompositionColors() {
@@ -766,131 +647,7 @@ function DistributionContent() {
                         </button>
                     </div>
 
-                    <div className="min-w-0 rounded-lg border border-gray-300/90 bg-white px-3 py-2 shadow-sm ring-1 ring-black/[0.03] sm:px-4 sm:py-2.5">
-                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
-                            <div className="min-w-0 lg:flex-1">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:hidden">
-                                    Time Range
-                                </p>
-                                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                    <span className="hidden text-xs font-semibold uppercase tracking-wide text-gray-500 lg:mr-1 lg:inline">
-                                        Time Range
-                                    </span>
-                                    <button
-                                        type="button"
-                                        title="Thirty consecutive calendar days, inclusive of today"
-                                        onClick={() => setQuickFilter('last30days')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'last30days'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'last30days'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        Last 30 days
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="From the first day of the current calendar month through today"
-                                        onClick={() => setQuickFilter('thisMonth')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'thisMonth'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'thisMonth'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        Month to date
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="January 1 through December 31 of the current calendar year"
-                                        onClick={() => setQuickFilter('thisYear')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'thisYear'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'thisYear'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        Full calendar year
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="From July 1 through today. Fiscal year is July 1–June 30."
-                                        onClick={() => setQuickFilter('fiscalYearToDate')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'fiscalYearToDate'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'fiscalYearToDate'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        Fiscal year
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="Twelve months ending today (rolling)"
-                                        onClick={() => setQuickFilter('past12months')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'past12months'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'past12months'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        Past 12 months
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="All delivery records on file"
-                                        onClick={() => setQuickFilter('allTime')}
-                                        className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                            activeFilter === 'allTime'
-                                                ? 'text-gray-900 border-transparent'
-                                                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                        }`}
-                                        style={
-                                            activeFilter === 'allTime'
-                                                ? { backgroundColor: THEME_ORANGE }
-                                                : undefined
-                                        }
-                                    >
-                                        All Time
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="min-w-0 w-full lg:flex lg:w-auto lg:shrink-0 lg:justify-end">
-                                <MyCalendar
-                                    triggerVariant="responsive"
-                                    selectedRange={dateRange}
-                                    onRangeChange={handleDateRangeChange}
-                                    defaultRange={getLast30DaysRange()}
-                                    onClear={() => setActiveFilter('last30days')}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <FilterBar />
 
                     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
