@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
+import { prisma } from '~/lib/prisma';
 
 export async function DELETE(
-    req: NextRequest,
+    _req: NextRequest,
     { params }: { params: Promise<{ organizationId: string; memberId: string }> }
 ) {
     try {
@@ -16,13 +17,28 @@ export async function DELETE(
         await requireAdmin();
 
         const { organizationId, memberId } = await params;
+
+        // memberId is the Prisma user.id — look up the clerkId
+        const user = await prisma.user.findUnique({ where: { id: memberId } });
+        if (!user) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
         const client = await clerkClient();
 
-        // Delete the membership
-        await client.organizations.deleteOrganizationMembership({
-            organizationId,
-            userId: memberId,
-        });
+        // Remove from Clerk org — ignore 404 if they're not an active member
+        try {
+            await client.organizations.deleteOrganizationMembership({
+                organizationId,
+                userId: user.clerkId,
+            });
+        } catch (clerkErr) {
+            const status = (clerkErr as { status?: number }).status;
+            if (status !== 404) throw clerkErr;
+        }
+
+        // Always remove from Prisma
+        await prisma.user.delete({ where: { id: memberId } });
 
         return NextResponse.json({ success: true });
     } catch (error) {

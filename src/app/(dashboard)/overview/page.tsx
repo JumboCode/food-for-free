@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
 import DeliverySummary from '@/components/ui/DeliverySummary';
-import { MyCalendar } from '@/components/ui/CalendarPicker';
+import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
+import { useFilterContext } from '@/contexts/FilterContext';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
@@ -25,26 +27,6 @@ type DeliverySummaryItem = {
     destination?: string | null;
 };
 
-// Last 30 days inclusive (today minus 29 days through today), same as the “Last 30 days” preset
-const getDefaultDateRange = () => {
-    const today = new Date();
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const start = new Date(end);
-    start.setDate(start.getDate() - 29);
-    return { start, end };
-};
-
-/** Fiscal year Jul 1–Jun 30. Range is July 1 of the FY that contains `today` through today. */
-const getFiscalYearToDateRange = (now: Date) => {
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const y = today.getFullYear();
-    const fiscalStartYear = today.getMonth() >= 6 ? y : y - 1;
-    return {
-        start: new Date(fiscalStartYear, 6, 1),
-        end: today,
-    };
-};
-
 const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
 
 const THEME_ORANGE = '#FAC87D';
@@ -57,8 +39,7 @@ const OverviewPageContent: React.FC = () => {
         partnerName: string | null;
     }>({ ready: false, isAdmin: false, partnerName: null });
 
-    const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(getDefaultDateRange());
-    const [activeFilter, setActiveFilter] = useState<string | null>('last30days');
+    const { dateRange, activeFilter } = useFilterContext();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [poundsByMonthData, setPoundsByMonthData] = useState<PoundsData[]>([]);
@@ -199,64 +180,6 @@ const OverviewPageContent: React.FC = () => {
         void fetchOverviewData();
     }, [fetchOverviewData]);
 
-    const handleDateRangeChange = (range: { start: Date; end: Date }) => {
-        setDateRange(range);
-        setActiveFilter(null);
-    };
-
-    const setQuickFilter = (
-        filter:
-            | 'last30days'
-            | 'thisMonth'
-            | 'thisYear'
-            | 'fiscalYearToDate'
-            | 'past12months'
-            | 'allTime'
-    ) => {
-        setActiveFilter(filter);
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        switch (filter) {
-            case 'last30days': {
-                const thirtyDaysAgo = new Date(today);
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-                setDateRange({ start: thirtyDaysAgo, end: today });
-                break;
-            }
-            case 'thisMonth':
-                setDateRange({
-                    start: new Date(currentYear, currentMonth, 1),
-                    end: new Date(currentYear, currentMonth + 1, 0),
-                });
-                break;
-            case 'thisYear':
-                setDateRange({
-                    start: new Date(currentYear, 0, 1),
-                    end: new Date(currentYear, 11, 31),
-                });
-                break;
-            case 'fiscalYearToDate':
-                setDateRange(getFiscalYearToDateRange(now));
-                break;
-            case 'past12months': {
-                const start = new Date(today);
-                start.setMonth(start.getMonth() - 12);
-                start.setDate(start.getDate() + 1);
-                setDateRange({ start, end: today });
-                break;
-            }
-            case 'allTime':
-                setDateRange({
-                    start: new Date(2000, 0, 1),
-                    end: today,
-                });
-                break;
-        }
-    };
-
     return (
         <div className="min-h-screen bg-[#FAF9F7]">
             <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-8 py-8 sm:py-10 lg:space-y-5">
@@ -299,131 +222,7 @@ const OverviewPageContent: React.FC = () => {
                 </div>
 
                 {/* lg+: single toolbar row. Below lg: stacked sections + wider date control */}
-                <div className="min-w-0 rounded-lg border border-gray-300/90 bg-white px-3 py-2 shadow-sm ring-1 ring-black/[0.03] sm:px-4 sm:py-2.5">
-                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
-                        <div className="min-w-0 lg:flex-1">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:hidden">
-                                Time Range
-                            </p>
-                            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <span className="hidden text-xs font-semibold uppercase tracking-wide text-gray-500 lg:mr-1 lg:inline">
-                                    Time Range
-                                </span>
-                                <button
-                                    type="button"
-                                    title="Thirty consecutive calendar days, inclusive of today"
-                                    onClick={() => setQuickFilter('last30days')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'last30days'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'last30days'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    Last 30 days
-                                </button>
-                                <button
-                                    type="button"
-                                    title="From the first day of the current calendar month through today"
-                                    onClick={() => setQuickFilter('thisMonth')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'thisMonth'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'thisMonth'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    Month to date
-                                </button>
-                                <button
-                                    type="button"
-                                    title="January 1 through December 31 of the current calendar year"
-                                    onClick={() => setQuickFilter('thisYear')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'thisYear'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'thisYear'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    Full calendar year
-                                </button>
-                                <button
-                                    type="button"
-                                    title="From July 1 through today. Fiscal year is July 1–June 30."
-                                    onClick={() => setQuickFilter('fiscalYearToDate')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'fiscalYearToDate'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'fiscalYearToDate'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    Fiscal year
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Twelve months ending today (rolling)"
-                                    onClick={() => setQuickFilter('past12months')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'past12months'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'past12months'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    Past 12 months
-                                </button>
-                                <button
-                                    type="button"
-                                    title="All delivery records on file"
-                                    onClick={() => setQuickFilter('allTime')}
-                                    className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        activeFilter === 'allTime'
-                                            ? 'text-gray-900 border-transparent'
-                                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                                    }`}
-                                    style={
-                                        activeFilter === 'allTime'
-                                            ? { backgroundColor: THEME_ORANGE }
-                                            : undefined
-                                    }
-                                >
-                                    All Time
-                                </button>
-                            </div>
-                        </div>
-                        <div className="min-w-0 w-full lg:flex lg:w-auto lg:shrink-0 lg:justify-end">
-                            <MyCalendar
-                                triggerVariant="responsive"
-                                selectedRange={dateRange}
-                                onRangeChange={handleDateRangeChange}
-                                defaultRange={getDefaultDateRange()}
-                                onClear={() => setActiveFilter('last30days')}
-                            />
-                        </div>
-                    </div>
-                </div>
+                <FilterBar />
 
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between gap-4">
@@ -550,15 +349,13 @@ const OverviewPageContent: React.FC = () => {
                                         historyLink="distribution"
                                     />
                                     <div className="flex justify-end mt-4">
-                                        <a
-                                            href={`/distribution?start=${formatDateParam(
-                                                dateRange.start
-                                            )}&end=${formatDateParam(dateRange.end)}`}
+                                        <Link
+                                            href="/distribution"
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
                                             style={{ backgroundColor: THEME_ORANGE }}
                                         >
                                             See full distribution history
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
