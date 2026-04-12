@@ -14,6 +14,11 @@ type NavItem = {
 
 interface SideNavBarProps {
     items?: NavItem[];
+    /**
+     * When provided (e.g. from server layout), Admin visibility is known on first paint.
+     * When omitted, falls back to /api/user/context (e.g. sticker-sheet preview).
+     */
+    isAdmin?: boolean;
 }
 
 const defaultItems: NavItem[] = [
@@ -22,23 +27,29 @@ const defaultItems: NavItem[] = [
     { label: 'Admin', href: '/admin', icon: <Users className="h-5 w-5" /> },
 ];
 
-const SideNavBar: React.FC<SideNavBarProps> = ({ items: itemsProp }) => {
+const SideNavBar: React.FC<SideNavBarProps> = ({
+    items: itemsProp,
+    isAdmin: isAdminFromServer,
+}) => {
     const pathname = usePathname();
-    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [isAdminFetched, setIsAdminFetched] = useState<boolean | null>(null);
 
     useEffect(() => {
+        if (isAdminFromServer !== undefined) return;
         fetch('/api/user/context')
             .then(res => (res.ok ? res.json() : Promise.reject()))
-            .then((d: { isAdmin?: boolean }) => setIsAdmin(Boolean(d.isAdmin)))
-            .catch(() => setIsAdmin(false));
-    }, []);
+            .then((d: { isAdmin?: boolean }) => setIsAdminFetched(Boolean(d.isAdmin)))
+            .catch(() => setIsAdminFetched(false));
+    }, [isAdminFromServer]);
+
+    const isAdminResolved = isAdminFromServer !== undefined ? isAdminFromServer : isAdminFetched;
 
     const items = useMemo(() => {
         const base = itemsProp ?? defaultItems;
-        if (isAdmin === null) return base.filter(i => i.href !== '/admin');
-        if (!isAdmin) return base.filter(i => i.href !== '/admin');
+        if (isAdminResolved === null) return base.filter(i => i.href !== '/admin');
+        if (!isAdminResolved) return base.filter(i => i.href !== '/admin');
         return base;
-    }, [itemsProp, isAdmin]);
+    }, [itemsProp, isAdminResolved]);
 
     return (
         <aside className="fixed left-0 bg-white h-screen top-0 w-16 sm:w-56 flex flex-col border-r border-gray-100">

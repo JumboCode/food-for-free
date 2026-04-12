@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Settings2 } from 'lucide-react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
@@ -16,12 +16,29 @@ interface Organization {
 
 const THEME_GREEN = '#B7D7BD';
 
+type OrganizationSortOrder = 'nameAsc' | 'nameDesc';
+
+function compareOrgName(a: string, b: string): number {
+    return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+function sortOrganizations<T extends { name: string }>(
+    orgs: T[],
+    order: OrganizationSortOrder
+): T[] {
+    const copy = [...orgs];
+    if (order === 'nameAsc') copy.sort((x, y) => compareOrgName(x.name, y.name));
+    else copy.sort((x, y) => compareOrgName(y.name, x.name));
+    return copy;
+}
+
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [organizationSort, setOrganizationSort] = useState<OrganizationSortOrder>('nameAsc');
     const [isManagePartnerModalOpen, setIsManagePartnerModalOpen] = useState(false);
 
     useEffect(() => {
@@ -102,7 +119,17 @@ const AdminConsolePage: React.FC = () => {
             org.slug.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const tableData = filteredOrganizations.map(org => ({
+    const sortedFilteredOrganizations = useMemo(
+        () => sortOrganizations(filteredOrganizations, organizationSort),
+        [filteredOrganizations, organizationSort]
+    );
+
+    const sortedOrganizationsForModal = useMemo(
+        () => sortOrganizations(organizations, organizationSort),
+        [organizations, organizationSort]
+    );
+
+    const tableData = sortedFilteredOrganizations.map(org => ({
         id: org.id,
         name: org.name,
         numOfUsers: org.membersCount,
@@ -145,7 +172,7 @@ const AdminConsolePage: React.FC = () => {
 
                     {/* Search + manage */}
                     <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                        <div className="relative min-w-0 flex-1">
+                        <div className="relative min-w-0 flex-1 md:min-w-[200px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
                                 type="text"
@@ -171,9 +198,15 @@ const AdminConsolePage: React.FC = () => {
                             <div className="p-8 text-center text-gray-500 text-sm">
                                 Loading organizations…
                             </div>
-                        ) : filteredOrganizations.length > 0 ? (
+                        ) : sortedFilteredOrganizations.length > 0 ? (
                             <div className="p-4 sm:p-6">
-                                <PartnerOrganizationTable data={tableData} />
+                                <PartnerOrganizationTable
+                                    data={tableData}
+                                    nameSort={organizationSort === 'nameAsc' ? 'asc' : 'desc'}
+                                    onNameSortChange={dir =>
+                                        setOrganizationSort(dir === 'asc' ? 'nameAsc' : 'nameDesc')
+                                    }
+                                />
                             </div>
                         ) : (
                             <div className="p-8 text-center text-gray-400 text-sm">
@@ -187,7 +220,7 @@ const AdminConsolePage: React.FC = () => {
             {/* Manage Partners Modal */}
             {isManagePartnerModalOpen && (
                 <AddPartnerModal
-                    organizations={organizations.map(org => ({
+                    organizations={sortedOrganizationsForModal.map(org => ({
                         id: org.id,
                         name: org.name,
                         membersCount: org.membersCount,
