@@ -11,6 +11,7 @@ import {
     getOverviewScope,
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
+    scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
@@ -43,11 +44,14 @@ export async function GET(request: NextRequest) {
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
+        const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
         const destination = scopeToPartnerFilter(scope);
 
-        const partnerClause = destination
-            ? Prisma.sql`AND d."householdName" ILIKE ${destination}`
-            : Prisma.empty;
+        const partnerClause = partnerHouseholdId18
+            ? Prisma.sql`AND d."householdId18" = ${partnerHouseholdId18}`
+            : destination
+              ? Prisma.sql`AND d."householdName" ILIKE ${destination}`
+              : Prisma.empty;
 
         type ProductTypeRow = { productType: string | null; pounds: number | null };
         const foodTypeGrouped = await prisma.$queryRaw<ProductTypeRow[]>`

@@ -4,6 +4,7 @@ import {
     getOverviewScope,
     overviewScopeErrorResponse,
     scopeToPartnerFilter,
+    scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
 const MONTH_NAMES = [
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
+        const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
         const partnerFilter = scopeToPartnerFilter(scope);
 
         const daysDiff = Math.ceil(
@@ -60,8 +62,22 @@ export async function GET(request: NextRequest) {
         const aggregateByDay = daysDiff <= 30 && !aggregateByYear;
 
         type DailyRow = { day: Date; pounds: number | null };
-        const dailyRows = partnerFilter
+        const dailyRows = partnerHouseholdId18
             ? await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    DATE_TRUNC('day', d."date") AS "day",
+                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
+                FROM "AllProductPackageDestinations" d
+                LEFT JOIN "AllPackagesByItem" p
+                    ON p."productPackageId18" = d."productPackageId18"
+                WHERE d."householdId18" = ${partnerHouseholdId18}
+                  AND d."date" >= ${range.start}
+                  AND d."date" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."date")
+                ORDER BY DATE_TRUNC('day', d."date") ASC
+            `
+            : partnerFilter
+              ? await prisma.$queryRaw<DailyRow[]>`
                 SELECT
                     DATE_TRUNC('day', d."date") AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
@@ -74,7 +90,7 @@ export async function GET(request: NextRequest) {
                 GROUP BY DATE_TRUNC('day', d."date")
                 ORDER BY DATE_TRUNC('day', d."date") ASC
             `
-            : await prisma.$queryRaw<DailyRow[]>`
+              : await prisma.$queryRaw<DailyRow[]>`
                 SELECT
                     DATE_TRUNC('day', d."date") AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
