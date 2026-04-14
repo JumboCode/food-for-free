@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
 import {
     COMPOSITION_EMPTY_SEGMENT_COLOR,
-    FOOD_TYPE_DONUT_COLORS,
-    PROCESSING_DONUT_COLOR_BY_LABEL,
+    PROCESSING_OVERVIEW_COLOR_BY_LABEL,
+    foodTypeFixedHex,
     type FoodTypeCompositionEntry,
 } from '~/lib/chartCompositionColors';
 import {
@@ -86,10 +86,10 @@ export async function GET(request: NextRequest) {
         `;
 
         const foodTypes: FoodTypeCompositionEntry[] = foodTypeGrouped
-            .map((row, index) => ({
+            .map(row => ({
                 label: row.productType?.trim() || 'Other',
                 value: Math.round(Number(row.pounds ?? 0)),
-                color: FOOD_TYPE_DONUT_COLORS[index % FOOD_TYPE_DONUT_COLORS.length] as string,
+                color: foodTypeFixedHex(row.productType?.trim() || 'Other'),
             }))
             .filter(entry => entry.value > 0)
             .sort((a, b) => b.value - a.value);
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
                 return {
                     label,
                     value: Math.round(Number(row.pounds ?? 0)),
-                    color: PROCESSING_DONUT_COLOR_BY_LABEL[label],
+                    color: PROCESSING_OVERVIEW_COLOR_BY_LABEL[label],
                 };
             })
             .filter(entry => entry.value > 0)

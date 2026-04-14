@@ -3,84 +3,26 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    chipStyleFromDonutHex,
+    foodTypeFixedHex,
+    processingDisplayLabel,
+    processingChipStyle,
+} from '~/lib/chartCompositionColors';
 
-/** Distinct hues so hash collisions are rare; unknown labels still map deterministically. */
-const TAG_COLOR_CLASSES = [
-    'bg-orange-100 text-orange-800',
-    'bg-green-100 text-green-800',
-    'bg-red-100 text-red-800',
-    'bg-blue-100 text-blue-800',
-    'bg-purple-100 text-purple-800',
-    'bg-cyan-100 text-cyan-800',
-    'bg-amber-100 text-amber-800',
-    'bg-pink-100 text-pink-800',
-    'bg-teal-100 text-teal-800',
-    'bg-indigo-100 text-indigo-800',
-    'bg-rose-100 text-rose-800',
-    'bg-lime-100 text-lime-900',
-] as const;
+function tagChipStyle(tag: string): {
+    backgroundColor: string;
+    borderColor: string;
+    color: string;
+} {
+    const label = tag.trim();
+    if (!label) return chipStyleFromDonutHex(foodTypeFixedHex('Other'));
 
-function normalizeTagKey(tag: string): string {
-    return tag.trim().toLowerCase().replace(/\s+/g, ' ');
-}
+    if (label === processingDisplayLabel(true)) return processingChipStyle(true);
+    if (label === processingDisplayLabel(false)) return processingChipStyle(false);
+    if (label === processingDisplayLabel(null)) return processingChipStyle(null);
 
-/** Stable colors for common `productType` values (avoids hash collisions like Dairy vs Misc. Cold). */
-const TAG_COLOR_BY_LABEL: Record<string, string> = {
-    dairy: 'bg-orange-100 text-orange-800',
-    // Pantry green vs produce: lime reads clearly different on screen than emerald/green.
-    'dry goods': 'bg-green-100 text-green-800',
-    'misc. cold': 'bg-cyan-100 text-cyan-800',
-    'misc cold': 'bg-cyan-100 text-cyan-800',
-    produce: 'bg-lime-100 text-lime-900',
-    'frozen meat': 'bg-red-100 text-red-800',
-    bread: 'bg-amber-100 text-amber-800',
-    'minimally processed': 'bg-stone-100 text-stone-800',
-    processed: 'bg-slate-200 text-slate-800',
-    'not specified': 'bg-gray-100 text-gray-700',
-};
-
-function fnv1aHash(key: string): number {
-    let h = 2166136261;
-    for (let i = 0; i < key.length; i++) {
-        h ^= key.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-}
-
-/** Preferred class for a label (stable across popups when no collision). */
-function preferredTagClass(tag: string): string {
-    const key = normalizeTagKey(tag);
-    const fixed = TAG_COLOR_BY_LABEL[key];
-    if (fixed) return fixed;
-    const idx = fnv1aHash(key) % TAG_COLOR_CLASSES.length;
-    return TAG_COLOR_CLASSES[idx];
-}
-
-/**
- * One class per tag in this list, never reusing the same swatch twice in one row
- * (handles hash collisions and near-duplicate greens).
- */
-function distinctTagClassesForTags(tags: string[]): string[] {
-    const used = new Set<string>();
-    return tags.map(tag => {
-        const key = normalizeTagKey(tag);
-        const c = preferredTagClass(tag);
-        if (!used.has(c)) {
-            used.add(c);
-            return c;
-        }
-        const start = fnv1aHash(key) % TAG_COLOR_CLASSES.length;
-        for (let step = 0; step < TAG_COLOR_CLASSES.length; step++) {
-            const alt = TAG_COLOR_CLASSES[(start + step) % TAG_COLOR_CLASSES.length];
-            if (!used.has(alt)) {
-                used.add(alt);
-                return alt;
-            }
-        }
-        used.add(c);
-        return c;
-    });
+    return chipStyleFromDonutHex(foodTypeFixedHex(label));
 }
 
 export interface FoodItem {
@@ -142,7 +84,6 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
     if (!isOpen) return null;
 
     const displayTags = nutritionalTags.filter(t => t.trim().toLowerCase() !== 'mixed processing');
-    const tagColorClasses = distinctTagClassesForTags(displayTags);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -187,7 +128,8 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                                     {displayTags.map((tag, i) => (
                                         <span
                                             key={`${tag}-${i}`}
-                                            className={`px-4 py-1.5 rounded-md text-sm font-semibold ${tagColorClasses[i]}`}
+                                            className="inline-flex items-center rounded-md border px-4 py-1.5 text-sm font-semibold"
+                                            style={tagChipStyle(tag)}
                                         >
                                             {tag}
                                         </span>

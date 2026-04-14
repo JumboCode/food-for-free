@@ -86,13 +86,13 @@ export function FoodTypesDonutChart({
 
     // Remove tooltip fade logic
     return (
-        <div className="flex w-full flex-col">
+        <div className="flex h-full w-full flex-col">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {title}
             </h3>
-            <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:gap-6">
+            <div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-5">
                 {/* Wrap chart and overlay in a single relative container */}
-                <div className="relative h-[220px] w-full min-w-0 max-w-[220px] sm:h-[240px] sm:max-w-[240px]">
+                <div className="relative h-[250px] w-full min-w-0 max-w-[250px] sm:h-[270px] sm:max-w-[270px] sm:self-center">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -101,8 +101,8 @@ export function FoodTypesDonutChart({
                                 nameKey="label"
                                 cx="50%"
                                 cy="50%"
-                                innerRadius="52%"
-                                outerRadius="78%"
+                                innerRadius="56%"
+                                outerRadius="84%"
                                 cornerRadius={6}
                                 stroke="none"
                                 paddingAngle={1}
@@ -138,7 +138,7 @@ export function FoodTypesDonutChart({
                     </div>
                 </div>
 
-                <div className="flex flex-1 flex-col justify-center gap-2 sm:gap-2.5">
+                <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-y-auto pr-1 sm:gap-2.5">
                     {data.map((item, index) => {
                         const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                         return (
@@ -151,7 +151,7 @@ export function FoodTypesDonutChart({
                                         className="h-2.5 w-2.5 shrink-0 rounded-full"
                                         style={{ backgroundColor: item.color || '#94a3b8' }}
                                     />
-                                    <span className="truncate text-sm font-medium text-slate-800">
+                                    <span className="text-sm font-medium leading-tight text-slate-800 break-words max-w-[11rem]">
                                         {item.label}
                                     </span>
                                 </div>

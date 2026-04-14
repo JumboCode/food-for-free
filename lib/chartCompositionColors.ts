@@ -11,10 +11,34 @@ export const FOOD_TYPE_DONUT_COLORS = [
     '#B39DDB',
 ] as const;
 
-export const PROCESSING_DONUT_COLOR_BY_LABEL: Record<string, string> = {
+const FOOD_TYPE_FIXED_COLOR_BY_LABEL: Record<string, string> = {
+    produce: '#B7D7BD',
+    vegetables: '#B7D7BD',
+    fruit: '#B7D7BD',
+    'misc. cold': '#6CAEE6',
+    'misc cold': '#6CAEE6',
+    protein: '#6CAEE6',
+    'frozen meat': '#F9DC70',
+    dairy: '#F9DC70',
+    grain: '#E7A54E',
+    grains: '#E7A54E',
+    'dry goods': '#E7A54E',
+    prepared: '#F4A6B8',
+    other: '#B39DDB',
+};
+
+/** Theme colors for overview processing donut. */
+export const PROCESSING_OVERVIEW_COLOR_BY_LABEL: Record<string, string> = {
     'Minimally Processed': '#B7D7BD',
-    Processed: '#E7A54E',
-    'Not Specified': '#CBD5E1',
+    Processed: '#FAC87D',
+    'Not Specified': '#64748B',
+};
+
+/** Distribution chip colors: distinct from food-type chips and consistent. */
+export const PROCESSING_DISTRIBUTION_COLOR_BY_LABEL: Record<string, string> = {
+    'Minimally Processed': '#8B5CF6',
+    Processed: '#E11D48',
+    'Not Specified': '#64748B',
 };
 
 export type FoodTypeCompositionEntry = { label: string; value: number; color: string };
@@ -55,6 +79,11 @@ export function foodTypeFallbackHex(label: string): string {
     return FOOD_TYPE_DONUT_COLORS[Math.abs(h) % FOOD_TYPE_DONUT_COLORS.length];
 }
 
+export function foodTypeFixedHex(label: string): string {
+    const key = label.trim().toLowerCase();
+    return FOOD_TYPE_FIXED_COLOR_BY_LABEL[key] ?? foodTypeFallbackHex(label);
+}
+
 export function foodTypeColorLookupFromComposition(
     foodTypes: FoodTypeCompositionEntry[]
 ): Map<string, string> {
@@ -76,7 +105,7 @@ export function resolveFoodTypeDonutHex(
     lookup: Map<string, string>
 ): string {
     const label = foodTypeLabelForRow(productType);
-    return lookup.get(label.toLowerCase()) ?? foodTypeFallbackHex(label);
+    return lookup.get(label.toLowerCase()) ?? foodTypeFixedHex(label);
 }
 
 export function processingDisplayLabel(minimallyProcessedFood: boolean | null): string {
@@ -91,6 +120,6 @@ export function processingChipStyle(minimallyProcessedFood: boolean | null): {
     color: string;
 } {
     const label = processingDisplayLabel(minimallyProcessedFood);
-    const hex = PROCESSING_DONUT_COLOR_BY_LABEL[label];
+    const hex = PROCESSING_DISTRIBUTION_COLOR_BY_LABEL[label];
     return chipStyleFromDonutHex(hex);
 }
