@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
         const aggregateByYear = yearsDiff > 1;
         const aggregateByDay = daysDiff <= 30 && !aggregateByYear;
 
-        type DailyRow = { day: Date; pounds: number | null };
+        type DailyRow = { day: string; pounds: number | null };
         const dailyRows = partnerHouseholdId18
             ? await prisma.$queryRaw<DailyRow[]>`
                 SELECT
-                    DATE_TRUNC('day', d."date") AS "day",
+                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
                 FROM "AllProductPackageDestinations" d
                 LEFT JOIN "AllPackagesByItem" p
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
             : partnerFilter
               ? await prisma.$queryRaw<DailyRow[]>`
                 SELECT
-                    DATE_TRUNC('day', d."date") AS "day",
+                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
                 FROM "AllProductPackageDestinations" d
                 LEFT JOIN "AllPackagesByItem" p
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
             `
               : await prisma.$queryRaw<DailyRow[]>`
                 SELECT
-                    DATE_TRUNC('day', d."date") AS "day",
+                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
                 FROM "AllProductPackageDestinations" d
                 LEFT JOIN "AllPackagesByItem" p
@@ -105,15 +105,19 @@ export async function GET(request: NextRequest) {
 
         const buckets: Record<string, number> = {};
         for (const row of dailyRows) {
-            const d = new Date(row.day);
+            const [yearStr, monthStr, dayStr] = row.day.split('-');
+            const y = Number.parseInt(yearStr ?? '', 10);
+            const m = Number.parseInt(monthStr ?? '', 10);
+            const day = Number.parseInt(dayStr ?? '', 10);
+            if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(day)) continue;
             const weight = Number(row.pounds ?? 0);
             let key: string;
             if (aggregateByYear) {
-                key = d.getFullYear().toString();
+                key = String(y);
             } else if (aggregateByDay) {
-                key = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                key = `${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
             } else {
-                key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+                key = `${MONTH_NAMES[m - 1]} ${y}`;
             }
             buckets[key] = (buckets[key] ?? 0) + weight;
         }

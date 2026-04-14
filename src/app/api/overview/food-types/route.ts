@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
                 ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d
                 ON d."productPackageId18" = p."productPackageId18"
-            WHERE t."date" >= ${range.start}
-              AND t."date" <= ${range.end}
+            WHERE d."date" >= ${range.start}
+              AND d."date" <= ${range.end}
               ${partnerClause}
             GROUP BY t."productType"
         `;
@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
                 ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d
                 ON d."productPackageId18" = p."productPackageId18"
-            WHERE t."date" >= ${range.start}
-              AND t."date" <= ${range.end}
+            WHERE d."date" >= ${range.start}
+              AND d."date" <= ${range.end}
               ${partnerClause}
             GROUP BY t."minimallyProcessedFood"
         `;

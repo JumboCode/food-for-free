@@ -59,8 +59,7 @@ export async function GET(request: NextRequest) {
                 ? Prisma.sql`d."householdId18" = ${scope.partnerHouseholdId18}`
                 : Prisma.sql`d."householdName" ILIKE ${org}`;
 
-        // Mirror the same join as queryDistributionDeliveries so t.date (AllInventoryTransactions)
-        // is used for filtering — matching the date shown in the distribution table rows.
+        // Use pantry visit date (d.date) to match overview delivery day grouping.
         const foodRows = await prisma.$queryRaw<FoodRow[]>`
             SELECT
                 COALESCE(p."pantryProductName", 'Unknown') AS "productName",
@@ -68,7 +67,7 @@ export async function GET(request: NextRequest) {
             FROM "AllInventoryTransactions" t
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
-            WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
+            WHERE DATE_TRUNC('day', d."date") = DATE_TRUNC('day', ${date})
               AND ${destinationPredicate}
             GROUP BY p."pantryProductName"
             ORDER BY SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) DESC
@@ -81,7 +80,7 @@ export async function GET(request: NextRequest) {
             FROM "AllInventoryTransactions" t
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
-            WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
+            WHERE DATE_TRUNC('day', d."date") = DATE_TRUNC('day', ${date})
               AND ${destinationPredicate}
         `;
 
