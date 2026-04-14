@@ -37,6 +37,9 @@ export function MyCalendar({
     onClear,
     triggerVariant = 'pill',
 }: MyCalendarProps = {}) {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const normalizeMonth = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), 1);
     const isResponsive = triggerVariant === 'responsive';
     const dialogRef = useRef<HTMLDialogElement>(null);
     const dialogId = useId();
@@ -65,8 +68,8 @@ export function MyCalendar({
             setInputValue(
                 `${format(externalRange.start, 'MM/dd/yyyy')} - ${format(externalRange.end, 'MM/dd/yyyy')}`
             );
-            setLeftMonth(new Date(externalRange.start));
-            setRightMonth(new Date(externalRange.end));
+            setLeftMonth(normalizeMonth(new Date(externalRange.start)));
+            setRightMonth(normalizeMonth(new Date(externalRange.end)));
         }
     }, [externalRange]);
 
@@ -92,6 +95,7 @@ export function MyCalendar({
 
     const handleLeftSelect = (date: Date | undefined) => {
         if (!date) return;
+        if (date > todayStart) return;
         setSelectedRange(prev => {
             const from = date;
             const to = prev?.to && prev.to >= from ? prev.to : undefined;
@@ -108,6 +112,7 @@ export function MyCalendar({
 
     const handleRightSelect = (date: Date | undefined) => {
         if (!date) return;
+        if (date > todayStart) return;
         setSelectedRange(prev => {
             const to = date;
             const from = prev?.from && prev.from <= to ? prev.from : to;
@@ -135,15 +140,15 @@ export function MyCalendar({
             const to = parse(parts[1], 'MM/dd/yyyy', new Date());
             if (isValid(from) && isValid(to)) {
                 setSelectedRange({ from, to });
-                setLeftMonth(from);
-                setRightMonth(to);
+                setLeftMonth(normalizeMonth(from));
+                setRightMonth(normalizeMonth(to));
                 return;
             }
         } else if (parts.length === 1) {
             const from = parse(parts[0], 'MM/dd/yyyy', new Date());
             if (isValid(from)) {
                 setSelectedRange({ from, to: undefined });
-                setLeftMonth(from);
+                setLeftMonth(normalizeMonth(from));
                 return;
             }
         }
@@ -155,8 +160,8 @@ export function MyCalendar({
         const range = defaultRange ?? getPast12MonthsRange();
         setSelectedRange({ from: range.start, to: range.end });
         setInputValue(`${format(range.start, 'MM/dd/yyyy')} - ${format(range.end, 'MM/dd/yyyy')}`);
-        setLeftMonth(range.start);
-        setRightMonth(range.end);
+        setLeftMonth(normalizeMonth(range.start));
+        setRightMonth(normalizeMonth(range.end));
         onRangeChange?.(range);
         onClear?.();
     };
@@ -165,7 +170,7 @@ export function MyCalendar({
 
     const themeAccent = '#FAC87D';
     const startMonth = new Date(new Date().getFullYear() - 10, 0);
-    const endMonth = new Date(new Date().getFullYear() + 2, 11);
+    const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
 
     const rangeTitle =
         selectedRange?.from && selectedRange?.to
@@ -267,12 +272,13 @@ export function MyCalendar({
                             <DayPicker
                                 mode="single"
                                 month={leftMonth}
-                                onMonthChange={setLeftMonth}
+                                onMonthChange={month => setLeftMonth(normalizeMonth(month))}
                                 selected={selectedRange?.from}
                                 onSelect={handleLeftSelect}
                                 captionLayout="dropdown"
                                 startMonth={startMonth}
                                 endMonth={endMonth}
+                                disabled={{ after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
                                     inRange: { backgroundColor: '#fef8ed' },
@@ -287,12 +293,13 @@ export function MyCalendar({
                             <DayPicker
                                 mode="single"
                                 month={rightMonth}
-                                onMonthChange={setRightMonth}
+                                onMonthChange={month => setRightMonth(normalizeMonth(month))}
                                 selected={selectedRange?.to}
                                 onSelect={handleRightSelect}
                                 captionLayout="dropdown"
                                 startMonth={startMonth}
                                 endMonth={endMonth}
+                                disabled={{ after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
                                     inRange: { backgroundColor: '#fef8ed' },

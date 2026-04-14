@@ -32,6 +32,19 @@ export function getLast30DaysRange(): DateRange {
     return { start, end };
 }
 
+function startOfToday(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function clampRangeToToday(range: DateRange): DateRange {
+    const today = startOfToday();
+    const end = range.end > today ? today : range.end;
+    const start = range.start > today ? today : range.start;
+    if (start > end) return { start: end, end };
+    return { start, end };
+}
+
 function getFiscalYearToDateRange(now: Date): DateRange {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const y = today.getFullYear();
@@ -46,7 +59,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const [activeFilter, setActiveFilter] = useState<QuickFilter | null>('last30days');
 
     const handleDateRangeChange = (range: DateRange) => {
-        setDateRange(range);
+        setDateRange(clampRangeToToday(range));
         setActiveFilter(null);
     };
 
@@ -67,13 +80,13 @@ export function FilterProvider({ children }: { children: ReactNode }) {
             case 'thisMonth':
                 setDateRange({
                     start: new Date(currentYear, currentMonth, 1),
-                    end: new Date(currentYear, currentMonth + 1, 0),
+                    end: today,
                 });
                 break;
             case 'thisYear':
                 setDateRange({
                     start: new Date(currentYear, 0, 1),
-                    end: new Date(currentYear, 11, 31),
+                    end: today,
                 });
                 break;
             case 'fiscalYearToDate':

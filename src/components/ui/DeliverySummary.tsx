@@ -76,6 +76,13 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
                         </span>
                         <span className="w-4" />
                     </div>
+                    {deliveries.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                            <p className="text-sm text-gray-500">
+                                No deliveries available for the selected date range.
+                            </p>
+                        </div>
+                    ) : null}
                     {deliveries.map(delivery => (
                         <DeliverySummaryRow
                             key={delivery.id}

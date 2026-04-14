@@ -2,7 +2,7 @@
 
 import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell, Sector, SectorProps } from 'recharts';
 import { Apple } from 'lucide-react';
-import React, { useState } from 'react';
+import React from 'react';
 
 // Sample data for when no data is provided
 const DEFAULT_DATA = [
@@ -82,6 +82,7 @@ export function FoodTypesDonutChart({
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
     const total = data.reduce((sum, d) => sum + d.value, 0);
+    const hasData = data.some(d => Number(d.value) > 0);
     const dataWithTotal = data.map(d => ({ ...d, total }));
 
     // Remove tooltip fade logic
@@ -90,82 +91,90 @@ export function FoodTypesDonutChart({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {title}
             </h3>
-            <div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-5">
-                {/* Wrap chart and overlay in a single relative container */}
-                <div className="relative h-[250px] w-full min-w-0 max-w-[250px] sm:h-[270px] sm:max-w-[270px] sm:self-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={dataWithTotal}
-                                dataKey="value"
-                                nameKey="label"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius="56%"
-                                outerRadius="84%"
-                                cornerRadius={6}
-                                stroke="none"
-                                paddingAngle={1}
-                                activeShape={renderActiveShape}
-                            >
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                content={<CustomTooltip setIsTooltipActive={() => {}} />}
-                                wrapperStyle={{ pointerEvents: 'auto', zIndex: 10 }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    {/* Center overlay absolutely positioned within relative container, always visible */}
-                    <div
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                        style={{ zIndex: 0 }}
-                    >
-                        <div className="flex flex-col items-center">
-                            <Apple
-                                className="h-7 w-7 text-slate-500 sm:h-8 sm:w-8"
-                                style={{ opacity: 1 }}
-                            />
-                            <span
-                                className="mt-0.5 text-xs font-medium tabular-nums text-slate-700"
-                                style={{ opacity: 1 }}
-                            >
-                                {total.toLocaleString()} lbs
-                            </span>
+            {hasData ? (
+                <div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-5">
+                    <div className="relative h-[250px] w-full min-w-0 max-w-[250px] sm:h-[270px] sm:max-w-[270px] sm:self-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={dataWithTotal}
+                                    dataKey="value"
+                                    nameKey="label"
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="56%"
+                                    outerRadius="84%"
+                                    cornerRadius={6}
+                                    stroke="none"
+                                    paddingAngle={1}
+                                    activeShape={renderActiveShape}
+                                >
+                                    {data.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    content={<CustomTooltip setIsTooltipActive={() => {}} />}
+                                    wrapperStyle={{ pointerEvents: 'auto', zIndex: 10 }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div
+                            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                            style={{ zIndex: 0 }}
+                        >
+                            <div className="flex flex-col items-center">
+                                <Apple
+                                    className="h-7 w-7 text-slate-500 sm:h-8 sm:w-8"
+                                    style={{ opacity: 1 }}
+                                />
+                                <span
+                                    className="mt-0.5 text-xs font-medium tabular-nums text-slate-700"
+                                    style={{ opacity: 1 }}
+                                >
+                                    {total.toLocaleString()} lbs
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-y-auto pr-1 sm:gap-2.5">
-                    {data.map((item, index) => {
-                        const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
-                        return (
-                            <div
-                                key={index}
-                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <div
-                                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                        style={{ backgroundColor: item.color || '#94a3b8' }}
-                                    />
-                                    <span className="text-sm font-medium leading-tight text-slate-800 break-words max-w-[11rem]">
-                                        {item.label}
-                                    </span>
+                    <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-y-auto pr-1 sm:gap-2.5">
+                        {data.map((item, index) => {
+                            const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
+                            return (
+                                <div
+                                    key={index}
+                                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div
+                                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                            style={{ backgroundColor: item.color || '#94a3b8' }}
+                                        />
+                                        <span className="text-sm font-medium leading-tight text-slate-800 wrap-break-word max-w-44">
+                                            {item.label}
+                                        </span>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <span className="text-xs font-medium tabular-nums text-slate-600">
+                                            {item.value.toLocaleString()}
+                                        </span>
+                                        <span className="ml-0.5 text-xs text-slate-400">
+                                            ({pct}%)
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="shrink-0 text-right">
-                                    <span className="text-xs font-medium tabular-nums text-slate-600">
-                                        {item.value.toLocaleString()}
-                                    </span>
-                                    <span className="ml-0.5 text-xs text-slate-400">({pct}%)</span>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
+                    <p className="px-3 py-2 text-center text-sm text-slate-500">
+                        No data available for the selected date range
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

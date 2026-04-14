@@ -13,7 +13,6 @@ interface PoundsByMonthChartProps {
     data?: PoundsData[];
     title?: string;
     dateRange?: { start: Date; end: Date };
-    activeFilter?: string | null;
 }
 
 const DEFAULT_DATA: PoundsData[] = [
@@ -40,13 +39,25 @@ function formatDateRange(range: { start: Date; end: Date } | undefined): string 
 export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
     data = DEFAULT_DATA,
     dateRange,
-    activeFilter,
 }) => {
     const displayData = data && data.length > 0 ? data : [];
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+    ];
     const emptyDataWithLabels = monthNames.map(month => ({ month, pounds: 0 }));
     const chartData = displayData.length > 0 ? displayData : emptyDataWithLabels;
-    const hasData = displayData.length > 0;
+    const hasData = displayData.some(d => Number(d.pounds) > 0);
 
     const barCount = chartData.length;
     const minBarWidth = 48;
@@ -93,13 +104,18 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
     }, [minChartWidth]);
 
     const renderTooltip = (props: unknown) => {
-        const { active, payload, label } = (props || {}) as { active?: boolean; payload?: Array<{ value?: number }>; label?: string | number };
+        const { active, payload, label } = (props || {}) as {
+            active?: boolean;
+            payload?: Array<{ value?: number }>;
+            label?: string | number;
+        };
         if (!active || !payload?.length || label == null) return null;
         const value = payload[0]?.value;
         return (
             <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 shadow-sm">
                 <p className="text-xs font-medium text-black">
-                    {String(label)}: {typeof value === 'number' ? value.toLocaleString() : value} lbs
+                    {String(label)}: {typeof value === 'number' ? value.toLocaleString() : value}{' '}
+                    lbs
                 </p>
             </div>
         );
@@ -114,7 +130,7 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
                 <div className="relative" ref={containerRef}>
                     {!hasData && (
                         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                            <p className="text-gray-500 bg-white/90 px-4 py-2 rounded-lg">
+                            <p className="px-4 py-2 text-sm text-gray-500">
                                 No data available for the selected date range
                             </p>
                         </div>
