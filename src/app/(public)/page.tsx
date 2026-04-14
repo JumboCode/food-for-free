@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { SignInButton, SignUpButton } from '@clerk/nextjs';
+import { SignInButton } from '@clerk/nextjs';
 import { motion, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion';
 
 export default function Home() {
@@ -38,9 +38,9 @@ export default function Home() {
             ></div>
             <motion.div className="absolute inset-0 -z-1" style={{ background: gradientBg }} />
 
-            <div className="z-10 inset-2 max-w-7xl w-full grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+            <div className="z-10 inset-2 max-w-6xl w-full grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
                 {/* Left Section - Text and Buttons */}
-                <div className="space-y-8">
+                <div className="space-y-8 lg:justify-self-center">
                     <div className="space-y-4">
                         <motion.h1
                             className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#1C5E2C] leading-tight"
@@ -48,17 +48,18 @@ export default function Home() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1.1, ease: 'easeOut', delay: 0 }}
                         >
-                            Food for Free
+                            Food For Free
                             <br />
                             Partner Portal
                         </motion.h1>
                         <motion.p
-                            className="text-lg md:text-xl text-[#1C5E2C]/80 max-w-md"
+                            className="text-lg md:text-xl text-[#1C5E2C]/80 max-w-lg"
                             initial={{ opacity: 0, y: 24 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1.1, ease: 'easeOut', delay: 0.15 }}
                         >
-                            Manage donations, users, and distributions in one place.
+                            Access your partner organization&apos;s delivery history and key
+                            statistics on food from Food For Free.
                         </motion.p>
                     </div>
 
@@ -87,7 +88,7 @@ export default function Home() {
 
                 {/* Right Section - Donut Chart/Logo */}
                 <motion.div
-                    className="flex justify-center lg:justify-end"
+                    className="flex justify-center"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.7, ease: 'easeOut', delay: 0.2 }}
