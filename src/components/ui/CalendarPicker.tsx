@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
 export type CalendarTriggerVariant = 'pill' | 'panel' | 'responsive';
+const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
 
 interface MyCalendarProps {
     selectedRange?: { start: Date; end: Date };
@@ -169,7 +170,7 @@ export function MyCalendar({
     const handleDone = () => toggleDialog();
 
     const themeAccent = '#FAC87D';
-    const startMonth = new Date(new Date().getFullYear() - 10, 0);
+    const startMonth = new Date(MIN_FILTER_DATE.getFullYear(), MIN_FILTER_DATE.getMonth(), 1);
     const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
 
     const rangeTitle =
@@ -278,7 +279,7 @@ export function MyCalendar({
                                 captionLayout="dropdown"
                                 startMonth={startMonth}
                                 endMonth={endMonth}
-                                disabled={{ after: todayStart }}
+                                disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
                                     inRange: { backgroundColor: '#fef8ed' },
@@ -299,7 +300,7 @@ export function MyCalendar({
                                 captionLayout="dropdown"
                                 startMonth={startMonth}
                                 endMonth={endMonth}
-                                disabled={{ after: todayStart }}
+                                disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
                                     inRange: { backgroundColor: '#fef8ed' },

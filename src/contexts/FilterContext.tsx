@@ -14,6 +14,7 @@ export interface DateRange {
     start: Date;
     end: Date;
 }
+const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
 
 interface FilterContextValue {
     activeFilter: QuickFilter | null;
@@ -39,8 +40,10 @@ function startOfToday(): Date {
 
 function clampRangeToToday(range: DateRange): DateRange {
     const today = startOfToday();
-    const end = range.end > today ? today : range.end;
-    const start = range.start > today ? today : range.start;
+    const endToToday = range.end > today ? today : range.end;
+    const end = endToToday < MIN_FILTER_DATE ? MIN_FILTER_DATE : endToToday;
+    const startToToday = range.start > today ? today : range.start;
+    const start = startToToday < MIN_FILTER_DATE ? MIN_FILTER_DATE : startToToday;
     if (start > end) return { start: end, end };
     return { start, end };
 }
@@ -100,7 +103,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
                 break;
             }
             case 'allTime':
-                setDateRange({ start: new Date(2000, 0, 1), end: today });
+                setDateRange({ start: new Date(2025, 6, 1), end: today });
                 break;
         }
     };
