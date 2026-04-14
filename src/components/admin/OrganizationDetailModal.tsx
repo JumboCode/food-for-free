@@ -65,6 +65,7 @@ export function OrganizationDetailModal({
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
+    const [inviteAsAdmin, setInviteAsAdmin] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
@@ -144,6 +145,7 @@ export function OrganizationDetailModal({
                 body: JSON.stringify({
                     email: newUserEmail.trim(),
                     organizationId: organization.id,
+                    isAdmin: inviteAsAdmin,
                 }),
             });
 
@@ -156,6 +158,7 @@ export function OrganizationDetailModal({
             await onUpdate();
             setIsAddUserModalOpen(false);
             setNewUserEmail('');
+            setInviteAsAdmin(false);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Failed to invite user');
         } finally {
@@ -485,6 +488,21 @@ export function OrganizationDetailModal({
                                     />
                                     <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 </div>
+                                {isDistributorPartnerOrgName(organization.name) && (
+                                    <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={inviteAsAdmin}
+                                            onChange={e => setInviteAsAdmin(e.target.checked)}
+                                            disabled={isSubmitting}
+                                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#608D6A] focus:ring-[#B7D7BD]"
+                                        />
+                                        <span className="text-xs text-gray-700">
+                                            Invite as Food For Free admin. They will get admin
+                                            access after accepting and signing in.
+                                        </span>
+                                    </label>
+                                )}
 
                                 {error && (
                                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -501,6 +519,7 @@ export function OrganizationDetailModal({
                                         setError(null);
                                         setNewUserName('');
                                         setNewUserEmail('');
+                                        setInviteAsAdmin(false);
                                     }}
                                     className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors"
                                     disabled={isSubmitting}

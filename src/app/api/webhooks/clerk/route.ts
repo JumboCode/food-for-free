@@ -3,6 +3,7 @@ import { Webhook } from 'svix';
 import { clerkClient, WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '~/lib/prisma';
 import { syncUserPartnerFromClerkOrgMemberships } from '~/lib/syncUserPartnerFromClerk';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -29,11 +30,21 @@ async function upsertNeonUserFromClerk(userId: string): Promise<void> {
 /** Resolve email + role from user.created / user.updated payload (no extra Clerk API call). */
 function emailAndRoleFromUserPayload(data: { email_addresses?: { email_address: string }[] }): {
     email: string;
-    role: 'ADMIN' | 'PARTNER';
 } {
     const email = data.email_addresses?.[0]?.email_address ?? '';
-    const role = ADMIN_EMAIL && email === ADMIN_EMAIL ? 'ADMIN' : 'PARTNER';
-    return { email, role };
+    return { email };
+}
+
+function roleFromEmail(email: string): 'ADMIN' | 'PARTNER' {
+    return ADMIN_EMAIL && email === ADMIN_EMAIL ? 'ADMIN' : 'PARTNER';
+}
+
+async function isFoodForFreeOrganization(clerkOrganizationId: string): Promise<boolean> {
+    const partner = await prisma.partner.findUnique({
+        where: { clerkOrganizationId },
+        select: { organizationName: true },
+    });
+    return isDistributorPartnerOrgName(partner?.organizationName);
 }
 
 /**
@@ -102,24 +113,29 @@ export async function POST(req: Request) {
                 id: string;
                 email_addresses?: { email_address: string }[];
             };
-            const { email, role } = emailAndRoleFromUserPayload({ email_addresses });
+            const { email } = emailAndRoleFromUserPayload({ email_addresses });
+            const existing = await prisma.user.findUnique({
+                where: { clerkId: id },
+                select: { role: true },
+            });
+            const nextRole = existing?.role === 'ADMIN' ? 'ADMIN' : roleFromEmail(email || '');
 
             await prisma.user.upsert({
                 where: { clerkId: id },
                 create: {
                     clerkId: id,
                     email,
-                    role,
+                    role: nextRole,
                 },
                 update: {
                     email,
-                    role,
+                    role: nextRole,
                 },
             });
 
             await syncUserPartnerFromClerkOrgMemberships(id);
 
-            console.log(`${eventType}:`, id, 'Role:', role);
+            console.log(`${eventType}:`, id, 'Role:', nextRole);
         }
 
         // Invite accepted: reliable path for Neon user + partner link (often the only event apps subscribe to).
@@ -137,6 +153,12 @@ export async function POST(req: Request) {
                 );
             } else {
                 await assignPartnerByClerkOrgId(userId, organizationId);
+                if (await isFoodForFreeOrganization(organizationId)) {
+                    await prisma.user.update({
+                        where: { clerkId: userId },
+                        data: { role: 'ADMIN' },
+                    });
+                }
             }
         }
 
@@ -153,6 +175,12 @@ export async function POST(req: Request) {
             }
 
             await assignPartnerByClerkOrgId(userId, organization.id);
+            if (await isFoodForFreeOrganization(organization.id)) {
+                await prisma.user.update({
+                    where: { clerkId: userId },
+                    data: { role: 'ADMIN' },
+                });
+            }
         }
 
         if (eventType === 'organizationMembership.deleted') {

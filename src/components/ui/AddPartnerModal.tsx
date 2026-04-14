@@ -27,7 +27,7 @@ export function AddPartnerModal({
     const [householdId18, setHouseholdId18] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
-    const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +73,7 @@ export function AddPartnerModal({
             await onDelete(selectedOrganizationId);
             setSelectedOrganizationId(null);
             setSearchQuery('');
-            setDeleteStep(1);
+            setShowDeleteConfirm(false);
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete organization');
@@ -123,6 +123,7 @@ export function AddPartnerModal({
                             onClick={() => {
                                 setActiveTab('delete');
                                 setError(null);
+                                setShowDeleteConfirm(false);
                             }}
                             className={`h-8 px-4 rounded-md text-sm transition-colors ${
                                 activeTab === 'delete'
@@ -245,8 +246,8 @@ export function AddPartnerModal({
                                             type="button"
                                             onClick={() => {
                                                 setSelectedOrganizationId(org.id);
-                                                setDeleteStep(1);
                                                 setError(null);
+                                                setShowDeleteConfirm(false);
                                             }}
                                             className={`w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors ${
                                                 selectedOrganizationId === org.id
@@ -268,21 +269,13 @@ export function AddPartnerModal({
                                     <div className="flex items-start gap-2">
                                         <AlertTriangle className="h-4 w-4 mt-0.5 text-[#744210]" />
                                         <div className="text-xs text-[#744210]">
-                                            {deleteStep === 1 ? (
-                                                <p>
-                                                    You are about to delete{' '}
-                                                    <span className="font-semibold">
-                                                        {selectedOrganization.name}
-                                                    </span>
-                                                    . This action cannot be undone.
-                                                </p>
-                                            ) : (
-                                                <p>
-                                                    Final confirmation: this will permanently delete
-                                                    this partner and its associated user account(s)
-                                                    in Clerk and Neon.
-                                                </p>
-                                            )}
+                                            <p>
+                                                You are about to delete{' '}
+                                                <span className="font-semibold">
+                                                    {selectedOrganization.name}
+                                                </span>
+                                                . Click continue to review the final confirmation.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -304,29 +297,65 @@ export function AddPartnerModal({
                             >
                                 Cancel
                             </button>
-                            {deleteStep === 1 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setDeleteStep(2)}
-                                    className="px-4 h-9 text-sm font-medium rounded-lg border border-[#F8D4A0] bg-[#FFF8EC] text-[#744210] hover:bg-[#FFF2DA] transition-colors disabled:opacity-50"
-                                    disabled={!selectedOrganizationId || isSubmitting}
-                                >
-                                    Continue
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleDelete}
-                                    className="px-4 h-9 text-sm font-medium rounded-lg border border-[#F3CBCB] bg-[#FFF5F5] text-[#B34747] hover:bg-[#FFECEC] transition-colors disabled:opacity-50"
-                                    disabled={!selectedOrganizationId || isSubmitting}
-                                >
-                                    {isSubmitting ? 'Deleting…' : 'Delete partner and users'}
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="px-4 h-9 text-sm font-medium rounded-lg border border-[#F8D4A0] bg-[#FFF8EC] text-[#744210] hover:bg-[#FFF2DA] transition-colors disabled:opacity-50"
+                                disabled={!selectedOrganizationId || isSubmitting}
+                            >
+                                Continue
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
+            {showDeleteConfirm && selectedOrganization && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
+                        <div className="p-6">
+                            <div className="flex items-start gap-4">
+                                <div
+                                    className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+                                    style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}
+                                >
+                                    <span className="text-2xl">⚠️</span>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                        Delete Partner
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        Final confirmation: this will permanently delete{' '}
+                                        <span className="font-medium text-gray-900">
+                                            {selectedOrganization.name}
+                                        </span>{' '}
+                                        and associated non-admin user account(s) in Clerk and Neon.
+                                        Admin accounts will not be deleted.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-6 flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    className="px-4 py-2 text-sm font-medium rounded-lg border border-[#F3CBCB] bg-[#FFF5F5] text-[#B34747] hover:bg-[#FFECEC] disabled:opacity-50"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Deleting…' : 'Delete partner and users'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

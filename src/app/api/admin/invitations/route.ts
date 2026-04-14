@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,7 +15,12 @@ export async function POST(req: NextRequest) {
         await requireAdmin();
 
         const body = await req.json();
-        const { email, organizationId, organizationName } = body;
+        const { email, organizationId, organizationName, isAdmin } = body as {
+            email?: string;
+            organizationId?: string;
+            organizationName?: string;
+            isAdmin?: boolean;
+        };
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -60,6 +66,13 @@ export async function POST(req: NextRequest) {
                 clerkOrganizationId: org.id,
             },
         });
+
+        if (isAdmin && !isDistributorPartnerOrgName(org.name)) {
+            return NextResponse.json(
+                { error: 'Admin invites are only allowed for the Food For Free organization.' },
+                { status: 400 }
+            );
+        }
 
         // Create invitation
         const invitation = await client.organizations.createOrganizationInvitation({

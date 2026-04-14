@@ -28,13 +28,6 @@ export async function DELETE(
             .map(membership => membership.publicUserData?.userId)
             .filter((id): id is string => Boolean(id));
 
-        // Never delete the currently signed-in admin account.
-        const clerkUserIdsToDelete = memberUserIds.filter(id => id !== userId);
-
-        for (const clerkUserId of clerkUserIdsToDelete) {
-            await client.users.deleteUser(clerkUserId);
-        }
-
         await prisma.$transaction(async tx => {
             const partner = await tx.partner.findUnique({
                 where: { clerkOrganizationId: organizationId },
@@ -43,6 +36,25 @@ export async function DELETE(
 
             if (!partner) {
                 return;
+            }
+
+            const adminUsers = await tx.user.findMany({
+                where: {
+                    clerkId: { in: memberUserIds },
+                    role: 'ADMIN',
+                },
+                select: { clerkId: true },
+            });
+
+            const adminUserIds = new Set(adminUsers.map(admin => admin.clerkId));
+
+            // Never delete the currently signed-in admin account or any admin accounts.
+            const clerkUserIdsToDelete = memberUserIds.filter(
+                id => id !== userId && !adminUserIds.has(id)
+            );
+
+            for (const clerkUserId of clerkUserIdsToDelete) {
+                await client.users.deleteUser(clerkUserId);
             }
 
             await tx.user.deleteMany({
