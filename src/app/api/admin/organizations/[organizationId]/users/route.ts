@@ -43,7 +43,7 @@ export async function GET(
             role: user.role,
             user: {
                 id: user.id,
-                firstName: null,
+                firstName: user.name ?? null,
                 lastName: null,
                 email: user.email,
             },

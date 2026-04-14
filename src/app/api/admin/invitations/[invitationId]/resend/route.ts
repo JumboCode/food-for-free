@@ -16,19 +16,24 @@ export async function POST(
         await requireAdmin();
 
         const { invitationId } = await params;
+        const organizationId = req.nextUrl.searchParams.get('organizationId') ?? '';
         const client = await clerkClient();
+
+        if (!organizationId) {
+            return NextResponse.json({ error: 'organizationId is required' }, { status: 400 });
+        }
 
         // Get the invitation details
         const invitation = await client.organizations.getOrganizationInvitation({
             invitationId,
-            organizationId: '',
+            organizationId,
         });
 
         // Revoke the old invitation
         await client.organizations.revokeOrganizationInvitation({
             invitationId,
             requestingUserId: userId,
-            organizationId: '',
+            organizationId,
         });
 
         // Create a new invitation

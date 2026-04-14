@@ -55,7 +55,11 @@ const AdminConsolePage: React.FC = () => {
             }
 
             const data = await response.json();
-            setOrganizations(data.organizations ?? []);
+            const nextOrganizations: Organization[] = data.organizations ?? [];
+            setOrganizations(nextOrganizations);
+            setSelectedOrganization(prev =>
+                prev ? (nextOrganizations.find(org => org.id === prev.id) ?? null) : prev
+            );
         } catch (error) {
             console.error('Error fetching organizations:', error);
             setOrganizations([]);

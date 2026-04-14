@@ -1,7 +1,50 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ organizationId: string }> }
+) {
+    try {
+        const { userId } = await auth();
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        await requireAdmin();
+
+        const { organizationId } = await params;
+        const body = (await req.json()) as { name?: string };
+        const nextName = body.name?.trim();
+
+        if (!nextName) {
+            return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
+        }
+
+        const client = await clerkClient();
+        await client.organizations.updateOrganization(organizationId, {
+            name: nextName,
+        });
+
+        await prisma.partner.updateMany({
+            where: { clerkOrganizationId: organizationId },
+            data: { organizationName: nextName },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error updating organization:', error);
+
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+            return NextResponse.json({ error: error.message }, { status: 403 });
+        }
+
+        return NextResponse.json({ error: 'Failed to update organization' }, { status: 500 });
+    }
+}
 
 export async function DELETE(
     _req: Request,
