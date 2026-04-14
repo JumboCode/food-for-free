@@ -72,9 +72,10 @@ export async function queryDistributionDeliveries(
               : Prisma.empty;
 
     // Do not require t.destination: source exports often leave it blank; org is d.householdName via join.
+    // Use d.date (pantry visit date/time) for the delivery date shown in UI.
     const rows = await db.$queryRaw<BulkRowDb[]>`
         SELECT
-            t."date" AS "date",
+            d."date" AS "date",
             d."householdName" AS "organizationName",
             d."householdId18" AS "householdId18",
             p."pantryProductName" AS "productName",
@@ -91,11 +92,11 @@ export async function queryDistributionDeliveries(
             ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
         INNER JOIN "AllProductPackageDestinations" d
             ON d."productPackageId18" = p."productPackageId18"
-        WHERE t."date" >= ${params.start}
-          AND t."date" <= ${params.end}
+        WHERE d."date" >= ${params.start}
+          AND d."date" <= ${params.end}
           ${destClause}
           ${searchClause}
-        ORDER BY t."date" DESC
+        ORDER BY d."date" DESC
     `;
     return rows.map(r => ({
         ...r,
