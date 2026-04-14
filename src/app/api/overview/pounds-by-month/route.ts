@@ -26,8 +26,22 @@ function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date
     const startParam = searchParams.get('start');
     const endParam = searchParams.get('end');
     if (!startParam || !endParam) return null;
-    const start = new Date(startParam);
-    const end = new Date(endParam);
+    const parseYmdLocal = (value: string): Date | null => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+        if (!m) return null;
+        const y = Number.parseInt(m[1], 10);
+        const mon = Number.parseInt(m[2], 10);
+        const d = Number.parseInt(m[3], 10);
+        const date = new Date(y, mon - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() !== mon - 1 || date.getDate() !== d) {
+            return null;
+        }
+        return date;
+    };
+    const start = parseYmdLocal(startParam);
+    const end = parseYmdLocal(endParam);
+    if (!start || !end) return null;
+    end.setHours(23, 59, 59, 999);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
     return { start, end };
 }

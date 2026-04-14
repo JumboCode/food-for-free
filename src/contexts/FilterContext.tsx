@@ -14,6 +14,7 @@ export interface DateRange {
     start: Date;
     end: Date;
 }
+const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
 
 interface FilterContextValue {
     activeFilter: QuickFilter | null;
@@ -32,6 +33,21 @@ export function getLast30DaysRange(): DateRange {
     return { start, end };
 }
 
+function startOfToday(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function clampRangeToToday(range: DateRange): DateRange {
+    const today = startOfToday();
+    const endToToday = range.end > today ? today : range.end;
+    const end = endToToday < MIN_FILTER_DATE ? MIN_FILTER_DATE : endToToday;
+    const startToToday = range.start > today ? today : range.start;
+    const start = startToToday < MIN_FILTER_DATE ? MIN_FILTER_DATE : startToToday;
+    if (start > end) return { start: end, end };
+    return { start, end };
+}
+
 function getFiscalYearToDateRange(now: Date): DateRange {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const y = today.getFullYear();
@@ -46,7 +62,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const [activeFilter, setActiveFilter] = useState<QuickFilter | null>('last30days');
 
     const handleDateRangeChange = (range: DateRange) => {
-        setDateRange(range);
+        setDateRange(clampRangeToToday(range));
         setActiveFilter(null);
     };
 
@@ -67,13 +83,13 @@ export function FilterProvider({ children }: { children: ReactNode }) {
             case 'thisMonth':
                 setDateRange({
                     start: new Date(currentYear, currentMonth, 1),
-                    end: new Date(currentYear, currentMonth + 1, 0),
+                    end: today,
                 });
                 break;
             case 'thisYear':
                 setDateRange({
                     start: new Date(currentYear, 0, 1),
-                    end: new Date(currentYear, 11, 31),
+                    end: today,
                 });
                 break;
             case 'fiscalYearToDate':
@@ -87,7 +103,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
                 break;
             }
             case 'allTime':
-                setDateRange({ start: new Date(2000, 0, 1), end: today });
+                setDateRange({ start: new Date(2025, 6, 1), end: today });
                 break;
         }
     };

@@ -27,7 +27,12 @@ type DeliverySummaryItem = {
     destination?: string | null;
 };
 
-const formatDateParam = (d: Date) => d.toISOString().split('T')[0];
+const formatDateParam = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
 
 const THEME_ORANGE = '#FAC87D';
 
@@ -39,7 +44,7 @@ const OverviewPageContent: React.FC = () => {
         partnerName: string | null;
     }>({ ready: false, isAdmin: false, partnerName: null });
 
-    const { dateRange, activeFilter } = useFilterContext();
+    const { dateRange } = useFilterContext();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [poundsByMonthData, setPoundsByMonthData] = useState<PoundsData[]>([]);
@@ -293,7 +298,6 @@ const OverviewPageContent: React.FC = () => {
                                         <PoundsByMonthChart
                                             data={poundsByMonthData}
                                             dateRange={dateRange}
-                                            activeFilter={activeFilter}
                                         />
                                     </div>
                                 </div>
