@@ -58,7 +58,8 @@ export default function Home() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1.1, ease: 'easeOut', delay: 0.15 }}
                         >
-                            Manage donations, users, and distributions in one place.
+                            View delivery history and statistics of food received by your partner
+                            organization from Food For Free!
                         </motion.p>
                     </div>
 
