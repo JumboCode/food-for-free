@@ -43,7 +43,7 @@ export async function GET(
             role: user.role,
             user: {
                 id: user.id,
-                firstName: null,
+                firstName: user.name ?? null,
                 lastName: null,
                 email: user.email,
             },
@@ -54,6 +54,10 @@ export async function GET(
             invitations: invitations.data.map(inv => ({
                 id: inv.id,
                 emailAddress: inv.emailAddress,
+                name:
+                    typeof inv.publicMetadata?.inviteeName === 'string'
+                        ? inv.publicMetadata.inviteeName
+                        : null,
                 role: inv.role,
                 status: inv.status,
                 createdAt: inv.createdAt.toString(),

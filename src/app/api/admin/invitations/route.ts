@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
-import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export async function POST(req: NextRequest) {
     try {
@@ -15,12 +14,13 @@ export async function POST(req: NextRequest) {
         await requireAdmin();
 
         const body = await req.json();
-        const { email, organizationId, organizationName, isAdmin } = body as {
+        const { email, name, organizationId, organizationName } = body as {
             email?: string;
+            name?: string;
             organizationId?: string;
             organizationName?: string;
-            isAdmin?: boolean;
         };
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -41,15 +41,21 @@ export async function POST(req: NextRequest) {
 
         const client = await clerkClient();
         const targetOrganizationId = organizationId;
+        const invitationRedirectUrl = new URL('/sign-up', req.nextUrl.origin).toString();
 
         // Invites keyed by Clerk org id must still have a Partner row or webhook cannot link users.
         const org = await client.organizations.getOrganization({
             organizationId: targetOrganizationId!,
         });
-        const householdId18 =
+        const metadataHouseholdId18 =
             typeof org.publicMetadata?.householdId18 === 'string'
                 ? org.publicMetadata.householdId18.trim()
                 : '';
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: org.id },
+            select: { householdId18: true },
+        });
+        const householdId18 = metadataHouseholdId18 || partner?.householdId18?.trim() || '';
 
         if (!householdId18) {
             return NextResponse.json(
@@ -57,9 +63,23 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        if (!metadataHouseholdId18) {
+            try {
+                await client.organizations.updateOrganizationMetadata(org.id, {
+                    publicMetadata: { ...org.publicMetadata, householdId18 },
+                });
+            } catch (metadataError) {
+                console.warn('Failed to backfill householdId18 metadata for organization:', {
+                    organizationId: org.id,
+                    metadataError,
+                });
+            }
+        }
+
         await prisma.partner.upsert({
             where: { clerkOrganizationId: org.id },
-            update: { organizationName: org.name },
+            update: { organizationName: org.name, householdId18 },
             create: {
                 householdId18,
                 organizationName: org.name,
@@ -67,19 +87,14 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        if (isAdmin && !isDistributorPartnerOrgName(org.name)) {
-            return NextResponse.json(
-                { error: 'Admin invites are only allowed for the Food For Free organization.' },
-                { status: 400 }
-            );
-        }
-
         // Create invitation
         const invitation = await client.organizations.createOrganizationInvitation({
             organizationId: targetOrganizationId!,
             emailAddress: email,
             inviterUserId: userId,
             role: 'org:member',
+            publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
+            redirectUrl: invitationRedirectUrl,
         });
 
         return NextResponse.json({

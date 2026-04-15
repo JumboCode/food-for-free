@@ -9,7 +9,11 @@ import {
 
 describe('overview access helpers', () => {
     it('returns partner filter for admin and partner scopes', () => {
-        const adminScope: OverviewScope = { kind: 'admin', destination: 'Org A' };
+        const adminScope: OverviewScope = {
+            kind: 'admin',
+            destination: 'Org A',
+            destinationHouseholdId18: undefined,
+        };
         const partnerScope: OverviewScope = {
             kind: 'partner',
             destination: 'Org B',
@@ -43,7 +47,13 @@ describe('overview access helpers', () => {
     });
 
     it('returns no error response for valid admin/partner scopes', () => {
-        expect(overviewScopeErrorResponse({ kind: 'admin', destination: 'Partner X' })).toBeNull();
+        expect(
+            overviewScopeErrorResponse({
+                kind: 'admin',
+                destination: 'Partner X',
+                destinationHouseholdId18: undefined,
+            })
+        ).toBeNull();
         expect(
             overviewScopeErrorResponse({
                 kind: 'partner',

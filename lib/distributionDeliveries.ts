@@ -76,7 +76,7 @@ export async function queryDistributionDeliveries(
     const rows = await db.$queryRaw<BulkRowDb[]>`
         SELECT
             d."date" AS "date",
-            d."householdName" AS "organizationName",
+            COALESCE(pt."organizationName", d."householdName") AS "organizationName",
             d."householdId18" AS "householdId18",
             p."pantryProductName" AS "productName",
             COALESCE(p."distributionAmount", 1) AS "distributionAmount",
@@ -92,6 +92,8 @@ export async function queryDistributionDeliveries(
             ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
         INNER JOIN "AllProductPackageDestinations" d
             ON d."productPackageId18" = p."productPackageId18"
+        LEFT JOIN "Partner" pt
+            ON pt."householdId18" = d."householdId18"
         WHERE d."date" >= ${params.start}
           AND d."date" <= ${params.end}
           ${destClause}
@@ -141,7 +143,7 @@ export async function queryJustEatsDistributionDeliveries(
     const rows = await db.$queryRaw<JustEatsRowDb[]>`
         SELECT
             j."pantryVisitDateTime" AS "date",
-            j."householdName" AS "organizationName",
+            COALESCE(pt."organizationName", j."householdName") AS "organizationName",
             j."householdId" AS "householdId18",
             NULLIF(BTRIM(j."productPackageName"), '') AS "productName",
             1 AS "distributionAmount",
@@ -154,6 +156,8 @@ export async function queryJustEatsDistributionDeliveries(
             NULL::text AS "source",
             j."distributionId18" AS "lineId"
         FROM "JustEatsBoxes" j
+        LEFT JOIN "Partner" pt
+            ON pt."householdId18" = j."householdId"
         WHERE j."pantryVisitDateTime" >= ${params.start}
           AND j."pantryVisitDateTime" <= ${params.end}
           ${destClause}

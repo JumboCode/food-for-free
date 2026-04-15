@@ -15,24 +15,32 @@ async function upsertNeonUserFromClerk(userId: string): Promise<void> {
         cu.emailAddresses.find(e => e.id === primaryId)?.emailAddress ??
         cu.emailAddresses[0]?.emailAddress ??
         `clerk-${userId}@placeholder.invalid`;
+    const name = [cu.firstName, cu.lastName].filter(Boolean).join(' ').trim() || null;
     const role = ADMIN_EMAIL && email === ADMIN_EMAIL ? 'ADMIN' : 'PARTNER';
     await prisma.user.upsert({
         where: { clerkId: userId },
         create: {
             clerkId: userId,
+            name,
             email,
             role,
         },
-        update: { email },
+        update: { name, email },
     });
 }
 
 /** Resolve email + role from user.created / user.updated payload (no extra Clerk API call). */
-function emailAndRoleFromUserPayload(data: { email_addresses?: { email_address: string }[] }): {
+function userFieldsFromPayload(data: {
+    email_addresses?: { email_address: string }[];
+    first_name?: string | null;
+    last_name?: string | null;
+}): {
     email: string;
+    name: string | null;
 } {
     const email = data.email_addresses?.[0]?.email_address ?? '';
-    return { email };
+    const name = [data.first_name, data.last_name].filter(Boolean).join(' ').trim() || null;
+    return { email, name };
 }
 
 function roleFromEmail(email: string): 'ADMIN' | 'PARTNER' {
@@ -109,11 +117,17 @@ export async function POST(req: Request) {
 
     try {
         if (eventType === 'user.created' || eventType === 'user.updated') {
-            const { id, email_addresses } = evt.data as {
+            const { id, email_addresses, first_name, last_name } = evt.data as {
                 id: string;
                 email_addresses?: { email_address: string }[];
+                first_name?: string | null;
+                last_name?: string | null;
             };
-            const { email } = emailAndRoleFromUserPayload({ email_addresses });
+            const { email, name } = userFieldsFromPayload({
+                email_addresses,
+                first_name,
+                last_name,
+            });
             const existing = await prisma.user.findUnique({
                 where: { clerkId: id },
                 select: { role: true },
@@ -124,10 +138,12 @@ export async function POST(req: Request) {
                 where: { clerkId: id },
                 create: {
                     clerkId: id,
+                    name,
                     email,
                     role: nextRole,
                 },
                 update: {
+                    name,
                     email,
                     role: nextRole,
                 },

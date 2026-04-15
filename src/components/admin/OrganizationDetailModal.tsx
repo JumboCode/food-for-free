@@ -40,6 +40,7 @@ interface OrganizationMember {
 interface OrganizationInvitation {
     id: string;
     emailAddress: string;
+    name?: string | null;
     role: string;
     status: 'pending' | 'accepted' | 'revoked';
     createdAt: string;
@@ -65,12 +66,15 @@ export function OrganizationDetailModal({
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
-    const [inviteAsAdmin, setInviteAsAdmin] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
+    const [editUser, setEditUser] = useState<User | null>(null);
+    const [editUserName, setEditUserName] = useState('');
     const [showInvitationSent, setShowInvitationSent] = useState(false);
     const [resendEmail, setResendEmail] = useState<string | null>(null);
+    const [isEditingOrgName, setIsEditingOrgName] = useState(false);
+    const [organizationNameDraft, setOrganizationNameDraft] = useState(organization.name);
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
     const fetchOrganizationUsers = useCallback(async () => {
@@ -93,7 +97,8 @@ export function OrganizationDetailModal({
 
                 return {
                     id: member.id,
-                    name: fullName || member.user.email,
+                    // Neon `User.name` is exposed as firstName; never show email in the Name column.
+                    name: fullName || '—',
                     email: member.user.email,
                     status: 'Active',
                     role: member.role,
@@ -102,7 +107,7 @@ export function OrganizationDetailModal({
 
             const invitedUsers: User[] = (data.invitations ?? []).map(invitation => ({
                 id: invitation.id,
-                name: invitation.emailAddress,
+                name: invitation.name?.trim() || '—',
                 email: invitation.emailAddress,
                 status: 'Invited',
                 role: invitation.role,
@@ -121,6 +126,10 @@ export function OrganizationDetailModal({
     useEffect(() => {
         void fetchOrganizationUsers();
     }, [fetchOrganizationUsers]);
+
+    useEffect(() => {
+        setOrganizationNameDraft(organization.name);
+    }, [organization.name]);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -144,8 +153,8 @@ export function OrganizationDetailModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: newUserEmail.trim(),
+                    name: newUserName.trim(),
                     organizationId: organization.id,
-                    isAdmin: inviteAsAdmin,
                 }),
             });
 
@@ -157,8 +166,8 @@ export function OrganizationDetailModal({
             await fetchOrganizationUsers();
             await onUpdate();
             setIsAddUserModalOpen(false);
+            setNewUserName('');
             setNewUserEmail('');
-            setInviteAsAdmin(false);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Failed to invite user');
         } finally {
@@ -175,13 +184,89 @@ export function OrganizationDetailModal({
         }, 3000);
 
         try {
-            const response = await fetch(`/api/admin/invitations/${invId}/resend`, {
-                method: 'POST',
-            });
+            const response = await fetch(
+                `/api/admin/invitations/${invId}/resend?organizationId=${encodeURIComponent(organization.id)}`,
+                { method: 'POST' }
+            );
             if (!response.ok) throw new Error('Failed to resend invitation');
             await fetchOrganizationUsers();
         } catch (error) {
             console.error('Error resending invitation:', error);
+        }
+    };
+
+    const startEditUser = (user: User) => {
+        if (user.status !== 'Active') {
+            setError(
+                'You can edit a user name after they accept the invitation and become active.'
+            );
+            return;
+        }
+        setEditUser(user);
+        setEditUserName(user.name);
+        setError(null);
+    };
+
+    const confirmEditUser = async () => {
+        if (!editUser) return;
+        const nextName = editUserName.trim();
+        if (!nextName) {
+            setError('Name is required');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(
+                `/api/admin/organizations/${organization.id}/members/${editUser.id}`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: nextName }),
+                }
+            );
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error((data as { error?: string }).error ?? 'Failed to update user');
+            }
+
+            setEditUser(null);
+            await fetchOrganizationUsers();
+            await onUpdate();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update user');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const saveOrganizationName = async () => {
+        const nextName = organizationNameDraft.trim();
+        if (!nextName) {
+            setError('Organization name is required');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`/api/admin/organizations/${organization.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nextName }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(
+                    (data as { error?: string }).error ?? 'Failed to update organization name'
+                );
+            }
+
+            await onUpdate();
+            setIsEditingOrgName(false);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update organization name');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -232,9 +317,52 @@ export function OrganizationDetailModal({
                 {/* Header */}
                 <div className="flex items-start justify-between border-b border-gray-100 px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-6">
                     <div className="min-w-0 pr-2">
-                        <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
-                            {organization.name}
-                        </h2>
+                        {isEditingOrgName ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={organizationNameDraft}
+                                    onChange={e => setOrganizationNameDraft(e.target.value)}
+                                    className="h-9 w-full max-w-[320px] rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                                    disabled={isSubmitting}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={saveOrganizationName}
+                                    className="h-9 rounded-lg border border-[#9fc5a9] bg-[#B7D7BD] px-3 text-xs font-medium text-gray-800 hover:bg-[#a7c7ad]"
+                                    disabled={isSubmitting}
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOrganizationNameDraft(organization.name);
+                                        setIsEditingOrgName(false);
+                                    }}
+                                    className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                                    {organization.name}
+                                </h2>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOrganizationNameDraft(organization.name);
+                                        setIsEditingOrgName(true);
+                                    }}
+                                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                                >
+                                    Edit
+                                </button>
+                            </div>
+                        )}
                         <p className="mt-1 text-xs text-gray-500">Partner organization</p>
                     </div>
                     <button
@@ -376,6 +504,10 @@ export function OrganizationDetailModal({
                                                     <UserActionsMenu
                                                         triggerRef={menuTriggerRef}
                                                         user={user}
+                                                        onEdit={() => {
+                                                            startEditUser(user);
+                                                            setActiveMenuUserId(null);
+                                                        }}
                                                         onResendInvitation={
                                                             user.status === 'Invited' &&
                                                             user.invitationId
@@ -489,19 +621,13 @@ export function OrganizationDetailModal({
                                     <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 </div>
                                 {isDistributorPartnerOrgName(organization.name) && (
-                                    <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={inviteAsAdmin}
-                                            onChange={e => setInviteAsAdmin(e.target.checked)}
-                                            disabled={isSubmitting}
-                                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#608D6A] focus:ring-[#B7D7BD]"
-                                        />
-                                        <span className="text-xs text-gray-700">
-                                            Invite as Food For Free admin. They will get admin
-                                            access after accepting and signing in.
-                                        </span>
-                                    </label>
+                                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                                        <p className="text-xs text-amber-900">
+                                            Users invited to Food For Free are granted admin
+                                            privileges (including Admin Console access) after
+                                            accepting and signing in.
+                                        </p>
+                                    </div>
                                 )}
 
                                 {error && (
@@ -519,7 +645,6 @@ export function OrganizationDetailModal({
                                         setError(null);
                                         setNewUserName('');
                                         setNewUserEmail('');
-                                        setInviteAsAdmin(false);
                                     }}
                                     className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors"
                                     disabled={isSubmitting}
@@ -564,6 +689,48 @@ export function OrganizationDetailModal({
                     </div>
                 </div>
             )}
+            {editUser && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
+                        <div className="flex justify-between items-start px-6 pt-5 pb-3 border-b border-gray-100">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">Edit user</h3>
+                                <p className="mt-1 text-xs text-gray-500">{editUser.email}</p>
+                            </div>
+                            <User className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <div className="px-6 pb-6 pt-4">
+                            <input
+                                type="text"
+                                value={editUserName}
+                                onChange={e => setEditUserName(e.target.value)}
+                                className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
+                                placeholder="Name"
+                                disabled={isSubmitting}
+                            />
+                            <div className="mt-6 flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditUser(null)}
+                                    className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmEditUser}
+                                    className="px-4 h-9 text-sm font-medium text-gray-800 rounded-lg border border-[#9fc5a9] hover:bg-[#9fc5a9]/80 disabled:opacity-50 transition-colors"
+                                    style={{ backgroundColor: THEME_GREEN }}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Saving…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -576,12 +743,14 @@ const MENU_PADDING = 8;
 function UserActionsMenu({
     triggerRef,
     user,
+    onEdit,
     onResendInvitation,
     onDelete,
     onClose,
 }: {
     triggerRef: React.RefObject<HTMLDivElement | null>;
     user: User;
+    onEdit?: () => void;
     onResendInvitation?: () => void;
     onDelete: () => void;
     onClose: () => void;
@@ -593,7 +762,7 @@ function UserActionsMenu({
             const el = triggerRef?.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
-            const itemCount = 2 + (onResendInvitation ? 1 : 0);
+            const itemCount = (onEdit ? 1 : 0) + 1 + (onResendInvitation ? 1 : 0);
             const menuHeight = MENU_ITEM_HEIGHT * itemCount + MENU_PADDING * 2;
             let top = rect.bottom + MENU_PADDING;
             let left = rect.right + MENU_PADDING;
@@ -610,7 +779,7 @@ function UserActionsMenu({
             });
             return () => cancelAnimationFrame(raf);
         }
-    }, [triggerRef, onResendInvitation]);
+    }, [triggerRef, onEdit, onResendInvitation]);
 
     useEffect(() => {
         const handleClickOutside = () => onClose();
@@ -632,15 +801,14 @@ function UserActionsMenu({
             onClick={e => e.stopPropagation()}
             onMouseLeave={onClose}
         >
-            <button
-                onClick={() => {
-                    alert(`Edit user: ${user.name} (Frontend only)`);
-                    onClose();
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-            >
-                Edit
-            </button>
+            {onEdit && (
+                <button
+                    onClick={onEdit}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                >
+                    Edit
+                </button>
+            )}
             <button
                 onClick={onDelete}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"

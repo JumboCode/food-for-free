@@ -1,14 +1,13 @@
 import prisma from './prisma';
 
-/** Distinct destination (partner) names from synced package destinations. */
+/** Distinct canonical partner names from the Partner table. */
 export async function getDistinctPartnerHouseholdNames(): Promise<string[]> {
-    const rows = await prisma.allProductPackageDestinations.findMany({
-        select: { householdName: true },
-        distinct: ['householdName'],
+    const rows = await prisma.partner.findMany({
+        select: { organizationName: true },
     });
     const names = new Set<string>();
     for (const r of rows) {
-        const t = r.householdName?.trim();
+        const t = r.organizationName?.trim();
         if (t) names.add(t);
     }
     return Array.from(names).sort((a, b) => a.localeCompare(b));

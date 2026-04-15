@@ -6,7 +6,11 @@ export type OverviewScope =
     | { kind: 'unauthenticated' }
     | { kind: 'no_db_user' }
     | { kind: 'partner_no_org' }
-    | { kind: 'admin'; destination: string | undefined }
+    | {
+          kind: 'admin';
+          destination: string | undefined;
+          destinationHouseholdId18: string | undefined;
+      }
     | { kind: 'partner'; destination: string; partnerHouseholdId18: string };
 
 /**
@@ -28,7 +32,18 @@ export async function getOverviewScope(
     if (user.role === 'ADMIN') {
         const d = requestedDestination?.trim();
         const destination = d && d !== 'All Organizations' ? d : undefined;
-        return { kind: 'admin', destination };
+        if (!destination) {
+            return { kind: 'admin', destination: undefined, destinationHouseholdId18: undefined };
+        }
+        const partner = await prisma.partner.findFirst({
+            where: { organizationName: { equals: destination, mode: 'insensitive' } },
+            select: { householdId18: true },
+        });
+        return {
+            kind: 'admin',
+            destination,
+            destinationHouseholdId18: partner?.householdId18 ?? undefined,
+        };
     }
 
     const partner = user.partner;
@@ -51,6 +66,7 @@ export function scopeToPartnerFilter(scope: OverviewScope): string | undefined {
 
 /** Partner account: Salesforce household id for `JustEatsBoxes.householdId` joins. */
 export function scopeToPartnerHouseholdId18(scope: OverviewScope): string | undefined {
+    if (scope.kind === 'admin') return scope.destinationHouseholdId18;
     if (scope.kind === 'partner') return scope.partnerHouseholdId18;
     return undefined;
 }
