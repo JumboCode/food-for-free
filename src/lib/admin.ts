@@ -1,5 +1,6 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/../lib/prisma';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 /**
  * Check if the current user is an admin.
@@ -12,9 +13,41 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
 
     const dbUser = await prisma.user.findUnique({
         where: { clerkId: userId },
+        select: { role: true },
     });
 
-    return dbUser?.role === 'ADMIN';
+    if (dbUser?.role === 'ADMIN') return true;
+    if (!dbUser) return false;
+
+    // Webhooks can lag right after invitation acceptance. If Clerk already shows this
+    // user in the Food For Free org, promote immediately and let future checks stay fast.
+    try {
+        const client = await clerkClient();
+        const memberships = await client.users.getOrganizationMembershipList({
+            userId,
+            limit: 100,
+        });
+        const orgIds = memberships.data.map(membership => membership.organization.id);
+        if (orgIds.length === 0) return false;
+
+        const partners = await prisma.partner.findMany({
+            where: { clerkOrganizationId: { in: orgIds } },
+            select: { organizationName: true },
+        });
+        const shouldBeAdmin = partners.some(partner =>
+            isDistributorPartnerOrgName(partner.organizationName)
+        );
+        if (!shouldBeAdmin) return false;
+
+        await prisma.user.update({
+            where: { clerkId: userId },
+            data: { role: 'ADMIN' },
+        });
+        return true;
+    } catch (error) {
+        console.error('[isAdmin] fallback membership check failed', error);
+        return false;
+    }
 }
 
 /**
