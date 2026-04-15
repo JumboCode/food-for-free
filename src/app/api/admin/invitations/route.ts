@@ -46,10 +46,15 @@ export async function POST(req: NextRequest) {
         const org = await client.organizations.getOrganization({
             organizationId: targetOrganizationId!,
         });
-        const householdId18 =
+        const metadataHouseholdId18 =
             typeof org.publicMetadata?.householdId18 === 'string'
                 ? org.publicMetadata.householdId18.trim()
                 : '';
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: org.id },
+            select: { householdId18: true },
+        });
+        const householdId18 = metadataHouseholdId18 || partner?.householdId18?.trim() || '';
 
         if (!householdId18) {
             return NextResponse.json(
@@ -57,9 +62,23 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        if (!metadataHouseholdId18) {
+            try {
+                await client.organizations.updateOrganizationMetadata(org.id, {
+                    publicMetadata: { ...org.publicMetadata, householdId18 },
+                });
+            } catch (metadataError) {
+                console.warn('Failed to backfill householdId18 metadata for organization:', {
+                    organizationId: org.id,
+                    metadataError,
+                });
+            }
+        }
+
         await prisma.partner.upsert({
             where: { clerkOrganizationId: org.id },
-            update: { organizationName: org.name },
+            update: { organizationName: org.name, householdId18 },
             create: {
                 householdId18,
                 organizationName: org.name,
