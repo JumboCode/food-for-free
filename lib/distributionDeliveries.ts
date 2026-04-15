@@ -23,7 +23,7 @@ export type DistributionDeliveryRow = {
     foodRescueProgram: string | null;
     source: string | null;
     program: 'bulk_rescue' | 'just_eats';
-    /** Stable id when present (Just Eats: `distributionId18`). */
+    /** Stable id when present (Just Eats: `packageDistributionRecordId`). */
     lineId: string | null;
 };
 
@@ -154,7 +154,7 @@ export async function queryJustEatsDistributionDeliveries(
             NULL::boolean AS "minimallyProcessedFood",
             NULL::text AS "foodRescueProgram",
             NULL::text AS "source",
-            j."distributionId18" AS "lineId"
+            j."packageDistributionRecordId" AS "lineId"
         FROM "JustEatsBoxes" j
         LEFT JOIN "Partner" pt
             ON pt."householdId18" = j."householdId"
