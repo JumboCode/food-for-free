@@ -54,6 +54,10 @@ export async function GET(
             invitations: invitations.data.map(inv => ({
                 id: inv.id,
                 emailAddress: inv.emailAddress,
+                name:
+                    typeof inv.publicMetadata?.inviteeName === 'string'
+                        ? inv.publicMetadata.inviteeName
+                        : null,
                 role: inv.role,
                 status: inv.status,
                 createdAt: inv.createdAt.toString(),

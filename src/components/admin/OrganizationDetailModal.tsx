@@ -40,6 +40,7 @@ interface OrganizationMember {
 interface OrganizationInvitation {
     id: string;
     emailAddress: string;
+    name?: string | null;
     role: string;
     status: 'pending' | 'accepted' | 'revoked';
     createdAt: string;
@@ -107,7 +108,7 @@ export function OrganizationDetailModal({
 
             const invitedUsers: User[] = (data.invitations ?? []).map(invitation => ({
                 id: invitation.id,
-                name: '—',
+                name: invitation.name?.trim() || '—',
                 email: invitation.emailAddress,
                 status: 'Invited',
                 role: invitation.role,
@@ -153,6 +154,7 @@ export function OrganizationDetailModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: newUserEmail.trim(),
+                    name: newUserName.trim(),
                     organizationId: organization.id,
                     isAdmin: inviteAsAdmin,
                 }),
@@ -166,6 +168,7 @@ export function OrganizationDetailModal({
             await fetchOrganizationUsers();
             await onUpdate();
             setIsAddUserModalOpen(false);
+            setNewUserName('');
             setNewUserEmail('');
             setInviteAsAdmin(false);
         } catch (error) {

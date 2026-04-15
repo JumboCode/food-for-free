@@ -17,6 +17,7 @@ export async function POST(
 
         const { invitationId } = await params;
         const organizationId = req.nextUrl.searchParams.get('organizationId') ?? '';
+        const invitationRedirectUrl = new URL('/sign-up', req.nextUrl.origin).toString();
         const client = await clerkClient();
 
         if (!organizationId) {
@@ -42,6 +43,8 @@ export async function POST(
             emailAddress: invitation.emailAddress,
             inviterUserId: userId,
             role: invitation.role,
+            publicMetadata: invitation.publicMetadata,
+            redirectUrl: invitationRedirectUrl,
         });
 
         return NextResponse.json({

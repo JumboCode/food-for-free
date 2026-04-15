@@ -15,12 +15,14 @@ export async function POST(req: NextRequest) {
         await requireAdmin();
 
         const body = await req.json();
-        const { email, organizationId, organizationName, isAdmin } = body as {
+        const { email, name, organizationId, organizationName, isAdmin } = body as {
             email?: string;
+            name?: string;
             organizationId?: string;
             organizationName?: string;
             isAdmin?: boolean;
         };
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
 
         const client = await clerkClient();
         const targetOrganizationId = organizationId;
+        const invitationRedirectUrl = new URL('/sign-up', req.nextUrl.origin).toString();
 
         // Invites keyed by Clerk org id must still have a Partner row or webhook cannot link users.
         const org = await client.organizations.getOrganization({
@@ -99,6 +102,8 @@ export async function POST(req: NextRequest) {
             emailAddress: email,
             inviterUserId: userId,
             role: 'org:member',
+            publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
+            redirectUrl: invitationRedirectUrl,
         });
 
         return NextResponse.json({
