@@ -87,20 +87,35 @@ export async function GET(request: NextRequest) {
         }
         if (partnerFilter) {
             type AdminScopedDeliveryRow = { day: string; totalPounds: number | null };
-            const rows = await prisma.$queryRaw<AdminScopedDeliveryRow[]>`
-                SELECT
-                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
-                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
-                FROM "AllInventoryTransactions" t
-                INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
-                INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
-                WHERE d."householdName" ILIKE ${partnerFilter}
-                  AND d."date" >= ${range.start}
-                  AND d."date" <= ${range.end}
-                GROUP BY DATE_TRUNC('day', d."date")
-                ORDER BY DATE_TRUNC('day', d."date") DESC
-                LIMIT 10
-            `;
+            const rows = partnerHouseholdId18
+                ? await prisma.$queryRaw<AdminScopedDeliveryRow[]>`
+                    SELECT
+                        TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
+                        SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                    FROM "AllInventoryTransactions" t
+                    INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                    INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+                    WHERE d."householdId18" = ${partnerHouseholdId18}
+                      AND d."date" >= ${range.start}
+                      AND d."date" <= ${range.end}
+                    GROUP BY DATE_TRUNC('day', d."date")
+                    ORDER BY DATE_TRUNC('day', d."date") DESC
+                    LIMIT 10
+                `
+                : await prisma.$queryRaw<AdminScopedDeliveryRow[]>`
+                    SELECT
+                        TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
+                        SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                    FROM "AllInventoryTransactions" t
+                    INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                    INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+                    WHERE d."householdName" ILIKE ${partnerFilter}
+                      AND d."date" >= ${range.start}
+                      AND d."date" <= ${range.end}
+                    GROUP BY DATE_TRUNC('day', d."date")
+                    ORDER BY DATE_TRUNC('day', d."date") DESC
+                    LIMIT 10
+                `;
 
             return NextResponse.json({
                 deliveries: rows.map(r => {
@@ -118,14 +133,15 @@ export async function GET(request: NextRequest) {
         const rows = await prisma.$queryRaw<DeliveryRow[]>`
             SELECT
                 TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
-                d."householdName" AS "destination",
+                COALESCE(pt."organizationName", d."householdName") AS "destination",
                 SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
             FROM "AllInventoryTransactions" t
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+            LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
-            GROUP BY DATE_TRUNC('day', d."date"), d."householdName"
+            GROUP BY DATE_TRUNC('day', d."date"), COALESCE(pt."organizationName", d."householdName")
             ORDER BY DATE_TRUNC('day', d."date") DESC
             LIMIT 10
         `;
