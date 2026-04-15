@@ -79,7 +79,6 @@ model AllProductPackageDestinations {
 }
 
 model JustEatsBoxes {
-  distributionId18                     String    @id
   productPackageName                   String
   productPackageRecordId               String
   numberPickedUp                       Int?
@@ -87,7 +86,7 @@ model JustEatsBoxes {
   pounds                               Float?
   poundsDroppedOff                     Float?
   poundsLost                           Float?
-  packageDistributionRecordId          String
+  packageDistributionRecordId          String @id
   packageDistributionCreatedDate       DateTime
   packageDistributionLastModifiedDate  DateTime
   householdName                        String
