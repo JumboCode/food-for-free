@@ -143,9 +143,9 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                     <div className="px-8 sm:px-10 pb-8 flex-1 min-h-0 overflow-hidden flex flex-col">
                         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
                             <h3 className="text-gray-900 font-semibold">Foods Delivered:</h3>
-                            {foodsScrollState.canScroll && (
-                                <span className="text-xs text-gray-500 font-medium">
-                                    Scroll for more
+                            {foodsScrollState.canScroll && !foodsScrollState.showBottomFade && (
+                                <span className="text-xs text-gray-400 font-medium">
+                                    Scrolled to bottom
                                 </span>
                             )}
                         </div>
@@ -153,7 +153,7 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                         <div className="relative flex min-h-0 flex-1 flex-col rounded-xl border border-gray-200 bg-white">
                             <div
                                 ref={foodsScrollRef}
-                                className="min-h-[7.5rem] max-h-[min(42vh,20rem)] flex-1 overflow-y-auto overflow-x-hidden rounded-xl [scrollbar-width:thin] [scrollbar-color:rgb(203_213_225)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent"
+                                className="min-h-[7.5rem] max-h-[min(42vh,20rem)] flex-1 overflow-y-auto overflow-x-hidden rounded-xl"
                             >
                                 <table className="w-full text-left border-collapse">
                                     <tbody className="bg-white">
@@ -175,9 +175,13 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                             </div>
                             {foodsScrollState.showBottomFade && (
                                 <div
-                                    className="pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-xl bg-gradient-to-t from-white via-white/90 to-transparent"
+                                    className="pointer-events-none absolute inset-x-0 bottom-0 h-14 rounded-b-xl bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-2"
                                     aria-hidden
-                                />
+                                >
+                                    <span className="text-xs text-gray-400 font-medium">
+                                        Scroll for more ↓
+                                    </span>
+                                </div>
                             )}
                         </div>
                     </div>
