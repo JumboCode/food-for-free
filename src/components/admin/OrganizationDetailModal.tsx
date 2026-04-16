@@ -386,7 +386,7 @@ export function OrganizationDetailModal({
                     <p className="mt-2 text-xs text-gray-500">
                         {isDistributorPartnerOrgName(organization.name)
                             ? 'Opens the full statistics overview (aggregated across all partners). Food For Free is the distributor, not a receiving organization in delivery data.'
-                            : 'Opens the overview dashboard filtered to this partner&apos;s delivery data.'}
+                            : 'Opens the overview dashboard filtered to this partner’s delivery data.'}
                     </p>
                 </div>
 
@@ -433,19 +433,22 @@ export function OrganizationDetailModal({
                             No users yet. Invite someone to get started.
                         </div>
                     ) : (
-                        <table className="w-full min-w-[520px] table-fixed divide-y divide-gray-200">
+                        <table className="w-full min-w-[580px] table-fixed divide-y divide-gray-200">
                             <thead className="sticky top-0 bg-gray-100">
                                 <tr>
-                                    <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Name
                                     </th>
-                                    <th className="w-[38%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[33%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Email
                                     </th>
-                                    <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                        Role
+                                    </th>
+                                    <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Status
                                     </th>
-                                    <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[19%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
                                         Actions
                                     </th>
                                 </tr>
@@ -467,6 +470,9 @@ export function OrganizationDetailModal({
                                             <span className="block truncate" title={user.email}>
                                                 {user.email}
                                             </span>
+                                        </td>
+                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
+                                            <RoleBadge role={user.role} />
                                         </td>
                                         <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
                                             <span
@@ -732,6 +738,22 @@ export function OrganizationDetailModal({
                 </div>
             )}
         </div>
+    );
+}
+
+function RoleBadge({ role }: { role?: string }) {
+    if (!role) return <span className="text-gray-400">—</span>;
+    const lower = role.toLowerCase();
+    const isAdmin = lower.includes('admin');
+    const label = isAdmin ? 'Admin' : 'Partner';
+    return (
+        <span
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+            }`}
+        >
+            {label}
+        </span>
     );
 }
 
