@@ -98,7 +98,7 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                     <X size={24} />
                 </button>
 
-                <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+                <CardContent className="flex min-h-0 flex-col overflow-hidden p-0">
                     {/* Header Section */}
                     <div className="px-8 sm:px-10 pt-5 pb-4 flex-shrink-0">
                         <h2 className="text-3xl font-bold text-gray-900 mb-1">Delivery Detail</h2>
@@ -140,7 +140,7 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                     </div>
 
                     {/* Scrollable Table Section */}
-                    <div className="px-8 sm:px-10 pb-8 flex-1 min-h-0 overflow-hidden flex flex-col">
+                    <div className="px-8 sm:px-10 pb-8 overflow-hidden">
                         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
                             <h3 className="text-gray-900 font-semibold">Foods Delivered:</h3>
                             {foodsScrollState.canScroll && !foodsScrollState.showBottomFade && (
@@ -150,10 +150,10 @@ const DeliveryDetailPopup: React.FC<DeliveryDetailPopupProps> = ({
                             )}
                         </div>
 
-                        <div className="relative flex min-h-0 flex-1 flex-col rounded-xl border border-gray-200 bg-white">
+                        <div className="relative rounded-xl border border-gray-200 bg-white">
                             <div
                                 ref={foodsScrollRef}
-                                className="min-h-[7.5rem] max-h-[min(42vh,20rem)] flex-1 overflow-y-auto overflow-x-hidden rounded-xl"
+                                className="max-h-[min(42vh,20rem)] overflow-y-auto overflow-x-hidden rounded-xl"
                             >
                                 <table className="w-full text-left border-collapse">
                                     <tbody className="bg-white">
