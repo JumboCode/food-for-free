@@ -129,11 +129,17 @@ export async function GET(request: NextRequest) {
                 }),
             });
         }
-        type DeliveryRow = { day: string; destination: string | null; totalPounds: number | null };
+        type DeliveryRow = {
+            day: string;
+            destination: string | null;
+            totalPounds: number | null;
+            householdId18: string | null;
+        };
         const rows = await prisma.$queryRaw<DeliveryRow[]>`
             SELECT
                 TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                 COALESCE(pt."organizationName", d."householdName") AS "destination",
+                d."householdId18" AS "householdId18",
                 SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
             FROM "AllInventoryTransactions" t
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
@@ -141,7 +147,7 @@ export async function GET(request: NextRequest) {
             LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
-            GROUP BY DATE_TRUNC('day', d."date"), COALESCE(pt."organizationName", d."householdName")
+            GROUP BY DATE_TRUNC('day', d."date"), d."householdId18", COALESCE(pt."organizationName", d."householdName")
             ORDER BY DATE_TRUNC('day', d."date") DESC
             LIMIT 10
         `;
@@ -150,11 +156,13 @@ export async function GET(request: NextRequest) {
             deliveries: rows.map(r => {
                 const day = r.day;
                 const destination = r.destination ?? null;
+                const householdId18 = r.householdId18 ?? null;
                 return {
-                    id: `${day}|${destination ?? ''}`,
+                    id: `${day}|${householdId18 ?? destination ?? ''}`,
                     date: `${day}T00:00:00.000Z`,
                     totalPounds: Math.round(Number(r.totalPounds ?? 0)),
                     destination,
+                    householdId18,
                 };
             }),
         });

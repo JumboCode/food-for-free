@@ -25,6 +25,7 @@ type DeliverySummaryItem = {
     date: Date;
     totalPounds: number;
     destination?: string | null;
+    householdId18?: string | null;
 };
 
 const formatDateParam = (d: Date) => {
@@ -158,11 +159,13 @@ const OverviewPageContent: React.FC = () => {
                         date: string;
                         totalPounds: number;
                         destination?: string | null;
+                        householdId18?: string | null;
                     }) => ({
                         id: d.id,
                         date: new Date(d.date),
                         totalPounds: d.totalPounds,
                         destination: d.destination ?? null,
+                        householdId18: d.householdId18 ?? null,
                     })
                 )
             );

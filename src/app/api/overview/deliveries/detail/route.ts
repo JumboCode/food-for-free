@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const dateParam = searchParams.get('date');
     const org = searchParams.get('org')?.trim() ?? '';
+    const householdId18Param = searchParams.get('householdId18')?.trim() ?? '';
 
     if (!dateParam || !org) {
         return NextResponse.json({ error: 'Missing date or org parameter' }, { status: 400 });
@@ -57,7 +58,9 @@ export async function GET(request: NextRequest) {
         const destinationPredicate =
             scope.kind === 'partner'
                 ? Prisma.sql`d."householdId18" = ${scope.partnerHouseholdId18}`
-                : Prisma.sql`d."householdName" ILIKE ${org}`;
+                : householdId18Param
+                  ? Prisma.sql`d."householdId18" = ${householdId18Param}`
+                  : Prisma.sql`d."householdName" ILIKE ${org}`;
 
         // Use pantry visit date (d.date) to match overview delivery day grouping.
         const foodRows = await prisma.$queryRaw<FoodRow[]>`
