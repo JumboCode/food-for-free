@@ -24,6 +24,25 @@ interface FoodTypesDonutChartProps {
     title?: string;
 }
 
+function formatLegendValue(value: number): string {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0';
+    if (Math.abs(n) < 1_000_000) return n.toLocaleString();
+    return new Intl.NumberFormat(undefined, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+    }).format(n);
+}
+
+function formatCompactValue(value: number): string {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0';
+    return new Intl.NumberFormat(undefined, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+    }).format(n);
+}
+
 const renderActiveShape = (props: SectorProps) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
     return (
@@ -82,8 +101,12 @@ export function FoodTypesDonutChart({
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
     const total = data.reduce((sum, d) => sum + d.value, 0);
+    const maxValue = data.reduce((max, d) => Math.max(max, Number(d.value) || 0), 0);
     const hasData = data.some(d => Number(d.value) > 0);
     const dataWithTotal = data.map(d => ({ ...d, total }));
+    const useCompactLegendNumbers = maxValue >= 1_000_000;
+    const centerTotalDisplay =
+        Math.abs(total) >= 1_000_000_000 ? formatCompactValue(total) : total.toLocaleString();
 
     // Remove tooltip fade logic
     return (
@@ -92,7 +115,7 @@ export function FoodTypesDonutChart({
                 {title}
             </h3>
             {hasData ? (
-                <div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 sm:flex-row sm:items-stretch sm:gap-4">
+                <div className="mt-1 flex min-h-0 flex-1 w-full flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-4">
                     <div className="relative h-[235px] w-full min-w-0 max-w-[235px] sm:h-[250px] sm:max-w-[250px] sm:self-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -131,8 +154,9 @@ export function FoodTypesDonutChart({
                                 <span
                                     className="mt-0.5 text-xs font-medium tabular-nums text-slate-700"
                                     style={{ opacity: 1 }}
+                                    title={`${total.toLocaleString()} lbs`}
                                 >
-                                    {total.toLocaleString()} lbs
+                                    {centerTotalDisplay} lbs
                                 </span>
                             </div>
                         </div>
@@ -156,8 +180,13 @@ export function FoodTypesDonutChart({
                                         </span>
                                     </div>
                                     <div className="shrink-0 whitespace-nowrap pl-2 text-right">
-                                        <span className="text-[11px] font-medium tabular-nums text-slate-600 sm:text-xs">
-                                            {item.value.toLocaleString()}
+                                        <span
+                                            className="text-[11px] font-medium tabular-nums text-slate-600 sm:text-xs"
+                                            title={Number(item.value).toLocaleString()}
+                                        >
+                                            {useCompactLegendNumbers
+                                                ? formatCompactValue(Number(item.value))
+                                                : formatLegendValue(Number(item.value))}
                                         </span>
                                         <span className="ml-0.5 text-[11px] text-slate-400 sm:text-xs">
                                             ({pct}%)
