@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
-import { Search, Loader2, Download, Filter, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, useId } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Search, Loader2, Download, ChevronDown, X } from 'lucide-react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import FilterBar from '@/components/ui/FilterBar';
+import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
+import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
 import {
     chipStyleFromDonutHex,
     foodTypeColorLookupFromComposition,
@@ -60,17 +63,10 @@ function formatLbsCell(value: number | null | undefined): string {
 
 type ProcessingFilterKey = 'minimal' | 'processed' | 'unspecified';
 
-const EMPTY_VALUE = '\u0000empty\u0000';
-
 function processingKey(m: boolean | null): ProcessingFilterKey {
     if (m === true) return 'minimal';
     if (m === false) return 'processed';
     return 'unspecified';
-}
-
-function normOptionalString(s: string | null | undefined): string {
-    const t = (s ?? '').trim();
-    return t === '' ? EMPTY_VALUE : t;
 }
 
 function csvEscapeCell(v: string | number): string {
@@ -100,13 +96,26 @@ const THEME_GREEN = '#B7D7BD';
 const THEME_ORANGE = '#FAC87D';
 const ROWS_PER_PAGE = 25;
 
+type PartnerOrgCard = {
+    id: number;
+    name: string;
+    householdId18?: string | null;
+    location: string;
+    type: string;
+};
+
 function DistributionContent() {
+    const foodSearchId = useId();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [sessionCtx, setSessionCtx] = useState<{ ready: boolean; isAdmin: boolean }>({
         ready: false,
         isAdmin: false,
     });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
+    const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -119,10 +128,13 @@ function DistributionContent() {
     );
     const [availableProductTypes, setAvailableProductTypes] = useState<string[]>([]);
 
-    const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-    const filterPanelRef = useRef<HTMLDivElement>(null);
+    const [programDropdownOpen, setProgramDropdownOpen] = useState(false);
+    const [foodTypeDropdownOpen, setFoodTypeDropdownOpen] = useState(false);
+    const [processingDropdownOpen, setProcessingDropdownOpen] = useState(false);
+    const programDropdownRef = useRef<HTMLDivElement>(null);
+    const foodTypeDropdownRef = useRef<HTMLDivElement>(null);
+    const processingDropdownRef = useRef<HTMLDivElement>(null);
     const exportPanelRef = useRef<HTMLDivElement>(null);
-    const [filterOrgHouseholdIds, setFilterOrgHouseholdIds] = useState<string[]>([]);
     const [filterProductTypes, setFilterProductTypes] = useState<string[]>([]);
     const [filterProcessing, setFilterProcessing] = useState<ProcessingFilterKey[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
@@ -143,6 +155,63 @@ function DistributionContent() {
         };
     }, []);
 
+    // Read org from URL on mount (for deep-linking)
+    useEffect(() => {
+        const householdId18 = searchParams.get('householdId18')?.trim();
+        if (householdId18) {
+            setSelectedOrg({ name: 'Selected organization', householdId18 });
+        }
+    }, [searchParams, setSelectedOrg]);
+
+    // Fetch partner org list for admin org selector
+    useEffect(() => {
+        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        let cancelled = false;
+        fetch('/api/overview/partners')
+            .then(res => (res.ok ? res.json() : Promise.reject()))
+            .then((d: { partners?: PartnerOrgCard[] }) => {
+                if (!cancelled)
+                    setPartnerOrganizations(Array.isArray(d.partners) ? d.partners : []);
+            })
+            .catch(() => {
+                if (!cancelled) setPartnerOrganizations([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [sessionCtx.ready, sessionCtx.isAdmin]);
+
+    // Resolve org name from partner list once loaded
+    useEffect(() => {
+        if (
+            !selectedOrg ||
+            selectedOrg.name !== 'Selected organization' ||
+            partnerOrganizations.length === 0
+        )
+            return;
+        const match = partnerOrganizations.find(p => p.householdId18 === selectedOrg.householdId18);
+        if (match) setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
+    }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
+
+    // Sync selected org into URL
+    const handleSelectOrg = (org: { name: string; householdId18?: string | null }) => {
+        setSelectedOrg(org);
+        const params = new URLSearchParams(searchParams.toString());
+        if (org.householdId18) {
+            params.set('householdId18', org.householdId18);
+        } else {
+            params.delete('householdId18');
+        }
+        router.push(`?${params.toString()}`);
+    };
+
+    const handleClearOrg = () => {
+        clearSelectedOrg();
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('householdId18');
+        router.push(`?${params.toString()}`);
+    };
+
     useEffect(() => {
         const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
         return () => clearTimeout(id);
@@ -155,21 +224,24 @@ function DistributionContent() {
         dateRange.start,
         dateRange.end,
         filterPrograms,
-        filterOrgHouseholdIds,
+        selectedOrg,
         filterProductTypes,
         filterProcessing,
     ]);
 
     useEffect(() => {
-        if (!filterPanelOpen) return;
         const onDoc = (e: MouseEvent) => {
-            if (filterPanelRef.current && !filterPanelRef.current.contains(e.target as Node)) {
-                setFilterPanelOpen(false);
-            }
+            const t = e.target as Node;
+            if (programDropdownRef.current && !programDropdownRef.current.contains(t))
+                setProgramDropdownOpen(false);
+            if (foodTypeDropdownRef.current && !foodTypeDropdownRef.current.contains(t))
+                setFoodTypeDropdownOpen(false);
+            if (processingDropdownRef.current && !processingDropdownRef.current.contains(t))
+                setProcessingDropdownOpen(false);
         };
         document.addEventListener('mousedown', onDoc);
         return () => document.removeEventListener('mousedown', onDoc);
-    }, [filterPanelOpen]);
+    }, []);
 
     useEffect(() => {
         if (!exportMenuOpen) return;
@@ -202,34 +274,16 @@ function DistributionContent() {
         return () => ac.abort();
     }, []);
 
-    const filterOptions = useMemo(() => {
-        const orgs = new Map<string, string>();
-        const productTypesByKey = new Map<string, string>();
-        for (const label of availableProductTypes) {
-            productTypesByKey.set(label.toLowerCase(), label);
-        }
-        const inventoryTypes = new Set<string>();
-        const foodRescue = new Set<string>();
-        const sources = new Set<string>();
+    const availableProductTypesSorted = useMemo(() => {
+        const byKey = new Map<string, string>();
+        for (const label of availableProductTypes) byKey.set(label.toLowerCase(), label);
         for (const row of data) {
-            orgs.set(row.householdId18, row.organizationName);
-            const label = foodTypeLabelForRow(row.productType);
-            productTypesByKey.set(label.trim().toLowerCase(), label.trim());
-            inventoryTypes.add((row.inventoryType ?? '').trim() || EMPTY_VALUE);
-            foodRescue.add(normOptionalString(row.foodRescueProgram));
-            sources.add(normOptionalString(row.source));
+            const label = foodTypeLabelForRow(row.productType).trim();
+            byKey.set(label.toLowerCase(), label);
         }
-        const sortStr = (a: string, b: string) =>
-            a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
-        return {
-            orgs: [...orgs.entries()]
-                .map(([householdId18, name]) => ({ householdId18, name }))
-                .sort((a, b) => sortStr(a.name, b.name)),
-            productTypes: [...productTypesByKey.values()].sort(sortStr),
-            inventoryTypes: [...inventoryTypes].sort(sortStr),
-            foodRescue: [...foodRescue].sort(sortStr),
-            sources: [...sources].sort(sortStr),
-        };
+        return [...byKey.values()].sort((a, b) =>
+            a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
+        );
     }, [data, availableProductTypes]);
 
     const filteredData = useMemo(() => {
@@ -239,29 +293,49 @@ function DistributionContent() {
         return data.filter(row => {
             const prog = rowProgram(row);
             if (filterPrograms.length > 0 && !filterPrograms.includes(prog)) return false;
-            if (
-                filterOrgHouseholdIds.length > 0 &&
-                !filterOrgHouseholdIds.includes(row.householdId18)
-            ) {
-                return false;
-            }
             const ptKey = foodTypeLabelForRow(row.productType).trim().toLowerCase();
             if (filterProductTypes.length > 0 && !selectedProductTypeKeys.has(ptKey)) return false;
             const pk = processingKey(row.minimallyProcessedFood);
             if (filterProcessing.length > 0 && !filterProcessing.includes(pk)) return false;
             return true;
         });
-    }, [data, filterPrograms, filterOrgHouseholdIds, filterProductTypes, filterProcessing]);
+    }, [data, filterPrograms, filterProductTypes, filterProcessing]);
+
+    // Human-readable label for each dropdown button when filters are active
+    const programLabel =
+        filterPrograms.length === 0
+            ? null
+            : filterPrograms.length === 2
+              ? 'Both programs'
+              : filterPrograms[0] === 'bulk_rescue'
+                ? 'Bulk & Rescue'
+                : 'Just Eats';
+
+    const foodTypeLabel =
+        filterProductTypes.length === 0
+            ? null
+            : filterProductTypes.length === 1
+              ? filterProductTypes[0]
+              : `${filterProductTypes.length} types`;
+
+    const processingLabel =
+        filterProcessing.length === 0
+            ? null
+            : filterProcessing.length === 1
+              ? (
+                    {
+                        minimal: 'Minimally Processed',
+                        processed: 'Processed',
+                        unspecified: 'Not Specified',
+                    } as const
+                )[filterProcessing[0]]
+              : `${filterProcessing.length} selected`;
 
     const activeAttributeFilterCount =
-        filterPrograms.length +
-        filterOrgHouseholdIds.length +
-        filterProductTypes.length +
-        filterProcessing.length;
+        filterPrograms.length + filterProductTypes.length + filterProcessing.length;
 
     const clearAttributeFilters = () => {
         setFilterPrograms([]);
-        setFilterOrgHouseholdIds([]);
         setFilterProductTypes([]);
         setFilterProcessing([]);
     };
@@ -442,6 +516,8 @@ thead th{background:#f3f4f6;font-weight:600;}
                     end: dateRange.end.toISOString(),
                     search: debouncedSearch,
                 });
+                if (selectedOrg?.householdId18)
+                    deliveriesParams.set('householdId18', selectedOrg.householdId18);
                 const res = await fetch(
                     `/api/distribution/deliveries?${deliveriesParams.toString()}`,
                     {
@@ -461,7 +537,7 @@ thead th{background:#f3f4f6;font-weight:600;}
         }
         void fetchDeliveries();
         return () => ac.abort();
-    }, [dateRange.start, dateRange.end, debouncedSearch]);
+    }, [dateRange.start, dateRange.end, debouncedSearch, selectedOrg]);
 
     const totalPages = Math.max(1, Math.ceil(filteredData.length / ROWS_PER_PAGE));
     const currentPageSafe = Math.min(currentPage, totalPages);
@@ -483,262 +559,374 @@ thead th{background:#f3f4f6;font-weight:600;}
         <>
             <div className="min-h-screen bg-[#FAF9F7]">
                 <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-8 py-8 sm:py-10">
-                    <div className="mb-6 sm:mb-4">
+                    <div className="mb-3 sm:mb-2">
                         <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                             Distribution
                         </h1>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Past deliveries include Bulk &amp; Rescue inventory lines and Just Eats
-                            box deliveries (1 unit, 25 lbs each). Search matches organization, food,
-                            inventory type, and tags. Use Filters to narrow by program,
-                            organization, food type, processing, inventory type, food rescue
-                            program, and source. Export CSV reflects the table (date range, search,
-                            and attribute filters. Choose CSV, Excel, or PDF from Export.
-                        </p>
+                        {selectedOrg ? (
+                            <p className="mt-1 text-sm text-gray-600">
+                                Showing deliveries for:{' '}
+                                <span className="font-medium text-gray-900">
+                                    {selectedOrg.name}
+                                </span>
+                                <span className="mx-2 text-gray-300">·</span>
+                                <button
+                                    type="button"
+                                    onClick={handleClearOrg}
+                                    className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                >
+                                    View all organizations
+                                </button>
+                            </p>
+                        ) : (
+                            <p className="mt-1 text-sm text-gray-500">
+                                Line-level delivery records across all programs.
+                            </p>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative min-w-[12rem] w-full max-w-md sm:w-72 sm:max-w-none sm:flex-none">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                placeholder="Search org, food, Just Eats, inventory type, tags…"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
-                            />
-                        </div>
-                        <div className="relative inline-block shrink-0" ref={filterPanelRef}>
-                            <button
-                                type="button"
-                                onClick={() => setFilterPanelOpen(o => !o)}
-                                className="h-10 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
-                                aria-expanded={filterPanelOpen}
-                                aria-haspopup="dialog"
-                            >
-                                <Filter className="h-4 w-4 text-gray-600" aria-hidden />
-                                Filters
-                                {activeAttributeFilterCount > 0 ? (
-                                    <span className="min-w-[1.25rem] rounded-full bg-[#B7D7BD] px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums text-gray-900">
-                                        {activeAttributeFilterCount}
-                                    </span>
+                    <div className="flex flex-col gap-3">
+                        {/* Row 1: searches */}
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            {sessionCtx.isAdmin ? (
+                                <SearchBarOverview
+                                    organizations={partnerOrganizations}
+                                    onSelectPartner={handleSelectOrg}
+                                    wrapperClassName="w-52 shrink-0 sm:w-56"
+                                    placeholder="Search organizations"
+                                />
+                            ) : null}
+                            <div className="relative w-40 shrink-0 sm:w-44">
+                                <Search
+                                    className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                                    aria-hidden
+                                />
+                                <input
+                                    id={foodSearchId}
+                                    type="text"
+                                    placeholder="Search food"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                                    autoComplete="off"
+                                />
+                                {searchTerm.trim().length > 0 ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                                        aria-label="Clear food search"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
                                 ) : null}
-                            </button>
-                            {filterPanelOpen ? (
-                                <div
-                                    className="absolute left-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),22rem)] sm:w-96 max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl ring-1 ring-black/5"
-                                    style={{
-                                        maxHeight: 'min(70vh, 32rem)',
-                                    }}
-                                    role="dialog"
-                                    aria-label="Attribute filters"
+                            </div>
+                        </div>
+
+                        {/* Row 2: filters */}
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2">
+                            {/* Program dropdown */}
+                            <div
+                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
+                                    filterPrograms.length > 0
+                                        ? 'border-[#9fc5a9]'
+                                        : 'border-gray-200'
+                                }`}
+                                ref={programDropdownRef}
+                            >
+                                <button
+                                    type="button"
+                                    title={
+                                        filterPrograms.length > 0
+                                            ? 'Change program filter'
+                                            : undefined
+                                    }
+                                    onClick={() => setProgramDropdownOpen(o => !o)}
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                        filterPrograms.length > 0
+                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                    }`}
                                 >
-                                    <div className="mb-3 flex items-center justify-between gap-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Filter by attribute
-                                        </p>
-                                        {activeAttributeFilterCount > 0 ? (
+                                    <span className="min-w-0 truncate">
+                                        {programLabel ?? 'Program'}
+                                    </span>
+                                    {filterPrograms.length === 0 ? (
+                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                    ) : null}
+                                </button>
+                                {filterPrograms.length > 0 ? (
+                                    <button
+                                        type="button"
+                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                        aria-label="Clear program filter"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setFilterPrograms([]);
+                                            setProgramDropdownOpen(false);
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                    </button>
+                                ) : null}
+                                {programDropdownOpen && (
+                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-44 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                        {filterPrograms.length > 0 && (
                                             <button
                                                 type="button"
-                                                onClick={clearAttributeFilters}
-                                                className="text-xs font-medium text-[#1C5E2C] underline underline-offset-2 hover:text-[#164a22]"
+                                                onClick={() => setFilterPrograms([])}
+                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
                                             >
-                                                Clear all
+                                                Clear
                                             </button>
-                                        ) : null}
-                                    </div>
-                                    <p className="mb-3 text-xs text-gray-500">
-                                        Empty sections mean &quot;any&quot;; checked values are
-                                        combined with OR within a group and AND across groups.
-                                    </p>
-                                    <div className="space-y-4">
-                                        {/* Program */}
-                                        <div>
-                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
-                                                Program
-                                            </p>
-                                            <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/80 p-2">
-                                                {(
-                                                    [
-                                                        ['bulk_rescue', 'Bulk & Rescue'],
-                                                        ['just_eats', 'Just Eats'],
-                                                    ] as const
-                                                ).map(([key, label]) => (
-                                                    <label
-                                                        key={key}
-                                                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-800"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                            checked={filterPrograms.includes(key)}
-                                                            onChange={() =>
-                                                                setFilterPrograms(prev =>
-                                                                    toggleProgramList(prev, key)
-                                                                )
-                                                            }
-                                                        />
-                                                        <span className="min-w-0 break-words">
-                                                            {label}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {sessionCtx.isAdmin && (
-                                            <div>
-                                                <p className="mb-1.5 text-xs font-medium text-gray-700">
-                                                    Organization
-                                                </p>
-                                                <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
-                                                    {filterOptions.orgs.length === 0 ? (
-                                                        <p className="text-xs text-gray-400">
-                                                            No values
-                                                        </p>
-                                                    ) : (
-                                                        filterOptions.orgs.map(org => (
-                                                            <label
-                                                                key={org.householdId18}
-                                                                className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                                    checked={filterOrgHouseholdIds.includes(
-                                                                        org.householdId18
-                                                                    )}
-                                                                    onChange={() =>
-                                                                        setFilterOrgHouseholdIds(
-                                                                            prev =>
-                                                                                toggleInList(
-                                                                                    prev,
-                                                                                    org.householdId18
-                                                                                )
-                                                                        )
-                                                                    }
-                                                                />
-                                                                <span className="min-w-0 break-words">
-                                                                    {org.name}
-                                                                </span>
-                                                            </label>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
                                         )}
-
-                                        {/* Food type */}
-                                        <div>
-                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
-                                                Food type
-                                            </p>
-                                            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
-                                                {filterOptions.productTypes.map(pt => (
-                                                    <label
-                                                        key={pt}
-                                                        className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                            checked={filterProductTypes.includes(
-                                                                pt
-                                                            )}
-                                                            onChange={() =>
-                                                                setFilterProductTypes(prev =>
-                                                                    toggleInList(prev, pt)
-                                                                )
-                                                            }
-                                                        />
-                                                        <span className="min-w-0 break-words">
-                                                            {pt}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Processing */}
-                                        <div>
-                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
-                                                Processing
-                                            </p>
-                                            <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/80 p-2">
-                                                {(
-                                                    [
-                                                        ['minimal', 'Minimally Processed'],
-                                                        ['processed', 'Processed'],
-                                                        ['unspecified', 'Not Specified'],
-                                                    ] as const
-                                                ).map(([key, label]) => (
-                                                    <label
-                                                        key={key}
-                                                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-800"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                            checked={filterProcessing.includes(key)}
-                                                            onChange={() =>
-                                                                setFilterProcessing(prev =>
-                                                                    toggleProcessingList(prev, key)
-                                                                )
-                                                            }
-                                                        />
-                                                        <span className="min-w-0 break-words">
-                                                            {label}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        {(
+                                            [
+                                                ['bulk_rescue', 'Bulk & Rescue'],
+                                                ['just_eats', 'Just Eats'],
+                                            ] as const
+                                        ).map(([key, label]) => (
+                                            <label
+                                                key={key}
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    checked={filterPrograms.includes(key)}
+                                                    onChange={() =>
+                                                        setFilterPrograms(prev =>
+                                                            toggleProgramList(prev, key)
+                                                        )
+                                                    }
+                                                />
+                                                {label}
+                                            </label>
+                                        ))}
                                     </div>
-                                </div>
-                            ) : null}
-                        </div>
-                        <div className="relative inline-block shrink-0" ref={exportPanelRef}>
-                            <button
-                                type="button"
-                                onClick={() => setExportMenuOpen(open => !open)}
-                                disabled={exporting}
-                                className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
-                                style={{ backgroundColor: THEME_GREEN }}
-                                aria-expanded={exportMenuOpen}
-                                aria-haspopup="menu"
-                            >
-                                {exporting ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Download className="w-4 h-4" />
                                 )}
-                                Export
-                                <ChevronDown className="w-4 h-4 text-gray-700" />
-                            </button>
-                            {exportMenuOpen ? (
-                                <div
-                                    className="absolute right-0 top-full z-50 mt-2 min-w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5"
-                                    role="menu"
-                                    aria-label="Export format"
+                            </div>
+
+                            {/* Food type dropdown */}
+                            <div
+                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
+                                    filterProductTypes.length > 0
+                                        ? 'border-[#9fc5a9]'
+                                        : 'border-gray-200'
+                                }`}
+                                ref={foodTypeDropdownRef}
+                            >
+                                <button
+                                    type="button"
+                                    title={
+                                        filterProductTypes.length > 0
+                                            ? 'Change food type filter'
+                                            : undefined
+                                    }
+                                    onClick={() => setFoodTypeDropdownOpen(o => !o)}
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                        filterProductTypes.length > 0
+                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                    }`}
                                 >
-                                    {[
-                                        { key: 'csv', label: 'CSV (.csv)' },
-                                        { key: 'excel', label: 'Excel (.xls)' },
-                                        { key: 'pdf', label: 'PDF (printable)' },
-                                    ].map(option => (
-                                        <button
-                                            key={option.key}
-                                            type="button"
-                                            onClick={() =>
-                                                handleExport(option.key as 'csv' | 'excel' | 'pdf')
-                                            }
-                                            className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-800 transition-colors hover:bg-gray-50"
-                                            role="menuitem"
+                                    <span className="min-w-0 truncate">
+                                        {foodTypeLabel ?? 'Food Type'}
+                                    </span>
+                                    {filterProductTypes.length === 0 ? (
+                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                    ) : null}
+                                </button>
+                                {filterProductTypes.length > 0 ? (
+                                    <button
+                                        type="button"
+                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                        aria-label="Clear food type filter"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setFilterProductTypes([]);
+                                            setFoodTypeDropdownOpen(false);
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                    </button>
+                                ) : null}
+                                {foodTypeDropdownOpen && (
+                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-52 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                        {filterProductTypes.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFilterProductTypes([])}
+                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
+                                            >
+                                                Clear
+                                            </button>
+                                        )}
+                                        {availableProductTypesSorted.map(pt => (
+                                            <label
+                                                key={pt}
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    checked={filterProductTypes.includes(pt)}
+                                                    onChange={() =>
+                                                        setFilterProductTypes(prev =>
+                                                            toggleInList(prev, pt)
+                                                        )
+                                                    }
+                                                />
+                                                {pt}
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Processing dropdown */}
+                            <div
+                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
+                                    filterProcessing.length > 0
+                                        ? 'border-[#9fc5a9]'
+                                        : 'border-gray-200'
+                                }`}
+                                ref={processingDropdownRef}
+                            >
+                                <button
+                                    type="button"
+                                    title={
+                                        filterProcessing.length > 0
+                                            ? 'Change processing filter'
+                                            : undefined
+                                    }
+                                    onClick={() => setProcessingDropdownOpen(o => !o)}
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                        filterProcessing.length > 0
+                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <span className="min-w-0 truncate">
+                                        {processingLabel ?? 'Processing'}
+                                    </span>
+                                    {filterProcessing.length === 0 ? (
+                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                    ) : null}
+                                </button>
+                                {filterProcessing.length > 0 ? (
+                                    <button
+                                        type="button"
+                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                        aria-label="Clear processing filter"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setFilterProcessing([]);
+                                            setProcessingDropdownOpen(false);
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                    </button>
+                                ) : null}
+                                {processingDropdownOpen && (
+                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-52 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                        {filterProcessing.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFilterProcessing([])}
+                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
+                                            >
+                                                Clear
+                                            </button>
+                                        )}
+                                        {(
+                                            [
+                                                ['minimal', 'Minimally Processed'],
+                                                ['processed', 'Processed'],
+                                                ['unspecified', 'Not Specified'],
+                                            ] as const
+                                        ).map(([key, label]) => (
+                                            <label
+                                                key={key}
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    checked={filterProcessing.includes(key)}
+                                                    onChange={() =>
+                                                        setFilterProcessing(prev =>
+                                                            toggleProcessingList(prev, key)
+                                                        )
+                                                    }
+                                                />
+                                                {label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {activeAttributeFilterCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={clearAttributeFilters}
+                                    className="h-10 shrink-0 px-2 text-sm font-medium text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
+                            <div className="ml-auto flex shrink-0 items-center">
+                                <div
+                                    className="relative inline-block shrink-0"
+                                    ref={exportPanelRef}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => setExportMenuOpen(open => !open)}
+                                        disabled={exporting}
+                                        className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
+                                        style={{ backgroundColor: THEME_GREEN }}
+                                        aria-expanded={exportMenuOpen}
+                                        aria-haspopup="menu"
+                                    >
+                                        {exporting ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Download className="w-4 h-4" />
+                                        )}
+                                        Export
+                                        <ChevronDown className="w-4 h-4 text-gray-700" />
+                                    </button>
+                                    {exportMenuOpen ? (
+                                        <div
+                                            className="absolute left-0 top-full z-100 mt-2 min-w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-xl ring-1 ring-black/5"
+                                            role="menu"
+                                            aria-label="Export format"
                                         >
-                                            {option.label}
-                                        </button>
-                                    ))}
+                                            {[
+                                                { key: 'csv', label: 'CSV (.csv)' },
+                                                { key: 'excel', label: 'Excel (.xls)' },
+                                                { key: 'pdf', label: 'PDF (printable)' },
+                                            ].map(option => (
+                                                <button
+                                                    key={option.key}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleExport(
+                                                            option.key as 'csv' | 'excel' | 'pdf'
+                                                        )
+                                                    }
+                                                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-800 transition-colors hover:bg-gray-50"
+                                                    role="menuitem"
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </div>
-                            ) : null}
+                            </div>
                         </div>
                     </div>
 

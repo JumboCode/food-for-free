@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Search } from 'lucide-react';
 
 import PartnerCard from './PartnerCard';
@@ -14,9 +14,20 @@ type PartnerCardType = {
 type SearchBarProps = {
     organizations: PartnerCardType[];
     onSelectPartner?: (partner: { name: string; householdId18?: string | null }) => void;
+    wrapperClassName?: string;
+    /** Visible label above the field (helps distinguish from other search boxes). */
+    label?: string;
+    placeholder?: string;
 };
 
-const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPartner }) => {
+const SearchBarOverview: React.FC<SearchBarProps> = ({
+    organizations,
+    onSelectPartner,
+    wrapperClassName,
+    label,
+    placeholder = 'Search organizations',
+}) => {
+    const inputId = useId();
     const [searchInput, setSearchInput] = useState<string>('');
     const [filteredResults, setFilteredResults] = useState<PartnerCardType[]>([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
@@ -66,24 +77,35 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
     }, [searchInput, organizations]);
 
     return (
-        <div className="w-full max-w-[17.5rem] sm:max-w-sm">
+        <div className={wrapperClassName ?? 'w-full max-w-[17.5rem] sm:max-w-sm'}>
             {isAdmin && (
                 <div className="search-container relative w-full">
-                    <input
-                        type="text"
-                        placeholder="Search organizations"
-                        value={searchInput}
-                        className="w-full rounded-md border border-gray-400/70 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 shadow-sm ring-1 ring-black/[0.03] placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#1C5E2C]/40"
-                        onChange={handleSearchChange}
-                        onClick={handleInputClick}
-                        onFocus={handleInputClick}
-                        aria-label="Search organizations"
-                        autoComplete="off"
-                    />
-                    <Search
-                        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                        aria-hidden
-                    />
+                    {label ? (
+                        <label
+                            htmlFor={inputId}
+                            className="mb-1 block text-xs font-semibold text-gray-700"
+                        >
+                            {label}
+                        </label>
+                    ) : null}
+                    <div className="relative w-full">
+                        <Search
+                            className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400"
+                            aria-hidden
+                        />
+                        <input
+                            id={inputId}
+                            type="text"
+                            placeholder={placeholder}
+                            value={searchInput}
+                            className="h-10 w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                            onChange={handleSearchChange}
+                            onClick={handleInputClick}
+                            onFocus={handleInputClick}
+                            aria-label={label ? undefined : placeholder}
+                            autoComplete="off"
+                        />
+                    </div>
                     {isDropdownOpen && filteredResults.length > 0 && (
                         <div
                             className="absolute left-0 right-0 top-full z-[100] mt-1 max-h-60 divide-y divide-stone-200/90 overflow-y-auto rounded-md border border-stone-300/80 bg-[#FAF9F7] shadow-lg ring-1 ring-stone-900/5"

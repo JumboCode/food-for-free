@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
@@ -10,6 +10,7 @@ import DeliverySummary from '@/components/ui/DeliverySummary';
 import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
+import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
@@ -63,7 +64,7 @@ const OverviewPageContent: React.FC = () => {
     const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
     const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
-    const [selectedPartner, setSelectedPartner] = useState<SelectedPartner | null>(null);
+    const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
 
     useEffect(() => {
         let cancelled = false;
@@ -80,12 +81,6 @@ const OverviewPageContent: React.FC = () => {
                     const partnerName = d.partnerOrganizationName ?? null;
                     const partnerHouseholdId18 = d.partnerHouseholdId18 ?? null;
                     setSessionCtx({ ready: true, isAdmin, partnerName, partnerHouseholdId18 });
-                    if (!isAdmin && partnerName) {
-                        setSelectedPartner({
-                            name: partnerName,
-                            householdId18: partnerHouseholdId18,
-                        });
-                    }
                 }
             )
             .catch(() => {
@@ -106,12 +101,9 @@ const OverviewPageContent: React.FC = () => {
         if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
         const householdId18 = searchParams.get('householdId18')?.trim();
         if (householdId18) {
-            setSelectedPartner({
-                name: 'Selected organization',
-                householdId18,
-            });
+            setSelectedOrg({ name: 'Selected organization', householdId18 });
         }
-    }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams]);
+    }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams, setSelectedOrg]);
 
     useEffect(() => {
         if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
@@ -131,22 +123,33 @@ const OverviewPageContent: React.FC = () => {
     }, [sessionCtx.ready, sessionCtx.isAdmin]);
 
     useEffect(() => {
-        if (!selectedPartner || selectedPartner.householdId18 || partnerOrganizations.length === 0)
-            return;
+        if (!selectedOrg || selectedOrg.householdId18 || partnerOrganizations.length === 0) return;
         const match = partnerOrganizations.find(
-            partner => partner.name.toLowerCase() === selectedPartner.name.toLowerCase()
+            partner => partner.name.toLowerCase() === selectedOrg.name.toLowerCase()
         );
         if (match?.householdId18) {
-            setSelectedPartner(current =>
+            setSelectedOrg(current =>
                 current && !current.householdId18
                     ? { ...current, householdId18: match.householdId18 }
                     : current
             );
         }
-    }, [partnerOrganizations, selectedPartner]);
+    }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
 
     const isPartnerDashboard =
         sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
+    const selectedPartner: SelectedPartner | null = useMemo(
+        () =>
+            isPartnerDashboard
+                ? sessionCtx.partnerName
+                    ? {
+                          name: sessionCtx.partnerName,
+                          householdId18: sessionCtx.partnerHouseholdId18,
+                      }
+                    : null
+                : selectedOrg,
+        [isPartnerDashboard, selectedOrg, sessionCtx.partnerHouseholdId18, sessionCtx.partnerName]
+    );
 
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
 
@@ -256,7 +259,7 @@ const OverviewPageContent: React.FC = () => {
                                 <span className="mx-2 text-gray-300">·</span>
                                 <button
                                     type="button"
-                                    onClick={() => setSelectedPartner(null)}
+                                    onClick={clearSelectedOrg}
                                     className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
                                 >
                                     View all organizations
@@ -268,7 +271,7 @@ const OverviewPageContent: React.FC = () => {
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
-                                onSelectPartner={partner => setSelectedPartner(partner)}
+                                onSelectPartner={partner => setSelectedOrg(partner)}
                             />
                         </div>
                     ) : null}
@@ -402,7 +405,11 @@ const OverviewPageContent: React.FC = () => {
                                     />
                                     <div className="flex justify-end mt-4">
                                         <Link
-                                            href="/distribution"
+                                            href={
+                                                selectedPartner?.householdId18
+                                                    ? `/distribution?householdId18=${encodeURIComponent(selectedPartner.householdId18)}`
+                                                    : '/distribution'
+                                            }
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
                                             style={{ backgroundColor: THEME_ORANGE }}
                                         >
