@@ -41,8 +41,6 @@ const formatDateParam = (d: Date) => {
     return `${y}-${m}-${day}`;
 };
 
-const THEME_ORANGE = '#FAC87D';
-
 const OverviewPageContent: React.FC = () => {
     const searchParams = useSearchParams();
     const [sessionCtx, setSessionCtx] = useState<{
@@ -413,7 +411,7 @@ const OverviewPageContent: React.FC = () => {
                                                     : '/distribution'
                                             }
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
-                                            style={{ backgroundColor: THEME_ORANGE }}
+                                            style={{ backgroundColor: 'var(--fff-orange)' }}
                                         >
                                             See full distribution history
                                         </Link>

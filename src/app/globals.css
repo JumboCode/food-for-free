@@ -45,6 +45,9 @@
 
 :root {
     --radius: 0.625rem;
+    --fff-orange: #fac87d;
+    --fff-orange-soft: #fef8ed;
+    --fff-green: #b7d7bd;
     --background: oklch(1 0 0);
     --foreground: oklch(0.13 0.028 261.692);
     --card: oklch(1 0 0);
@@ -125,14 +128,14 @@ body {
 
 /* Calendar picker theme (dashboard orange #FAC87D) */
 .rdp-root {
-    --rdp-accent-color: #fac87d;
-    --rdp-accent-background-color: #fef8ed;
+    --rdp-accent-color: var(--fff-orange);
+    --rdp-accent-background-color: var(--fff-orange-soft);
 }
 
 /* Compact calendar in picker dialog – force orange so it wins over library default */
 .calendar-picker-compact .rdp-root {
-    --rdp-accent-color: #fac87d !important;
-    --rdp-accent-background-color: #fef8ed !important;
+    --rdp-accent-color: var(--fff-orange) !important;
+    --rdp-accent-background-color: var(--fff-orange-soft) !important;
     --rdp-day-height: 34px;
     --rdp-day-width: 34px;
     --rdp-day_button-height: 32px;

@@ -92,8 +92,6 @@ function toggleProcessingList(list: ProcessingFilterKey[], value: ProcessingFilt
     return list.includes(value) ? list.filter(x => x !== value) : [...list, value];
 }
 
-const THEME_GREEN = '#B7D7BD';
-const THEME_ORANGE = '#FAC87D';
 const ROWS_PER_PAGE = 25;
 
 type PartnerOrgCard = {
@@ -609,7 +607,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                     placeholder="Search food"
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-(--fff-green) focus:outline-none focus:ring-2 focus:ring-(--fff-green)"
                                     autoComplete="off"
                                 />
                                 {searchTerm.trim().length > 0 ? (
@@ -888,7 +886,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         onClick={() => setExportMenuOpen(open => !open)}
                                         disabled={exporting}
                                         className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
-                                        style={{ backgroundColor: THEME_GREEN }}
+                                        style={{ backgroundColor: 'var(--fff-green)' }}
                                         aria-expanded={exportMenuOpen}
                                         aria-haspopup="menu"
                                     >
@@ -1046,7 +1044,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                                     className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border whitespace-nowrap"
                                                                     style={{
                                                                         backgroundColor:
-                                                                            THEME_ORANGE,
+                                                                            'var(--fff-orange)',
                                                                         borderColor: '#e8b85a',
                                                                         color: '#1f2937',
                                                                     }}
@@ -1118,7 +1116,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         onClick={() => setCurrentPage(page)}
                                         className={`h-9 min-w-9 px-2 rounded-md border text-sm ${
                                             page === currentPageSafe
-                                                ? 'bg-[#B7D7BD] border-[#9fc5a9] text-gray-900'
+                                                ? 'bg-(--fff-green) border-[#9fc5a9] text-gray-900'
                                                 : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                                         }`}
                                     >
