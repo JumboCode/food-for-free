@@ -272,6 +272,8 @@ const OverviewPageContent: React.FC = () => {
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
                                 onSelectPartner={partner => setSelectedOrg(partner)}
+                                selectedPartner={selectedPartner}
+                                onClearPartner={clearSelectedOrg}
                             />
                         </div>
                     ) : null}

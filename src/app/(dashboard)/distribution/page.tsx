@@ -592,6 +592,8 @@ thead th{background:#f3f4f6;font-weight:600;}
                                 <SearchBarOverview
                                     organizations={partnerOrganizations}
                                     onSelectPartner={handleSelectOrg}
+                                    selectedPartner={selectedOrg}
+                                    onClearPartner={handleClearOrg}
                                     wrapperClassName="w-52 shrink-0 sm:w-56"
                                     placeholder="Search organizations"
                                 />

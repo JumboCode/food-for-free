@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import PartnerCard from './PartnerCard';
 
@@ -14,6 +14,8 @@ type PartnerCardType = {
 type SearchBarProps = {
     organizations: PartnerCardType[];
     onSelectPartner?: (partner: { name: string; householdId18?: string | null }) => void;
+    selectedPartner?: { name: string; householdId18?: string | null } | null;
+    onClearPartner?: () => void;
     wrapperClassName?: string;
     /** Visible label above the field (helps distinguish from other search boxes). */
     label?: string;
@@ -23,6 +25,8 @@ type SearchBarProps = {
 const SearchBarOverview: React.FC<SearchBarProps> = ({
     organizations,
     onSelectPartner,
+    selectedPartner,
+    onClearPartner,
     wrapperClassName,
     label,
     placeholder = 'Search organizations',
@@ -43,6 +47,7 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchInput(event.target.value);
     };
+    const displayValue = searchInput || selectedPartner?.name || '';
 
     const handlePartnerSelect = (partner: { name: string; householdId18?: string | null }) => {
         onSelectPartner?.(partner);
@@ -97,14 +102,30 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
                             id={inputId}
                             type="text"
                             placeholder={placeholder}
-                            value={searchInput}
-                            className="h-10 w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                            value={displayValue}
+                            className="h-10 w-full truncate rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-10 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
                             onChange={handleSearchChange}
                             onClick={handleInputClick}
                             onFocus={handleInputClick}
                             aria-label={label ? undefined : placeholder}
+                            title={selectedPartner?.name ?? undefined}
                             autoComplete="off"
                         />
+                        {selectedPartner ? (
+                            <button
+                                type="button"
+                                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                                aria-label="Clear organization filter"
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    setSearchInput('');
+                                    onClearPartner?.();
+                                    setIsDropdownOpen(false);
+                                }}
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        ) : null}
                     </div>
                     {isDropdownOpen && filteredResults.length > 0 && (
                         <div
