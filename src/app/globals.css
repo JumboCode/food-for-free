@@ -81,7 +81,13 @@
 body {
     background: var(--background);
     color: var(--foreground);
-    font-family: 'Acumin Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family:
+        'Acumin Pro',
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
 }
 .dark {
     --background: oklch(0.13 0.028 261.692);
@@ -119,13 +125,13 @@ body {
 
 /* Calendar picker theme (dashboard orange #FAC87D) */
 .rdp-root {
-    --rdp-accent-color: #FAC87D;
+    --rdp-accent-color: #fac87d;
     --rdp-accent-background-color: #fef8ed;
 }
 
 /* Compact calendar in picker dialog – force orange so it wins over library default */
 .calendar-picker-compact .rdp-root {
-    --rdp-accent-color: #FAC87D !important;
+    --rdp-accent-color: #fac87d !important;
     --rdp-accent-background-color: #fef8ed !important;
     --rdp-day-height: 34px;
     --rdp-day-width: 34px;

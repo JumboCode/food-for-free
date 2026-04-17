@@ -78,6 +78,14 @@ export function OrganizationDetailModal({
     const [organizationNameDraft, setOrganizationNameDraft] = useState(organization.name);
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
+
     const fetchOrganizationUsers = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -512,7 +520,6 @@ export function OrganizationDetailModal({
                                                 {activeMenuUserId === user.id && (
                                                     <UserActionsMenu
                                                         triggerRef={menuTriggerRef}
-                                                        user={user}
                                                         onEdit={() => {
                                                             startEditUser(user);
                                                             setActiveMenuUserId(null);
@@ -767,14 +774,12 @@ const MENU_PADDING = 8;
 // User Actions Menu Component – renders in a portal below the trigger so it doesn't affect card layout
 function UserActionsMenu({
     triggerRef,
-    user,
     onEdit,
     onResendInvitation,
     onDelete,
     onClose,
 }: {
     triggerRef: React.RefObject<HTMLDivElement | null>;
-    user: User;
     onEdit?: () => void;
     onResendInvitation?: () => void;
     onDelete: () => void;

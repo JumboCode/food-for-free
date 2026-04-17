@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Info, Search, X } from 'lucide-react';
 
 interface AddPartnerModalProps {
@@ -30,6 +30,14 @@ export function AddPartnerModal({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
 
     const selectedOrganization =
         organizations.find(org => org.id === selectedOrganizationId) ?? null;
