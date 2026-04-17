@@ -1,6 +1,7 @@
 import { type Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import { getOverviewRedirectUrl } from '@/lib/requestOrigin';
 import './globals.css';
 
 const geistSans = Geist({
@@ -18,9 +19,13 @@ export const metadata: Metadata = {
     description: 'A website for Food for Free partners to view their delivery data',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    const overviewRedirectUrl = await getOverviewRedirectUrl();
     return (
-        <ClerkProvider signInForceRedirectUrl="/overview" signUpForceRedirectUrl="/overview">
+        <ClerkProvider
+            signInForceRedirectUrl={overviewRedirectUrl}
+            signUpForceRedirectUrl={overviewRedirectUrl}
+        >
             <html lang="en">
                 <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                     {children}
