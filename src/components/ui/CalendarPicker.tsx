@@ -103,7 +103,6 @@ export function MyCalendar({
             const next: DateRange = { from, to };
             if (to) {
                 setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
-                setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
             } else {
                 setInputValue(format(from, 'MM/dd/yyyy'));
             }
@@ -119,7 +118,6 @@ export function MyCalendar({
             const from = prev?.from && prev.from <= to ? prev.from : to;
             const next: DateRange = { from, to };
             setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
-            setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
             return next;
         });
     };
@@ -167,7 +165,12 @@ export function MyCalendar({
         onClear?.();
     };
 
-    const handleDone = () => toggleDialog();
+    const handleDone = () => {
+        if (selectedRange?.from && selectedRange?.to) {
+            onRangeChange?.({ start: selectedRange.from, end: selectedRange.to });
+        }
+        toggleDialog();
+    };
 
     const themeAccent = '#FAC87D';
     const startMonth = new Date(MIN_FILTER_DATE.getFullYear(), MIN_FILTER_DATE.getMonth(), 1);
