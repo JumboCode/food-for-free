@@ -542,9 +542,12 @@ thead th{background:#f3f4f6;font-weight:600;}
                             Distribution
                         </h1>
                         {selectedOrg ? (
-                            <p className="mt-1 text-sm text-gray-600">
-                                Showing deliveries for:{' '}
-                                <span className="font-medium text-gray-900">
+                            <p className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-x-2 min-w-0">
+                                <span>Showing deliveries for:</span>
+                                <span
+                                    className="font-medium text-gray-900 truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl min-w-0 block"
+                                    title={selectedOrg.name}
+                                >
                                     {selectedOrg.name}
                                 </span>
                                 <span className="mx-2 text-gray-300">·</span>
