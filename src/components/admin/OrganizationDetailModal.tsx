@@ -11,6 +11,7 @@ interface Organization {
     name: string;
     slug: string;
     membersCount: number;
+    householdId18: string | null;
     createdAt: string;
 }
 
@@ -276,7 +277,9 @@ export function OrganizationDetailModal({
 
     const overviewHref = isDistributorPartnerOrgName(organization.name)
         ? '/overview'
-        : `/overview?destination=${encodeURIComponent(organization.name)}`;
+        : organization.householdId18
+          ? `/overview?householdId18=${encodeURIComponent(organization.householdId18)}`
+          : '/overview';
 
     const confirmDelete = async () => {
         if (!deleteConfirmUser) return;

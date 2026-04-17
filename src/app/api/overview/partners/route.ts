@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
+import prisma from '~/lib/prisma';
 import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAccess';
-import { getDistinctPartnerHouseholdNames } from '~/lib/overviewPartnerMetrics';
 
 /**
  * GET /api/overview/partners
@@ -18,6 +18,7 @@ export async function GET() {
                     {
                         id: 1,
                         name: scope.destination,
+                        householdId18: scope.partnerHouseholdId18,
                         location: '',
                         type: 'Partner',
                     },
@@ -26,15 +27,21 @@ export async function GET() {
             });
         }
 
-        const unique = await getDistinctPartnerHouseholdNames();
+        const partners = await prisma.partner.findMany({
+            select: { organizationName: true, householdId18: true },
+            orderBy: { organizationName: 'asc' },
+        });
 
         return NextResponse.json({
-            partners: unique.map((name, index) => ({
-                id: index + 1,
-                name,
-                location: '',
-                type: 'Partner',
-            })),
+            partners: partners
+                .map((partner, index) => ({
+                    id: index + 1,
+                    name: partner.organizationName?.trim() ?? '',
+                    householdId18: partner.householdId18,
+                    location: '',
+                    type: 'Partner',
+                }))
+                .filter(partner => partner.name),
             partnerDashboard: false,
         });
     } catch (err: unknown) {

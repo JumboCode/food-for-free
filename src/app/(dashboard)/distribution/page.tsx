@@ -101,6 +101,10 @@ const THEME_ORANGE = '#FAC87D';
 const ROWS_PER_PAGE = 25;
 
 function DistributionContent() {
+    const [sessionCtx, setSessionCtx] = useState<{ ready: boolean; isAdmin: boolean }>({
+        ready: false,
+        isAdmin: false,
+    });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -113,14 +117,31 @@ function DistributionContent() {
     const [foodTypeColorLookup, setFoodTypeColorLookup] = useState<Map<string, string>>(
         () => new Map()
     );
+    const [availableProductTypes, setAvailableProductTypes] = useState<string[]>([]);
 
     const [filterPanelOpen, setFilterPanelOpen] = useState(false);
     const filterPanelRef = useRef<HTMLDivElement>(null);
     const exportPanelRef = useRef<HTMLDivElement>(null);
-    const [filterOrgs, setFilterOrgs] = useState<string[]>([]);
+    const [filterOrgHouseholdIds, setFilterOrgHouseholdIds] = useState<string[]>([]);
     const [filterProductTypes, setFilterProductTypes] = useState<string[]>([]);
     const [filterProcessing, setFilterProcessing] = useState<ProcessingFilterKey[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/user/context')
+            .then(res => (res.ok ? res.json() : Promise.reject()))
+            .then((d: { isAdmin?: boolean }) => {
+                if (cancelled) return;
+                setSessionCtx({ ready: true, isAdmin: Boolean(d.isAdmin) });
+            })
+            .catch(() => {
+                if (!cancelled) setSessionCtx({ ready: true, isAdmin: false });
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
@@ -134,7 +155,7 @@ function DistributionContent() {
         dateRange.start,
         dateRange.end,
         filterPrograms,
-        filterOrgs,
+        filterOrgHouseholdIds,
         filterProductTypes,
         filterProcessing,
     ]);
@@ -161,15 +182,39 @@ function DistributionContent() {
         return () => document.removeEventListener('mousedown', onDoc);
     }, [exportMenuOpen]);
 
+    useEffect(() => {
+        const ac = new AbortController();
+        async function fetchFilterOptions() {
+            try {
+                const res = await fetch('/api/distribution/filter-options', { signal: ac.signal });
+                if (!res.ok) return;
+                const payload = (await res.json()) as { productTypes?: string[] };
+                if (ac.signal.aborted) return;
+                setAvailableProductTypes(
+                    Array.isArray(payload.productTypes) ? payload.productTypes : []
+                );
+            } catch (err) {
+                if (err instanceof Error && err.name === 'AbortError') return;
+                console.error(err);
+            }
+        }
+        void fetchFilterOptions();
+        return () => ac.abort();
+    }, []);
+
     const filterOptions = useMemo(() => {
-        const orgs = new Set<string>();
-        const productTypes = new Set<string>();
+        const orgs = new Map<string, string>();
+        const productTypesByKey = new Map<string, string>();
+        for (const label of availableProductTypes) {
+            productTypesByKey.set(label.toLowerCase(), label);
+        }
         const inventoryTypes = new Set<string>();
         const foodRescue = new Set<string>();
         const sources = new Set<string>();
         for (const row of data) {
-            orgs.add(row.organizationName);
-            productTypes.add(foodTypeLabelForRow(row.productType));
+            orgs.set(row.householdId18, row.organizationName);
+            const label = foodTypeLabelForRow(row.productType);
+            productTypesByKey.set(label.trim().toLowerCase(), label.trim());
             inventoryTypes.add((row.inventoryType ?? '').trim() || EMPTY_VALUE);
             foodRescue.add(normOptionalString(row.foodRescueProgram));
             sources.add(normOptionalString(row.source));
@@ -177,42 +222,49 @@ function DistributionContent() {
         const sortStr = (a: string, b: string) =>
             a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
         return {
-            orgs: [...orgs].sort(sortStr),
-            productTypes: [...productTypes].sort(sortStr),
+            orgs: [...orgs.entries()]
+                .map(([householdId18, name]) => ({ householdId18, name }))
+                .sort((a, b) => sortStr(a.name, b.name)),
+            productTypes: [...productTypesByKey.values()].sort(sortStr),
             inventoryTypes: [...inventoryTypes].sort(sortStr),
             foodRescue: [...foodRescue].sort(sortStr),
             sources: [...sources].sort(sortStr),
         };
-    }, [data]);
+    }, [data, availableProductTypes]);
 
     const filteredData = useMemo(() => {
+        const selectedProductTypeKeys = new Set(
+            filterProductTypes.map(v => v.trim().toLowerCase())
+        );
         return data.filter(row => {
             const prog = rowProgram(row);
             if (filterPrograms.length > 0 && !filterPrograms.includes(prog)) return false;
-            if (filterOrgs.length > 0 && !filterOrgs.includes(row.organizationName)) return false;
-            const pt = foodTypeLabelForRow(row.productType);
-            if (filterProductTypes.length > 0 && !filterProductTypes.includes(pt)) return false;
+            if (
+                filterOrgHouseholdIds.length > 0 &&
+                !filterOrgHouseholdIds.includes(row.householdId18)
+            ) {
+                return false;
+            }
+            const ptKey = foodTypeLabelForRow(row.productType).trim().toLowerCase();
+            if (filterProductTypes.length > 0 && !selectedProductTypeKeys.has(ptKey)) return false;
             const pk = processingKey(row.minimallyProcessedFood);
             if (filterProcessing.length > 0 && !filterProcessing.includes(pk)) return false;
-            const inv = (row.inventoryType ?? '').trim() || EMPTY_VALUE;
             return true;
         });
-    }, [data, filterPrograms, filterOrgs, filterProductTypes, filterProcessing]);
+    }, [data, filterPrograms, filterOrgHouseholdIds, filterProductTypes, filterProcessing]);
 
     const activeAttributeFilterCount =
         filterPrograms.length +
-        filterOrgs.length +
+        filterOrgHouseholdIds.length +
         filterProductTypes.length +
         filterProcessing.length;
 
     const clearAttributeFilters = () => {
         setFilterPrograms([]);
-        setFilterOrgs([]);
+        setFilterOrgHouseholdIds([]);
         setFilterProductTypes([]);
         setFilterProcessing([]);
     };
-
-    const labelEmptySentinel = (v: string) => (v === EMPTY_VALUE ? '(none)' : v);
 
     const exportHeaders = useMemo(
         () => [
@@ -533,40 +585,47 @@ thead th{background:#f3f4f6;font-weight:600;}
                                             </div>
                                         </div>
 
-                                        {/* Organization */}
-                                        <div>
-                                            <p className="mb-1.5 text-xs font-medium text-gray-700">
-                                                Organization
-                                            </p>
-                                            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
-                                                {filterOptions.orgs.length === 0 ? (
-                                                    <p className="text-xs text-gray-400">
-                                                        No values
-                                                    </p>
-                                                ) : (
-                                                    filterOptions.orgs.map(org => (
-                                                        <label
-                                                            key={org}
-                                                            className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                                checked={filterOrgs.includes(org)}
-                                                                onChange={() =>
-                                                                    setFilterOrgs(prev =>
-                                                                        toggleInList(prev, org)
-                                                                    )
-                                                                }
-                                                            />
-                                                            <span className="min-w-0 break-words">
-                                                                {org}
-                                                            </span>
-                                                        </label>
-                                                    ))
-                                                )}
+                                        {sessionCtx.isAdmin && (
+                                            <div>
+                                                <p className="mb-1.5 text-xs font-medium text-gray-700">
+                                                    Organization
+                                                </p>
+                                                <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border border-gray-100 bg-gray-50/80 p-2">
+                                                    {filterOptions.orgs.length === 0 ? (
+                                                        <p className="text-xs text-gray-400">
+                                                            No values
+                                                        </p>
+                                                    ) : (
+                                                        filterOptions.orgs.map(org => (
+                                                            <label
+                                                                key={org.householdId18}
+                                                                className="flex cursor-pointer items-start gap-2 text-xs text-gray-800"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                                    checked={filterOrgHouseholdIds.includes(
+                                                                        org.householdId18
+                                                                    )}
+                                                                    onChange={() =>
+                                                                        setFilterOrgHouseholdIds(
+                                                                            prev =>
+                                                                                toggleInList(
+                                                                                    prev,
+                                                                                    org.householdId18
+                                                                                )
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <span className="min-w-0 break-words">
+                                                                    {org.name}
+                                                                </span>
+                                                            </label>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
                                         {/* Food type */}
                                         <div>

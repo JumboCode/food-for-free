@@ -2,17 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
     overviewScopeErrorResponse,
-    scopeToPartnerFilter,
     scopeToPartnerHouseholdId18,
     type OverviewScope,
 } from '~/lib/overviewAccess';
 
 describe('overview access helpers', () => {
-    it('returns partner filter for admin and partner scopes', () => {
+    it('returns household id for admin and partner scopes', () => {
         const adminScope: OverviewScope = {
             kind: 'admin',
             destination: 'Org A',
-            destinationHouseholdId18: undefined,
+            destinationHouseholdId18: 'admin_hh_18',
         };
         const partnerScope: OverviewScope = {
             kind: 'partner',
@@ -20,16 +19,14 @@ describe('overview access helpers', () => {
             partnerHouseholdId18: 'hh_18',
         };
 
-        expect(scopeToPartnerFilter(adminScope)).toBe('Org A');
-        expect(scopeToPartnerFilter(partnerScope)).toBe('Org B');
         expect(scopeToPartnerHouseholdId18(partnerScope)).toBe('hh_18');
-        expect(scopeToPartnerHouseholdId18(adminScope)).toBeUndefined();
+        expect(scopeToPartnerHouseholdId18(adminScope)).toBe('admin_hh_18');
     });
 
-    it('returns no filter for unauthenticated/no-org scopes', () => {
-        expect(scopeToPartnerFilter({ kind: 'unauthenticated' })).toBeUndefined();
-        expect(scopeToPartnerFilter({ kind: 'no_db_user' })).toBeUndefined();
-        expect(scopeToPartnerFilter({ kind: 'partner_no_org' })).toBeUndefined();
+    it('returns no household id for unauthenticated/no-org scopes', () => {
+        expect(scopeToPartnerHouseholdId18({ kind: 'unauthenticated' })).toBeUndefined();
+        expect(scopeToPartnerHouseholdId18({ kind: 'no_db_user' })).toBeUndefined();
+        expect(scopeToPartnerHouseholdId18({ kind: 'partner_no_org' })).toBeUndefined();
     });
 
     it('maps unauthorized scopes to HTTP 401', async () => {

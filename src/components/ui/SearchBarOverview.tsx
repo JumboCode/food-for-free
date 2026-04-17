@@ -6,13 +6,14 @@ import PartnerCard from './PartnerCard';
 type PartnerCardType = {
     id: number;
     name: string;
+    householdId18?: string | null;
     location: string;
     type: string;
 };
 
 type SearchBarProps = {
     organizations: PartnerCardType[];
-    onSelectPartner?: (partnerName: string) => void;
+    onSelectPartner?: (partner: { name: string; householdId18?: string | null }) => void;
 };
 
 const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPartner }) => {
@@ -32,8 +33,8 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
         setSearchInput(event.target.value);
     };
 
-    const handlePartnerSelect = (partnerName: string) => {
-        onSelectPartner?.(partnerName);
+    const handlePartnerSelect = (partner: { name: string; householdId18?: string | null }) => {
+        onSelectPartner?.(partner);
         setIsDropdownOpen(false);
         setSearchInput('');
     };
@@ -96,6 +97,7 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({ organizations, onSelectPa
                                     surface="neutral"
                                     id={org.id}
                                     name={org.name}
+                                    householdId18={org.householdId18}
                                     location={org.location}
                                     type={org.type}
                                     disableClick={true}

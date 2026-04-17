@@ -17,8 +17,13 @@ type FoodTypeEntry = { label: string; value: number; color: string };
 type PartnerOrgCard = {
     id: number;
     name: string;
+    householdId18?: string | null;
     location: string;
     type: string;
+};
+type SelectedPartner = {
+    name: string;
+    householdId18?: string | null;
 };
 type DeliverySummaryItem = {
     id: string;
@@ -43,7 +48,8 @@ const OverviewPageContent: React.FC = () => {
         ready: boolean;
         isAdmin: boolean;
         partnerName: string | null;
-    }>({ ready: false, isAdmin: false, partnerName: null });
+        partnerHouseholdId18: string | null;
+    }>({ ready: false, isAdmin: false, partnerName: null, partnerHouseholdId18: null });
 
     const { dateRange } = useFilterContext();
     const [loading, setLoading] = useState(true);
@@ -57,23 +63,39 @@ const OverviewPageContent: React.FC = () => {
     const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
     const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
-    const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
+    const [selectedPartner, setSelectedPartner] = useState<SelectedPartner | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         fetch('/api/user/context')
             .then(res => (res.ok ? res.json() : Promise.reject()))
-            .then((d: { isAdmin?: boolean; partnerOrganizationName?: string | null }) => {
-                if (cancelled) return;
-                const isAdmin = Boolean(d.isAdmin);
-                const partnerName = d.partnerOrganizationName ?? null;
-                setSessionCtx({ ready: true, isAdmin, partnerName });
-                if (!isAdmin && partnerName) {
-                    setSelectedPartner(partnerName);
+            .then(
+                (d: {
+                    isAdmin?: boolean;
+                    partnerOrganizationName?: string | null;
+                    partnerHouseholdId18?: string | null;
+                }) => {
+                    if (cancelled) return;
+                    const isAdmin = Boolean(d.isAdmin);
+                    const partnerName = d.partnerOrganizationName ?? null;
+                    const partnerHouseholdId18 = d.partnerHouseholdId18 ?? null;
+                    setSessionCtx({ ready: true, isAdmin, partnerName, partnerHouseholdId18 });
+                    if (!isAdmin && partnerName) {
+                        setSelectedPartner({
+                            name: partnerName,
+                            householdId18: partnerHouseholdId18,
+                        });
+                    }
                 }
-            })
+            )
             .catch(() => {
-                if (!cancelled) setSessionCtx({ ready: true, isAdmin: false, partnerName: null });
+                if (!cancelled)
+                    setSessionCtx({
+                        ready: true,
+                        isAdmin: false,
+                        partnerName: null,
+                        partnerHouseholdId18: null,
+                    });
             });
         return () => {
             cancelled = true;
@@ -82,8 +104,13 @@ const OverviewPageContent: React.FC = () => {
 
     useEffect(() => {
         if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
-        const dest = searchParams.get('destination')?.trim();
-        if (dest) setSelectedPartner(dest);
+        const householdId18 = searchParams.get('householdId18')?.trim();
+        if (householdId18) {
+            setSelectedPartner({
+                name: 'Selected organization',
+                householdId18,
+            });
+        }
     }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams]);
 
     useEffect(() => {
@@ -103,6 +130,21 @@ const OverviewPageContent: React.FC = () => {
         };
     }, [sessionCtx.ready, sessionCtx.isAdmin]);
 
+    useEffect(() => {
+        if (!selectedPartner || selectedPartner.householdId18 || partnerOrganizations.length === 0)
+            return;
+        const match = partnerOrganizations.find(
+            partner => partner.name.toLowerCase() === selectedPartner.name.toLowerCase()
+        );
+        if (match?.householdId18) {
+            setSelectedPartner(current =>
+                current && !current.householdId18
+                    ? { ...current, householdId18: match.householdId18 }
+                    : current
+            );
+        }
+    }, [partnerOrganizations, selectedPartner]);
+
     const isPartnerDashboard =
         sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
 
@@ -114,7 +156,8 @@ const OverviewPageContent: React.FC = () => {
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
         const params = new URLSearchParams({ start, end });
-        if (selectedPartner) params.set('destination', selectedPartner);
+        if (selectedPartner?.householdId18)
+            params.set('householdId18', selectedPartner.householdId18);
         const q = params.toString();
 
         setLoading(true);
@@ -207,7 +250,9 @@ const OverviewPageContent: React.FC = () => {
                         ) : selectedPartner ? (
                             <p className="mt-2 text-sm text-gray-600">
                                 Partner view:{' '}
-                                <span className="font-medium text-gray-900">{selectedPartner}</span>
+                                <span className="font-medium text-gray-900">
+                                    {selectedPartner.name}
+                                </span>
                                 <span className="mx-2 text-gray-300">·</span>
                                 <button
                                     type="button"
@@ -223,7 +268,7 @@ const OverviewPageContent: React.FC = () => {
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
-                                onSelectPartner={name => setSelectedPartner(name)}
+                                onSelectPartner={partner => setSelectedPartner(partner)}
                             />
                         </div>
                     ) : null}

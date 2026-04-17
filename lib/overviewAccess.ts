@@ -18,7 +18,8 @@ export type OverviewScope =
  * Admins may pass ?destination= for any org; partners are always scoped to their linked Partner row.
  */
 export async function getOverviewScope(
-    requestedDestination: string | null | undefined
+    requestedDestination: string | null | undefined,
+    requestedHouseholdId18?: string | null | undefined
 ): Promise<OverviewScope> {
     const { userId } = await auth();
     if (!userId) return { kind: 'unauthenticated' };
@@ -31,18 +32,25 @@ export async function getOverviewScope(
 
     if (user.role === 'ADMIN') {
         const d = requestedDestination?.trim();
-        const destination = d && d !== 'All Organizations' ? d : undefined;
-        if (!destination) {
-            return { kind: 'admin', destination: undefined, destinationHouseholdId18: undefined };
+        const requestedId = requestedHouseholdId18?.trim();
+        if (requestedId) {
+            const partner = await prisma.partner.findFirst({
+                where: { householdId18: requestedId },
+                select: { organizationName: true, householdId18: true },
+            });
+            return {
+                kind: 'admin',
+                destination: partner?.organizationName?.trim() || d || undefined,
+                destinationHouseholdId18: partner?.householdId18 ?? requestedId,
+            };
         }
-        const partner = await prisma.partner.findFirst({
-            where: { organizationName: { equals: destination, mode: 'insensitive' } },
-            select: { householdId18: true },
-        });
+
+        // ID-only filtering: without a household id, admin scope is "all organizations".
+        const destination = d && d !== 'All Organizations' ? d : undefined;
         return {
             kind: 'admin',
             destination,
-            destinationHouseholdId18: partner?.householdId18 ?? undefined,
+            destinationHouseholdId18: undefined,
         };
     }
 
@@ -55,13 +63,6 @@ export async function getOverviewScope(
         destination: orgName,
         partnerHouseholdId18: partner.householdId18,
     };
-}
-
-/** Partner-scoped filter for All* metrics (householdName) and InventoryTransaction.destination when set. */
-export function scopeToPartnerFilter(scope: OverviewScope): string | undefined {
-    if (scope.kind === 'admin') return scope.destination;
-    if (scope.kind === 'partner') return scope.destination;
-    return undefined;
 }
 
 /** Partner account: Salesforce household id for `JustEatsBoxes.householdId` joins. */

@@ -4,10 +4,11 @@ import { ChevronRight } from 'lucide-react';
 export type PartnerCardProps = {
     id: number;
     name: string;
+    householdId18?: string | null;
     location: string;
     type: string;
     disableClick?: boolean;
-    onSelect?: (name: string) => void; // Add this
+    onSelect?: (partner: { name: string; householdId18?: string | null }) => void;
     compact?: boolean;
     /** `brand` = green strip; `neutral` = white list row (e.g. search vs chart greens). */
     surface?: 'brand' | 'neutral';
@@ -17,6 +18,7 @@ export type PartnerCardProps = {
 const PartnerCard: React.FC<PartnerCardProps> = ({
     name,
     id,
+    householdId18,
     location,
     type,
     disableClick = false,
@@ -30,8 +32,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({
         if (!disableClick) {
             setShowPopup(true);
         } else if (onSelect) {
-            // If click is disabled but we have onSelect, call it
-            onSelect(name);
+            onSelect({ name, householdId18 });
         }
     };
 

@@ -11,6 +11,7 @@ interface Organization {
     name: string;
     slug: string;
     membersCount: number;
+    householdId18: string | null;
     createdAt: string;
 }
 
