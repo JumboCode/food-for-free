@@ -12,17 +12,11 @@ import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
 import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
 import { useViewerContext } from '@/contexts/ViewerContext';
+import type { PartnerOrgCard } from '@/types/partner';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
 
-type PartnerOrgCard = {
-    id: number;
-    name: string;
-    householdId18?: string | null;
-    location: string;
-    type: string;
-};
 type SelectedPartner = {
     name: string;
     householdId18?: string | null;

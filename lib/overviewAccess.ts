@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { isAdmin as resolveIsAdmin } from '@/lib/admin';
 import prisma from '~/lib/prisma';
 
 export type OverviewScope =
@@ -30,7 +31,8 @@ export async function getOverviewScope(
     });
     if (!user) return { kind: 'no_db_user' };
 
-    if (user.role === 'ADMIN') {
+    const admin = await resolveIsAdmin(userId);
+    if (admin) {
         const d = requestedDestination?.trim();
         const requestedId = requestedHouseholdId18?.trim();
         if (requestedId) {

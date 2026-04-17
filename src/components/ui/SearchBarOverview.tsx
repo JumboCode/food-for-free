@@ -1,18 +1,11 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 
 import PartnerCard from './PartnerCard';
-
-type PartnerCardType = {
-    id: number;
-    name: string;
-    householdId18?: string | null;
-    location: string;
-    type: string;
-};
+import type { PartnerOrgCard } from '@/types/partner';
 
 type SearchBarProps = {
-    organizations: PartnerCardType[];
+    organizations: PartnerOrgCard[];
     onSelectPartner?: (partner: { name: string; householdId18?: string | null }) => void;
     selectedPartner?: { name: string; householdId18?: string | null } | null;
     onClearPartner?: () => void;
@@ -33,7 +26,6 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
 }) => {
     const inputId = useId();
     const [searchInput, setSearchInput] = useState<string>('');
-    const [filteredResults, setFilteredResults] = useState<PartnerCardType[]>([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,17 +52,16 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
+    const filteredResults = useMemo(() => {
         const raw =
             searchInput.trim() === ''
                 ? organizations
                 : organizations.filter(org =>
                       org.name.toLowerCase().includes(searchInput.toLowerCase())
                   );
-        const sorted = [...raw].sort((a, b) =>
+        return [...raw].sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
         );
-        setFilteredResults(sorted);
     }, [searchInput, organizations]);
 
     return (

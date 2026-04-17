@@ -10,6 +10,7 @@ import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
 import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
 import { useViewerContext } from '@/contexts/ViewerContext';
+import type { PartnerOrgCard } from '@/types/partner';
 import {
     chipStyleFromDonutHex,
     foodTypeColorLookupFromComposition,
@@ -94,14 +95,6 @@ function toggleProcessingList(list: ProcessingFilterKey[], value: ProcessingFilt
 }
 
 const ROWS_PER_PAGE = 25;
-
-type PartnerOrgCard = {
-    id: number;
-    name: string;
-    householdId18?: string | null;
-    location: string;
-    type: string;
-};
 
 function DistributionContent() {
     const foodSearchId = useId();
