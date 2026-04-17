@@ -205,7 +205,7 @@ const OverviewPageContent: React.FC = () => {
                         </h1>
                         {isPartnerDashboard && partnerOrganizationName ? (
                             <p className="mt-2 text-sm text-gray-600">
-                                Showing deliveries for your organization:{' '}
+                                Partner view:{' '}
                                 <span className="font-medium text-gray-900">
                                     {partnerOrganizationName}
                                 </span>
