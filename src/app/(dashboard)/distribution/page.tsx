@@ -553,6 +553,11 @@ thead th{background:#f3f4f6;font-weight:600;}
         pageNumbers.push(page);
     }
 
+    const changePage = (nextPage: number) => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        setCurrentPage(nextPage);
+    };
+
     return (
         <>
             <div className="min-h-screen bg-[#FAF9F7]">
@@ -586,6 +591,12 @@ thead th{background:#f3f4f6;font-weight:600;}
                     <div className="flex flex-col gap-3">
                         {/* Row 1: searches */}
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            {!sessionCtx.ready ? (
+                                <div
+                                    className="h-10 w-52 shrink-0 rounded-lg border border-gray-200 bg-white/70 sm:w-56"
+                                    aria-hidden
+                                />
+                            ) : null}
                             {sessionCtx.isAdmin ? (
                                 <SearchBarOverview
                                     organizations={partnerOrganizations}
@@ -1103,7 +1114,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                             <div className="inline-flex items-center gap-1">
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    onClick={() => changePage(Math.max(1, currentPageSafe - 1))}
                                     disabled={currentPageSafe === 1}
                                     className="h-9 px-3 rounded-md border border-gray-200 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                                 >
@@ -1113,7 +1124,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                     <button
                                         key={page}
                                         type="button"
-                                        onClick={() => setCurrentPage(page)}
+                                        onClick={() => changePage(page)}
                                         className={`h-9 min-w-9 px-2 rounded-md border text-sm ${
                                             page === currentPageSafe
                                                 ? 'bg-(--fff-green) border-[#9fc5a9] text-gray-900'
@@ -1125,7 +1136,9 @@ thead th{background:#f3f4f6;font-weight:600;}
                                 ))}
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    onClick={() =>
+                                        changePage(Math.min(totalPages, currentPageSafe + 1))
+                                    }
                                     disabled={currentPageSafe === totalPages}
                                     className="h-9 px-3 rounded-md border border-gray-200 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                                 >
