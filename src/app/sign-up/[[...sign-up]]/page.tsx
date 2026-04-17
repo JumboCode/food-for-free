@@ -41,10 +41,10 @@ function PartnerPortalAuthFooter() {
 export default async function SignUpPage({
     searchParams,
 }: {
-    searchParams?: Record<string, string | string[] | undefined>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
     const overviewRedirectUrl = await getOverviewRedirectUrl();
-    const params = searchParams ?? {};
+    const params = (await searchParams) ?? {};
     const invited = hasClerkInvitationTicket(params);
 
     if (!invited) {
