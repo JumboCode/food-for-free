@@ -397,7 +397,7 @@ export function OrganizationDetailModal({
                     <p className="mt-2 text-xs text-gray-500">
                         {isDistributorPartnerOrgName(organization.name)
                             ? 'Opens the full statistics overview (aggregated across all partners). Food For Free is the distributor, not a receiving organization in delivery data.'
-                            : 'Opens the overview dashboard filtered to this partner’s delivery data.'}
+                            : "Opens the overview dashboard filtered to this partner's delivery data."}
                     </p>
                 </div>
 

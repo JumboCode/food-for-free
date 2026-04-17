@@ -59,7 +59,7 @@ export default function Home() {
                             transition={{ duration: 1.1, ease: 'easeOut', delay: 0.15 }}
                         >
                             Access your partner organization&apos;s delivery history and key
-                            statistics on food from Food For Free.
+                            statistics on food received from Food For Free.
                         </motion.p>
                     </div>
 
