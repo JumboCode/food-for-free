@@ -11,6 +11,7 @@ import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
 import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
+import { useViewerContext } from '@/contexts/ViewerContext';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
@@ -43,12 +44,7 @@ const formatDateParam = (d: Date) => {
 
 const OverviewPageContent: React.FC = () => {
     const searchParams = useSearchParams();
-    const [sessionCtx, setSessionCtx] = useState<{
-        ready: boolean;
-        isAdmin: boolean;
-        partnerName: string | null;
-        partnerHouseholdId18: string | null;
-    }>({ ready: false, isAdmin: false, partnerName: null, partnerHouseholdId18: null });
+    const { isAdmin, partnerOrganizationName, partnerHouseholdId18 } = useViewerContext();
 
     const { dateRange } = useFilterContext();
     const [loading, setLoading] = useState(true);
@@ -65,46 +61,15 @@ const OverviewPageContent: React.FC = () => {
     const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
 
     useEffect(() => {
-        let cancelled = false;
-        fetch('/api/user/context')
-            .then(res => (res.ok ? res.json() : Promise.reject()))
-            .then(
-                (d: {
-                    isAdmin?: boolean;
-                    partnerOrganizationName?: string | null;
-                    partnerHouseholdId18?: string | null;
-                }) => {
-                    if (cancelled) return;
-                    const isAdmin = Boolean(d.isAdmin);
-                    const partnerName = d.partnerOrganizationName ?? null;
-                    const partnerHouseholdId18 = d.partnerHouseholdId18 ?? null;
-                    setSessionCtx({ ready: true, isAdmin, partnerName, partnerHouseholdId18 });
-                }
-            )
-            .catch(() => {
-                if (!cancelled)
-                    setSessionCtx({
-                        ready: true,
-                        isAdmin: false,
-                        partnerName: null,
-                        partnerHouseholdId18: null,
-                    });
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        if (!isAdmin) return;
         const householdId18 = searchParams.get('householdId18')?.trim();
         if (householdId18) {
             setSelectedOrg({ name: 'Selected organization', householdId18 });
         }
-    }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams, setSelectedOrg]);
+    }, [isAdmin, searchParams, setSelectedOrg]);
 
     useEffect(() => {
-        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        if (!isAdmin) return;
         let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject(new Error('Partners failed'))))
@@ -118,7 +83,7 @@ const OverviewPageContent: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [sessionCtx.ready, sessionCtx.isAdmin]);
+    }, [isAdmin]);
 
     useEffect(() => {
         if (!selectedOrg || selectedOrg.householdId18 || partnerOrganizations.length === 0) return;
@@ -134,26 +99,23 @@ const OverviewPageContent: React.FC = () => {
         }
     }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
 
-    const isPartnerDashboard =
-        sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
+    const isPartnerDashboard = !isAdmin && Boolean(partnerOrganizationName);
     const selectedPartner: SelectedPartner | null = useMemo(
         () =>
             isPartnerDashboard
-                ? sessionCtx.partnerName
+                ? partnerOrganizationName
                     ? {
-                          name: sessionCtx.partnerName,
-                          householdId18: sessionCtx.partnerHouseholdId18,
+                          name: partnerOrganizationName,
+                          householdId18: partnerHouseholdId18,
                       }
                     : null
                 : selectedOrg,
-        [isPartnerDashboard, selectedOrg, sessionCtx.partnerHouseholdId18, sessionCtx.partnerName]
+        [isPartnerDashboard, selectedOrg, partnerHouseholdId18, partnerOrganizationName]
     );
 
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
 
     const fetchOverviewData = useCallback(async () => {
-        if (!sessionCtx.ready) return;
-
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
         const params = new URLSearchParams({ start, end });
@@ -226,7 +188,7 @@ const OverviewPageContent: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange, selectedPartner, sessionCtx.ready]);
+    }, [dateRange, selectedPartner]);
 
     useEffect(() => {
         void fetchOverviewData();
@@ -241,11 +203,11 @@ const OverviewPageContent: React.FC = () => {
                         <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                             Statistics Overview
                         </h1>
-                        {isPartnerDashboard && sessionCtx.partnerName ? (
+                        {isPartnerDashboard && partnerOrganizationName ? (
                             <p className="mt-2 text-sm text-gray-600">
                                 Showing deliveries for your organization:{' '}
                                 <span className="font-medium text-gray-900">
-                                    {sessionCtx.partnerName}
+                                    {partnerOrganizationName}
                                 </span>
                             </p>
                         ) : selectedPartner ? (
@@ -265,7 +227,7 @@ const OverviewPageContent: React.FC = () => {
                             </p>
                         ) : null}
                     </div>
-                    {sessionCtx.isAdmin ? (
+                    {isAdmin ? (
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}

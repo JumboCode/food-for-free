@@ -9,6 +9,7 @@ import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
 import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
+import { useViewerContext } from '@/contexts/ViewerContext';
 import {
     chipStyleFromDonutHex,
     foodTypeColorLookupFromComposition,
@@ -106,10 +107,7 @@ function DistributionContent() {
     const foodSearchId = useId();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const [sessionCtx, setSessionCtx] = useState<{ ready: boolean; isAdmin: boolean }>({
-        ready: false,
-        isAdmin: false,
-    });
+    const { isAdmin } = useViewerContext();
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
@@ -137,22 +135,6 @@ function DistributionContent() {
     const [filterProcessing, setFilterProcessing] = useState<ProcessingFilterKey[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
 
-    useEffect(() => {
-        let cancelled = false;
-        fetch('/api/user/context')
-            .then(res => (res.ok ? res.json() : Promise.reject()))
-            .then((d: { isAdmin?: boolean }) => {
-                if (cancelled) return;
-                setSessionCtx({ ready: true, isAdmin: Boolean(d.isAdmin) });
-            })
-            .catch(() => {
-                if (!cancelled) setSessionCtx({ ready: true, isAdmin: false });
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
     // Read org from URL on mount (for deep-linking)
     useEffect(() => {
         const householdId18 = searchParams.get('householdId18')?.trim();
@@ -163,7 +145,7 @@ function DistributionContent() {
 
     // Fetch partner org list for admin org selector
     useEffect(() => {
-        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        if (!isAdmin) return;
         let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject()))
@@ -177,7 +159,7 @@ function DistributionContent() {
         return () => {
             cancelled = true;
         };
-    }, [sessionCtx.ready, sessionCtx.isAdmin]);
+    }, [isAdmin]);
 
     // Resolve org name from partner list once loaded
     useEffect(() => {
@@ -591,13 +573,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                     <div className="flex flex-col gap-3">
                         {/* Row 1: searches */}
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            {!sessionCtx.ready ? (
-                                <div
-                                    className="h-10 w-52 shrink-0 rounded-lg border border-gray-200 bg-white/70 sm:w-56"
-                                    aria-hidden
-                                />
-                            ) : null}
-                            {sessionCtx.isAdmin ? (
+                            {isAdmin ? (
                                 <SearchBarOverview
                                     organizations={partnerOrganizations}
                                     onSelectPartner={handleSelectOrg}
