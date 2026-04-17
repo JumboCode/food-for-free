@@ -13,7 +13,7 @@ function hasClerkInvitationTicket(searchParams: Record<string, string | string[]
 
 function PartnerPortalAuthHeader({ subtitle }: { subtitle: string }) {
     return (
-        <div className="w-full text-center">
+        <div className="w-full pr-12 text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#1C5E2C]/70">
                 Food For Free
             </p>
@@ -27,7 +27,7 @@ function PartnerPortalAuthHeader({ subtitle }: { subtitle: string }) {
 
 function PartnerPortalAuthFooter() {
     return (
-        <div className="flex w-full flex-col items-center gap-1 text-center text-xs text-gray-500">
+        <div className="flex w-full flex-col items-center gap-1 pr-12 text-center text-xs text-gray-500">
             <span className="max-w-sm text-balance">
                 Need help? Contact your Food For Free administrator.
             </span>
@@ -50,7 +50,7 @@ export default async function SignUpPage({
     if (!invited) {
         return (
             <main className="flex min-h-screen items-center justify-center bg-[#E7F3EB] px-4 py-10">
-                <div className="flex w-full max-w-md flex-col items-stretch gap-6">
+                <div className="flex w-full max-w-md flex-col items-center gap-6">
                     <PartnerPortalAuthHeader subtitle="Sign up is available through an invitation link only." />
                     <div className="w-full rounded-2xl border border-[#1C5E2C]/12 bg-white p-6 shadow-[0_8px_30px_-8px_rgba(17,24,39,0.12)] ring-1 ring-black/4">
                         <h2 className="text-lg font-semibold text-[#1C5E2C]">
@@ -77,7 +77,7 @@ export default async function SignUpPage({
 
     return (
         <main className="flex min-h-screen items-center justify-center bg-[#E7F3EB] px-4 py-10">
-            <div className="flex w-full max-w-md flex-col items-stretch gap-6">
+            <div className="flex w-full max-w-md flex-col items-center gap-6">
                 <PartnerPortalAuthHeader subtitle="Complete sign up using your invitation." />
                 <div className="w-full">
                     <SignUp

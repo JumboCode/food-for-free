@@ -7,8 +7,8 @@ export default async function SignInPage() {
     const overviewRedirectUrl = await getOverviewRedirectUrl();
     return (
         <main className="flex min-h-screen items-center justify-center bg-[#E7F3EB] px-4 py-10">
-            <div className="flex w-full max-w-md flex-col items-stretch gap-6">
-                <div className="w-full text-center">
+            <div className="flex w-full max-w-md flex-col items-center gap-6">
+                <div className="w-full pr-12 text-center">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[#1C5E2C]/70">
                         Food For Free
                     </p>
@@ -27,7 +27,7 @@ export default async function SignInPage() {
                     />
                 </div>
 
-                <div className="flex w-full flex-col items-center gap-1 text-center text-xs text-gray-500">
+                <div className="flex w-full flex-col items-center gap-1 pr-12 text-center text-xs text-gray-500">
                     <span className="max-w-sm text-balance">
                         Need help? Contact your Food For Free administrator.
                     </span>
