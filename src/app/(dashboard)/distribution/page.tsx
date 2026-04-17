@@ -558,7 +558,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                             </p>
                         ) : (
                             <p className="mt-1 text-sm text-gray-500">
-                                Line-level delivery records across all programs.
+                                Food delivery records across all programs.
                             </p>
                         )}
                     </div>
