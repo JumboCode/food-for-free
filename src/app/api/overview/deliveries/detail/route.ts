@@ -70,6 +70,13 @@ export async function GET(request: NextRequest) {
                   ? Prisma.sql`d."householdId18" = ${householdId18Param}`
                   : Prisma.empty;
 
+        const justEatsHouseholdPredicate =
+            scope.kind === 'partner'
+                ? Prisma.sql`t."householdId" = ${scope.partnerHouseholdId18}`
+                : householdId18Param
+                  ? Prisma.sql`t."householdId" = ${householdId18Param}`
+                  : Prisma.empty;
+
         // Use pantry visit date (d.date) to match overview delivery day grouping.
         const foodRows = await prisma.$queryRaw<FoodRow[]>`
             SELECT
@@ -81,7 +88,18 @@ export async function GET(request: NextRequest) {
             WHERE DATE_TRUNC('day', d."date") = DATE_TRUNC('day', ${date})
               AND ${destinationPredicate}
             GROUP BY p."pantryProductName"
-            ORDER BY SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) DESC
+
+            UNION ALL 
+
+            SELECT
+                COALESCE(t."productPackageName", 'Unknown') AS "productName",
+                COUNT(*) * 25 AS "totalWeightLbs"
+            FROM "JustEatsBoxes" t
+            WHERE DATE_TRUNC('day', t."pantryVisitDateTime") = DATE_TRUNC('day', ${date})
+              AND ${justEatsHouseholdPredicate}
+            GROUP BY t."productPackageName"
+
+            ORDER BY "totalWeightLbs" DESC
         `;
 
         const totalPounds = foodRows.reduce((sum, r) => sum + Number(r.totalWeightLbs ?? 0), 0);
