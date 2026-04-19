@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
@@ -10,21 +10,23 @@ import DeliverySummary from '@/components/ui/DeliverySummary';
 import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
+import { useOrgScopeContext } from '@/contexts/OrgScopeContext';
+import { useViewerContext } from '@/contexts/ViewerContext';
+import type { PartnerOrgCard } from '@/types/partner';
 
 type PoundsData = { month: string; pounds: number };
 type FoodTypeEntry = { label: string; value: number; color: string };
 
-type PartnerOrgCard = {
-    id: number;
+type SelectedPartner = {
     name: string;
-    location: string;
-    type: string;
+    householdId18?: string | null;
 };
 type DeliverySummaryItem = {
     id: string;
     date: Date;
     totalPounds: number;
     destination?: string | null;
+    householdId18?: string | null;
 };
 
 const formatDateParam = (d: Date) => {
@@ -34,15 +36,9 @@ const formatDateParam = (d: Date) => {
     return `${y}-${m}-${day}`;
 };
 
-const THEME_ORANGE = '#FAC87D';
-
 const OverviewPageContent: React.FC = () => {
     const searchParams = useSearchParams();
-    const [sessionCtx, setSessionCtx] = useState<{
-        ready: boolean;
-        isAdmin: boolean;
-        partnerName: string | null;
-    }>({ ready: false, isAdmin: false, partnerName: null });
+    const { isAdmin, partnerOrganizationName, partnerHouseholdId18 } = useViewerContext();
 
     const { dateRange } = useFilterContext();
     const [loading, setLoading] = useState(true);
@@ -56,37 +52,18 @@ const OverviewPageContent: React.FC = () => {
     const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
     const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
-    const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
+    const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
 
     useEffect(() => {
-        let cancelled = false;
-        fetch('/api/user/context')
-            .then(res => (res.ok ? res.json() : Promise.reject()))
-            .then((d: { isAdmin?: boolean; partnerOrganizationName?: string | null }) => {
-                if (cancelled) return;
-                const isAdmin = Boolean(d.isAdmin);
-                const partnerName = d.partnerOrganizationName ?? null;
-                setSessionCtx({ ready: true, isAdmin, partnerName });
-                if (!isAdmin && partnerName) {
-                    setSelectedPartner(partnerName);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setSessionCtx({ ready: true, isAdmin: false, partnerName: null });
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        if (!isAdmin) return;
+        const householdId18 = searchParams.get('householdId18')?.trim();
+        if (householdId18) {
+            setSelectedOrg({ name: 'Selected organization', householdId18 });
+        }
+    }, [isAdmin, searchParams, setSelectedOrg]);
 
     useEffect(() => {
-        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
-        const dest = searchParams.get('destination')?.trim();
-        if (dest) setSelectedPartner(dest);
-    }, [sessionCtx.ready, sessionCtx.isAdmin, searchParams]);
-
-    useEffect(() => {
-        if (!sessionCtx.ready || !sessionCtx.isAdmin) return;
+        if (!isAdmin) return;
         let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject(new Error('Partners failed'))))
@@ -100,20 +77,44 @@ const OverviewPageContent: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [sessionCtx.ready, sessionCtx.isAdmin]);
+    }, [isAdmin]);
 
-    const isPartnerDashboard =
-        sessionCtx.ready && !sessionCtx.isAdmin && Boolean(sessionCtx.partnerName);
+    useEffect(() => {
+        if (!selectedOrg || selectedOrg.householdId18 || partnerOrganizations.length === 0) return;
+        const match = partnerOrganizations.find(
+            partner => partner.name.toLowerCase() === selectedOrg.name.toLowerCase()
+        );
+        if (match?.householdId18) {
+            setSelectedOrg(current =>
+                current && !current.householdId18
+                    ? { ...current, householdId18: match.householdId18 }
+                    : current
+            );
+        }
+    }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
+
+    const isPartnerDashboard = !isAdmin && Boolean(partnerOrganizationName);
+    const selectedPartner: SelectedPartner | null = useMemo(
+        () =>
+            isPartnerDashboard
+                ? partnerOrganizationName
+                    ? {
+                          name: partnerOrganizationName,
+                          householdId18: partnerHouseholdId18,
+                      }
+                    : null
+                : selectedOrg,
+        [isPartnerDashboard, selectedOrg, partnerHouseholdId18, partnerOrganizationName]
+    );
 
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
 
     const fetchOverviewData = useCallback(async () => {
-        if (!sessionCtx.ready) return;
-
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
         const params = new URLSearchParams({ start, end });
-        if (selectedPartner) params.set('destination', selectedPartner);
+        if (selectedPartner?.householdId18)
+            params.set('householdId18', selectedPartner.householdId18);
         const q = params.toString();
 
         setLoading(true);
@@ -158,11 +159,13 @@ const OverviewPageContent: React.FC = () => {
                         date: string;
                         totalPounds: number;
                         destination?: string | null;
+                        householdId18?: string | null;
                     }) => ({
                         id: d.id,
                         date: new Date(d.date),
                         totalPounds: d.totalPounds,
                         destination: d.destination ?? null,
+                        householdId18: d.householdId18 ?? null,
                     })
                 )
             );
@@ -179,7 +182,7 @@ const OverviewPageContent: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange, selectedPartner, sessionCtx.ready]);
+    }, [dateRange, selectedPartner]);
 
     useEffect(() => {
         void fetchOverviewData();
@@ -194,21 +197,23 @@ const OverviewPageContent: React.FC = () => {
                         <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                             Statistics Overview
                         </h1>
-                        {isPartnerDashboard && sessionCtx.partnerName ? (
+                        {isPartnerDashboard && partnerOrganizationName ? (
                             <p className="mt-2 text-sm text-gray-600">
-                                Showing deliveries for your organization:{' '}
+                                Partner view:{' '}
                                 <span className="font-medium text-gray-900">
-                                    {sessionCtx.partnerName}
+                                    {partnerOrganizationName}
                                 </span>
                             </p>
                         ) : selectedPartner ? (
                             <p className="mt-2 text-sm text-gray-600">
                                 Partner view:{' '}
-                                <span className="font-medium text-gray-900">{selectedPartner}</span>
+                                <span className="font-medium text-gray-900">
+                                    {selectedPartner.name}
+                                </span>
                                 <span className="mx-2 text-gray-300">·</span>
                                 <button
                                     type="button"
-                                    onClick={() => setSelectedPartner(null)}
+                                    onClick={clearSelectedOrg}
                                     className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
                                 >
                                     View all organizations
@@ -216,11 +221,13 @@ const OverviewPageContent: React.FC = () => {
                             </p>
                         ) : null}
                     </div>
-                    {sessionCtx.isAdmin ? (
+                    {isAdmin ? (
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
-                                onSelectPartner={name => setSelectedPartner(name)}
+                                onSelectPartner={partner => setSelectedOrg(partner)}
+                                selectedPartner={selectedPartner}
+                                onClearPartner={clearSelectedOrg}
                             />
                         </div>
                     ) : null}
@@ -316,16 +323,16 @@ const OverviewPageContent: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-                                    <div className="flex h-[380px] min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                        <div className="flex-1 min-h-0">
+                                    <div className="flex min-h-[380px] min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                        <div className="flex-1">
                                             <FoodTypesDonutChart
                                                 data={foodTypesData}
                                                 title="Food Types Donated"
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex h-[380px] min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
-                                        <div className="flex-1 min-h-0">
+                                    <div className="flex min-h-[380px] min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                        <div className="flex-1">
                                             <FoodTypesDonutChart
                                                 data={processingData}
                                                 title="Processing Breakdown"
@@ -354,9 +361,13 @@ const OverviewPageContent: React.FC = () => {
                                     />
                                     <div className="flex justify-end mt-4">
                                         <Link
-                                            href="/distribution"
+                                            href={
+                                                selectedPartner?.householdId18
+                                                    ? `/distribution?householdId18=${encodeURIComponent(selectedPartner.householdId18)}`
+                                                    : '/distribution'
+                                            }
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
-                                            style={{ backgroundColor: THEME_ORANGE }}
+                                            style={{ backgroundColor: 'var(--fff-orange)' }}
                                         >
                                             See full distribution history
                                         </Link>

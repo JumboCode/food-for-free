@@ -9,6 +9,7 @@ type Delivery = {
     totalPounds: number;
     id: string;
     destination?: string | null;
+    householdId18?: string | null;
 };
 
 type DeliverySummaryProps = {
@@ -29,10 +30,10 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
     const [popupData, setPopupData] = useState<PopupData | null>(null);
 
     const handleDeliveryClick = async (delivery: Delivery) => {
-        const org = delivery.destination?.trim() ?? '';
-        if (!org) return;
+        const org = delivery.destination?.trim() ?? 'Selected Organization';
         const dateStr = new Date(delivery.date).toISOString().slice(0, 10);
         const params = new URLSearchParams({ date: dateStr, org });
+        if (delivery.householdId18) params.set('householdId18', delivery.householdId18);
         try {
             const res = await fetch(`/api/overview/deliveries/detail?${params.toString()}`);
             if (!res.ok) return;

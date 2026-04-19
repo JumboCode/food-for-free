@@ -3,8 +3,6 @@
 import { MyCalendar } from '@/components/ui/CalendarPicker';
 import { useFilterContext } from '@/contexts/FilterContext';
 
-const THEME_ORANGE = '#FAC87D';
-
 type QuickFilter =
     | 'last30days'
     | 'thisMonth'
@@ -66,7 +64,7 @@ export default function FilterBar() {
                                 }`}
                                 style={
                                     activeFilter === key
-                                        ? { backgroundColor: THEME_ORANGE }
+                                        ? { backgroundColor: 'var(--fff-orange)' }
                                         : undefined
                                 }
                             >

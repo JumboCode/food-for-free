@@ -3,7 +3,6 @@ import prisma from '~/lib/prisma';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerFilter,
     scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
@@ -51,8 +50,7 @@ type JustEatsStatsRow = {
 
 async function queryBulkAndRescueStats(
     range: { start: Date; end: Date },
-    partnerHouseholdId18: string | undefined,
-    partnerFilter: string | undefined
+    partnerHouseholdId18: string | undefined
 ): Promise<BulkRescueStatsRow> {
     if (partnerHouseholdId18) {
         const rows = await prisma.$queryRaw<BulkRescueStatsRow[]>`
@@ -66,33 +64,6 @@ async function queryBulkAndRescueStats(
                 WHERE d."householdId18" = ${partnerHouseholdId18}
                   AND d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
-                GROUP BY DATE_TRUNC('day', d."date")
-            )
-            SELECT
-                COALESCE(SUM(day_pounds) FILTER (WHERE day_pounds > 0), 0) AS "totalPoundsDelivered",
-                COUNT(*) FILTER (WHERE day_pounds > 0)::int AS "deliveriesCompleted"
-            FROM per_day
-        `;
-        return rows[0] ?? { totalPoundsDelivered: 0, deliveriesCompleted: 0 };
-    }
-    if (partnerFilter) {
-        const rows = await prisma.$queryRaw<BulkRescueStatsRow[]>`
-            WITH per_day AS (
-                SELECT
-                    DATE_TRUNC('day', d."date") AS day_bucket,
-                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS day_pounds
-                FROM "AllProductPackageDestinations" d
-                LEFT JOIN "AllPackagesByItem" p
-                    ON p."productPackageId18" = d."productPackageId18"
-                WHERE d."date" >= ${range.start}
-                  AND d."date" <= ${range.end}
-                  AND (
-                      d."householdName" ILIKE ${partnerFilter}
-                      OR d."householdId18" IN (
-                          SELECT pt."householdId18" FROM "Partner" pt
-                          WHERE pt."organizationName" ILIKE ${partnerFilter}
-                      )
-                  )
                 GROUP BY DATE_TRUNC('day', d."date")
             )
             SELECT
@@ -125,8 +96,7 @@ async function queryBulkAndRescueStats(
 
 async function queryJustEatsStats(
     range: { start: Date; end: Date },
-    partnerHouseholdId18: string | undefined,
-    partnerFilter: string | undefined
+    partnerHouseholdId18: string | undefined
 ): Promise<JustEatsStatsRow> {
     if (partnerHouseholdId18) {
         const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
@@ -137,24 +107,6 @@ async function queryJustEatsStats(
             WHERE j."householdId" = ${partnerHouseholdId18}
               AND j."pantryVisitDateTime" >= ${range.start}
               AND j."pantryVisitDateTime" <= ${range.end}
-        `;
-        return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
-    }
-    if (partnerFilter) {
-        const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
-            SELECT
-                (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
-                COUNT(*)::int AS "justEatsTotalDeliveries"
-            FROM "JustEatsBoxes" j
-            WHERE j."pantryVisitDateTime" >= ${range.start}
-              AND j."pantryVisitDateTime" <= ${range.end}
-              AND (
-                  j."householdId" IN (
-                      SELECT p."householdId18" FROM "Partner" p
-                      WHERE p."organizationName" ILIKE ${partnerFilter}
-                  )
-                  OR j."householdName" ILIKE ${partnerFilter}
-              )
         `;
         return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
     }
@@ -177,17 +129,19 @@ async function queryJustEatsStats(
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const scope = await getOverviewScope(searchParams.get('destination'));
+        const scope = await getOverviewScope(
+            searchParams.get('destination'),
+            searchParams.get('householdId18')
+        );
         const scopeErr = overviewScopeErrorResponse(scope);
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
-        const partnerFilter = scopeToPartnerFilter(scope);
 
         const [bulkRescue, justEats] = await Promise.all([
-            queryBulkAndRescueStats(range, partnerHouseholdId18, partnerFilter),
-            queryJustEatsStats(range, partnerHouseholdId18, partnerFilter),
+            queryBulkAndRescueStats(range, partnerHouseholdId18),
+            queryJustEatsStats(range, partnerHouseholdId18),
         ]);
 
         return NextResponse.json({

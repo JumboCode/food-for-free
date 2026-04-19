@@ -103,7 +103,6 @@ export function MyCalendar({
             const next: DateRange = { from, to };
             if (to) {
                 setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
-                setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
             } else {
                 setInputValue(format(from, 'MM/dd/yyyy'));
             }
@@ -119,7 +118,6 @@ export function MyCalendar({
             const from = prev?.from && prev.from <= to ? prev.from : to;
             const next: DateRange = { from, to };
             setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
-            setTimeout(() => onRangeChange?.({ start: from, end: to }), 0);
             return next;
         });
     };
@@ -167,9 +165,14 @@ export function MyCalendar({
         onClear?.();
     };
 
-    const handleDone = () => toggleDialog();
+    const handleDone = () => {
+        if (selectedRange?.from && selectedRange?.to) {
+            onRangeChange?.({ start: selectedRange.from, end: selectedRange.to });
+        }
+        toggleDialog();
+    };
 
-    const themeAccent = '#FAC87D';
+    const themeAccent = 'var(--fff-orange)';
     const startMonth = new Date(MIN_FILTER_DATE.getFullYear(), MIN_FILTER_DATE.getMonth(), 1);
     const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
 
@@ -192,7 +195,7 @@ export function MyCalendar({
                 onClick={toggleDialog}
                 title={rangeTitle}
                 className={cn(
-                    'flex min-w-0 max-w-full items-center gap-2 border text-left font-medium shadow-sm transition-colors border-[#FAC87D]/50 bg-[#FAC87D]/15 text-slate-800 hover:bg-[#FAC87D]/25 hover:border-[#FAC87D]/70',
+                    'flex min-w-0 max-w-full items-center gap-2 border text-left font-medium shadow-sm transition-colors border-(--fff-orange)/50 bg-(--fff-orange)/15 text-slate-800 hover:bg-(--fff-orange)/25 hover:border-(--fff-orange)/70',
                     triggerVariant === 'panel' && 'w-full rounded-lg px-3 py-2.5 text-sm',
                     triggerVariant === 'pill' &&
                         'inline-flex rounded-full px-3 py-1.5 text-xs sm:max-w-[min(100%,20rem)] sm:text-sm',
@@ -282,7 +285,7 @@ export function MyCalendar({
                                 disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
-                                    inRange: { backgroundColor: '#fef8ed' },
+                                    inRange: { backgroundColor: 'var(--fff-orange-soft)' },
                                 }}
                                 className="text-slate-900"
                             />
@@ -303,7 +306,7 @@ export function MyCalendar({
                                 disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
                                 modifiers={{ inRange: isInRange }}
                                 modifiersStyles={{
-                                    inRange: { backgroundColor: '#fef8ed' },
+                                    inRange: { backgroundColor: 'var(--fff-orange-soft)' },
                                 }}
                                 className="text-slate-900"
                             />

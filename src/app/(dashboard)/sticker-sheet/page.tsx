@@ -62,6 +62,23 @@ const sampleDeliveryData = {
     ],
 };
 
+const stressDonutData = [
+    {
+        label: 'Ultra Long Category Name For Fresh Produce',
+        value: 100000000000000,
+        color: '#A1C5B0',
+    },
+    { label: 'Dry Goods', value: 30408345, color: '#E7A54E' },
+    { label: 'Frozen Meat', value: 3920401, color: '#F9DC70' },
+    { label: 'Dairy', value: 268470, color: '#FBE37A' },
+    { label: 'Misc. Cold', value: 22355, color: '#6CAEE6' },
+    { label: 'Other', value: 20236, color: '#B39DDB' },
+    { label: 'Bakery', value: 42, color: '#B7D7BD' },
+    { label: 'Ready Meals', value: 1888, color: '#9CCCF2' },
+    { label: 'Shelf Stable', value: 777777, color: '#F4B76A' },
+    { label: 'Canned Proteins', value: 3333333, color: '#88C18D' },
+];
+
 export default function CalendarPage() {
     const [isDeliveryPopupOpen, setIsDeliveryPopupOpen] = useState(false);
 
@@ -136,6 +153,12 @@ export default function CalendarPage() {
             <section>
                 <h1 className="text-2xl font-bold mb-4">Donut Chart</h1>
                 <FoodTypesDonutChart />
+            </section>
+            <section>
+                <h1 className="text-2xl font-bold mb-4">Donut Chart Stress Test</h1>
+                <div className="max-w-3xl rounded-lg border border-gray-200 bg-white p-4">
+                    <FoodTypesDonutChart data={stressDonutData} title="Stress Test Categories" />
+                </div>
             </section>
             <DeliveryDetailPopup
                 isOpen={isDeliveryPopupOpen}

@@ -3,7 +3,6 @@ import { prisma } from '~/lib/prisma';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerFilter,
     scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 import {
@@ -17,7 +16,10 @@ import {
  */
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
-    const scope = await getOverviewScope(searchParams.get('destination'));
+    const scope = await getOverviewScope(
+        searchParams.get('destination'),
+        searchParams.get('householdId18')
+    );
     const scopeErr = overviewScopeErrorResponse(scope);
     if (scopeErr) return scopeErr;
 
@@ -35,21 +37,20 @@ export async function GET(req: NextRequest) {
 
     const search = (searchParams.get('search') || '').trim().toLowerCase();
     const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
-    const orgFilter = partnerHouseholdId18 ? undefined : scopeToPartnerFilter(scope);
 
     const [bulk, justEats] = await Promise.all([
         queryDistributionDeliveries(prisma, {
             start,
             end,
             search,
-            orgFilter,
+            orgFilter: undefined,
             partnerHouseholdId18,
         }),
         queryJustEatsDistributionDeliveries(prisma, {
             start,
             end,
             search,
-            orgFilter,
+            orgFilter: undefined,
             partnerHouseholdId18,
         }),
     ]);

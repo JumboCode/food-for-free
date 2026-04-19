@@ -17,6 +17,7 @@ export async function GET() {
         return NextResponse.json({
             isAdmin: admin,
             partnerOrganizationName: user.partner?.organizationName?.trim() ?? null,
+            partnerHouseholdId18: user.partner?.householdId18 ?? null,
         });
     } catch (error) {
         console.error('GET /api/user/context:', error);

@@ -3,7 +3,6 @@ import prisma from '~/lib/prisma';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerFilter,
     scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
@@ -57,13 +56,15 @@ function getDefaultRange(): { start: Date; end: Date } {
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const scope = await getOverviewScope(searchParams.get('destination'));
+        const scope = await getOverviewScope(
+            searchParams.get('destination'),
+            searchParams.get('householdId18')
+        );
         const scopeErr = overviewScopeErrorResponse(scope);
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
-        const partnerFilter = scopeToPartnerFilter(scope);
 
         const daysDiff = Math.ceil(
             (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24)
@@ -88,23 +89,10 @@ export async function GET(request: NextRequest) {
                   AND d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
                 GROUP BY DATE_TRUNC('day', d."date")
+                HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ORDER BY DATE_TRUNC('day', d."date") ASC
             `
-            : partnerFilter
-              ? await prisma.$queryRaw<DailyRow[]>`
-                SELECT
-                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
-                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
-                FROM "AllProductPackageDestinations" d
-                LEFT JOIN "AllPackagesByItem" p
-                    ON p."productPackageId18" = d."productPackageId18"
-                WHERE d."householdName" ILIKE ${partnerFilter}
-                  AND d."date" >= ${range.start}
-                  AND d."date" <= ${range.end}
-                GROUP BY DATE_TRUNC('day', d."date")
-                ORDER BY DATE_TRUNC('day', d."date") ASC
-            `
-              : await prisma.$queryRaw<DailyRow[]>`
+            : await prisma.$queryRaw<DailyRow[]>`
                 SELECT
                     TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
@@ -114,11 +102,56 @@ export async function GET(request: NextRequest) {
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
                 GROUP BY DATE_TRUNC('day', d."date")
+                HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ORDER BY DATE_TRUNC('day', d."date") ASC
             `;
 
+        const justEatsDailyRows = partnerHouseholdId18
+            ? await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                    COUNT(*) * 25 AS "pounds"
+                FROM "JustEatsBoxes" d
+                WHERE d."householdId" = ${partnerHouseholdId18}
+                  AND d."pantryVisitDateTime" >= ${range.start}
+                  AND d."pantryVisitDateTime" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."pantryVisitDateTime")
+                ORDER BY DATE_TRUNC('day', d."pantryVisitDateTime") ASC
+            `
+            : await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                    COUNT(*) * 25 AS "pounds"
+                FROM "JustEatsBoxes" d
+                WHERE d."pantryVisitDateTime" >= ${range.start}
+                  AND d."pantryVisitDateTime" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."pantryVisitDateTime")
+                ORDER BY DATE_TRUNC('day', d."pantryVisitDateTime") ASC
+            `;
+
         const buckets: Record<string, number> = {};
+
+        // add data from AllPackagesByItem to an array
         for (const row of dailyRows) {
+            const [yearStr, monthStr, dayStr] = row.day.split('-');
+            const y = Number.parseInt(yearStr ?? '', 10);
+            const m = Number.parseInt(monthStr ?? '', 10);
+            const day = Number.parseInt(dayStr ?? '', 10);
+            if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(day)) continue;
+            const weight = Number(row.pounds ?? 0);
+            let key: string;
+            if (aggregateByYear) {
+                key = String(y);
+            } else if (aggregateByDay) {
+                key = `${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+            } else {
+                key = `${MONTH_NAMES[m - 1]} ${y}`;
+            }
+            buckets[key] = (buckets[key] ?? 0) + weight;
+        }
+
+        // add data from JustEatsBoxes to an existing array
+        for (const row of justEatsDailyRows) {
             const [yearStr, monthStr, dayStr] = row.day.split('-');
             const y = Number.parseInt(yearStr ?? '', 10);
             const m = Number.parseInt(monthStr ?? '', 10);

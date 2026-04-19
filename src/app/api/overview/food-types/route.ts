@@ -10,7 +10,6 @@ import {
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerFilter,
     scopeToPartnerHouseholdId18,
 } from '~/lib/overviewAccess';
 
@@ -53,19 +52,19 @@ function getDefaultRange(): { start: Date; end: Date } {
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const scope = await getOverviewScope(searchParams.get('destination'));
+        const scope = await getOverviewScope(
+            searchParams.get('destination'),
+            searchParams.get('householdId18')
+        );
         const scopeErr = overviewScopeErrorResponse(scope);
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
-        const destination = scopeToPartnerFilter(scope);
 
         const partnerClause = partnerHouseholdId18
             ? Prisma.sql`AND d."householdId18" = ${partnerHouseholdId18}`
-            : destination
-              ? Prisma.sql`AND d."householdName" ILIKE ${destination}`
-              : Prisma.empty;
+            : Prisma.empty;
 
         type ProductTypeRow = { productType: string | null; pounds: number | null };
         const foodTypeGrouped = await prisma.$queryRaw<ProductTypeRow[]>`

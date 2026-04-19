@@ -24,6 +24,25 @@ interface FoodTypesDonutChartProps {
     title?: string;
 }
 
+function formatLegendValue(value: number): string {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0';
+    if (Math.abs(n) < 1_000_000) return n.toLocaleString();
+    return new Intl.NumberFormat(undefined, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+    }).format(n);
+}
+
+function formatCompactValue(value: number): string {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0';
+    return new Intl.NumberFormat(undefined, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+    }).format(n);
+}
+
 const renderActiveShape = (props: SectorProps) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
     return (
@@ -82,8 +101,12 @@ export function FoodTypesDonutChart({
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
     const total = data.reduce((sum, d) => sum + d.value, 0);
+    const maxValue = data.reduce((max, d) => Math.max(max, Number(d.value) || 0), 0);
     const hasData = data.some(d => Number(d.value) > 0);
     const dataWithTotal = data.map(d => ({ ...d, total }));
+    const useCompactLegendNumbers = maxValue >= 1_000_000;
+    const centerTotalDisplay =
+        Math.abs(total) >= 1_000_000_000 ? formatCompactValue(total) : total.toLocaleString();
 
     // Remove tooltip fade logic
     return (
@@ -92,8 +115,8 @@ export function FoodTypesDonutChart({
                 {title}
             </h3>
             {hasData ? (
-                <div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-5">
-                    <div className="relative h-[250px] w-full min-w-0 max-w-[250px] sm:h-[270px] sm:max-w-[270px] sm:self-center">
+                <div className="mt-1 flex min-h-0 flex-1 w-full flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="relative h-[235px] w-full min-w-0 max-w-[235px] sm:h-[250px] sm:max-w-[250px] sm:self-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -131,35 +154,41 @@ export function FoodTypesDonutChart({
                                 <span
                                     className="mt-0.5 text-xs font-medium tabular-nums text-slate-700"
                                     style={{ opacity: 1 }}
+                                    title={`${total.toLocaleString()} lbs`}
                                 >
-                                    {total.toLocaleString()} lbs
+                                    {centerTotalDisplay} lbs
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-y-auto pr-1 sm:gap-2.5">
+                    <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 pr-1 sm:gap-2">
                         {data.map((item, index) => {
                             const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                             return (
                                 <div
                                     key={index}
-                                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+                                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-1.5 sm:px-3 sm:py-2"
                                 >
-                                    <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex min-w-0 items-center gap-2">
                                         <div
                                             className="h-2.5 w-2.5 shrink-0 rounded-full"
                                             style={{ backgroundColor: item.color || '#94a3b8' }}
                                         />
-                                        <span className="text-sm font-medium leading-tight text-slate-800 wrap-break-word max-w-44">
+                                        <span className="min-w-0 wrap-break-word text-xs font-medium leading-tight text-slate-800 sm:text-sm">
                                             {item.label}
                                         </span>
                                     </div>
-                                    <div className="shrink-0 text-right">
-                                        <span className="text-xs font-medium tabular-nums text-slate-600">
-                                            {item.value.toLocaleString()}
+                                    <div className="shrink-0 whitespace-nowrap pl-2 text-right">
+                                        <span
+                                            className="text-[11px] font-medium tabular-nums text-slate-600 sm:text-xs"
+                                            title={Number(item.value).toLocaleString()}
+                                        >
+                                            {useCompactLegendNumbers
+                                                ? formatCompactValue(Number(item.value))
+                                                : formatLegendValue(Number(item.value))}
                                         </span>
-                                        <span className="ml-0.5 text-xs text-slate-400">
+                                        <span className="ml-0.5 text-[11px] text-slate-400 sm:text-xs">
                                             ({pct}%)
                                         </span>
                                     </div>

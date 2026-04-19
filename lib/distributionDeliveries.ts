@@ -45,23 +45,7 @@ export async function queryDistributionDeliveries(
     const search = params.search.trim().toLowerCase();
     const searchFilter = search ? `%${search}%` : null;
     const searchClause = search
-        ? Prisma.sql`
-          AND (
-            d."householdName" ILIKE ${searchFilter}
-            OR COALESCE(p."pantryProductName", '') ILIKE ${searchFilter}
-            OR COALESCE(t."inventoryType", '') ILIKE ${searchFilter}
-            OR COALESCE(t."productType", '') ILIKE ${searchFilter}
-            OR COALESCE(t."source", '') ILIKE ${searchFilter}
-            OR COALESCE(p."lotFoodRescueProgram", '') ILIKE ${searchFilter}
-            OR (
-              CASE
-                WHEN t."minimallyProcessedFood" IS TRUE THEN 'Minimally Processed'
-                WHEN t."minimallyProcessedFood" IS FALSE THEN 'Processed'
-                ELSE 'Not Specified'
-              END
-            ) ILIKE ${searchFilter}
-          )
-        `
+        ? Prisma.sql`AND COALESCE(p."pantryProductName", '') ILIKE ${searchFilter}`
         : Prisma.empty;
 
     const destClause =
@@ -125,12 +109,7 @@ export async function queryJustEatsDistributionDeliveries(
     const search = params.search.trim().toLowerCase();
     const searchFilter = search ? `%${search}%` : null;
     const searchClause = search
-        ? Prisma.sql`
-          AND (
-            j."householdName" ILIKE ${searchFilter}
-            OR COALESCE(j."productPackageName", '') ILIKE ${searchFilter}
-          )
-        `
+        ? Prisma.sql`AND COALESCE(j."productPackageName", '') ILIKE ${searchFilter}`
         : Prisma.empty;
 
     const destClause =

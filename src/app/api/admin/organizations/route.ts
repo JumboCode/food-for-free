@@ -34,12 +34,16 @@ export async function GET() {
         const memberCountByOrgId = new Map(
             partners.map(partner => [partner.clerkOrganizationId, partner._count.users])
         );
+        const householdIdByOrgId = new Map(
+            partners.map(partner => [partner.clerkOrganizationId, partner.householdId18])
+        );
 
         const organizationsWithCounts = organizationsResponse.data.map(org => ({
             id: org.id,
             name: org.name,
             slug: org.slug,
             membersCount: memberCountByOrgId.get(org.id) ?? 0,
+            householdId18: householdIdByOrgId.get(org.id) ?? null,
             createdAt: org.createdAt.toString(),
         }));
 
