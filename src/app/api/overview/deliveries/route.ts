@@ -114,7 +114,21 @@ export async function GET(request: NextRequest) {
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
             GROUP BY DATE_TRUNC('day', d."date"), d."householdId18", COALESCE(pt."organizationName", d."householdName")
-            ORDER BY DATE_TRUNC('day', d."date") DESC
+
+            UNION ALL
+
+            SELECT
+                TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                COALESCE(pt."organizationName", t."householdName") AS "destination",
+                t."householdId" AS "householdId18",
+                COUNT(*) * 25 as "totalPounds"
+            FROM "JustEatsBoxes" t
+            LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
+            WHERE t."pantryVisitDateTime" >= ${range.start}
+              AND t."pantryVisitDateTime" <= ${range.end}
+            GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime"), t."householdId", COALESCE(pt."organizationName", t."householdName")
+            
+            ORDER BY "day" DESC
             LIMIT 10
         `;
 
