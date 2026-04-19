@@ -41,7 +41,7 @@ function getDefaultRange(): { start: Date; end: Date } {
 
 /**
  * GET /api/overview/deliveries?start=...&end=...&destination=...
- * Returns list of deliveries (grouped by date + destination) with id, date, totalPounds, destination.
+ * Bulk & rescue rows only: grouped by date (and destination in the global view), excluding zero-pound totals.
  */
 export async function GET(request: NextRequest) {
     try {
@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
                   AND d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
                 GROUP BY DATE_TRUNC('day', d."date")
+                HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ORDER BY DATE_TRUNC('day', d."date") DESC
                 LIMIT 10
             `;
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest) {
                       AND d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
                     GROUP BY DATE_TRUNC('day', d."date")
+                    HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                     ORDER BY DATE_TRUNC('day', d."date") DESC
                     LIMIT 10
                 `
@@ -113,6 +115,7 @@ export async function GET(request: NextRequest) {
                       AND d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
                     GROUP BY DATE_TRUNC('day', d."date")
+                    HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                     ORDER BY DATE_TRUNC('day', d."date") DESC
                     LIMIT 10
                 `;
@@ -142,6 +145,7 @@ export async function GET(request: NextRequest) {
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
             GROUP BY DATE_TRUNC('day', d."date"), COALESCE(pt."organizationName", d."householdName")
+            HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
             ORDER BY DATE_TRUNC('day', d."date") DESC
             LIMIT 10
         `;
