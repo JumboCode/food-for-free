@@ -104,8 +104,52 @@ export async function GET(request: NextRequest) {
                 ORDER BY DATE_TRUNC('day', d."date") ASC
             `;
 
+        const justEatsDailyRows = partnerHouseholdId18
+            ? await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                    COUNT(*) * 25 AS "pounds"
+                FROM "JustEatsBoxes" d
+                WHERE d."householdId" = ${partnerHouseholdId18}
+                  AND d."pantryVisitDateTime" >= ${range.start}
+                  AND d."pantryVisitDateTime" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."pantryVisitDateTime")
+                ORDER BY DATE_TRUNC('day', d."pantryVisitDateTime") ASC
+            `
+            : await prisma.$queryRaw<DailyRow[]>`
+                SELECT
+                    TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                    COUNT(*) * 25 AS "pounds"
+                FROM "JustEatsBoxes" d
+                WHERE d."pantryVisitDateTime" >= ${range.start}
+                  AND d."pantryVisitDateTime" <= ${range.end}
+                GROUP BY DATE_TRUNC('day', d."pantryVisitDateTime")
+                ORDER BY DATE_TRUNC('day', d."pantryVisitDateTime") ASC
+            `;
+
         const buckets: Record<string, number> = {};
+
+        // add data from AllPackagesByItem to an array
         for (const row of dailyRows) {
+            const [yearStr, monthStr, dayStr] = row.day.split('-');
+            const y = Number.parseInt(yearStr ?? '', 10);
+            const m = Number.parseInt(monthStr ?? '', 10);
+            const day = Number.parseInt(dayStr ?? '', 10);
+            if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(day)) continue;
+            const weight = Number(row.pounds ?? 0);
+            let key: string;
+            if (aggregateByYear) {
+                key = String(y);
+            } else if (aggregateByDay) {
+                key = `${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+            } else {
+                key = `${MONTH_NAMES[m - 1]} ${y}`;
+            }
+            buckets[key] = (buckets[key] ?? 0) + weight;
+        }
+
+        // add data from JustEatsBoxes to an existing array
+        for (const row of justEatsDailyRows) {
             const [yearStr, monthStr, dayStr] = row.day.split('-');
             const y = Number.parseInt(yearStr ?? '', 10);
             const m = Number.parseInt(monthStr ?? '', 10);
