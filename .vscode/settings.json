@@ -57,6 +57,8 @@
         "javascriptreact",
         "typescript",
         "typescriptreact"
-    ]
+    ],
+    "snyk.advanced.organization": "d8d0630a-1424-4fe0-87b5-52742554027a",
+    "snyk.advanced.autoSelectOrganization": true
 }
 
