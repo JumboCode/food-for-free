@@ -16,10 +16,9 @@ export const clerkPartnerPortalAppearance: ClerkAppearance = {
         fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     },
     elements: {
-        // Parent layout sets max width; Clerk should fill that width so header/body/footer share one column.
-        // `cardBox` defaults can keep the iframe/card narrower than the page heading — stretch both wrappers.
-        rootBox: 'w-full max-w-none mx-0',
-        cardBox: 'w-full max-w-none',
+        // Keep Clerk wrappers centered within the shared column on all breakpoints.
+        rootBox: 'w-full mx-auto',
+        cardBox: 'w-full mx-auto',
         // Symmetric shadow avoids the “shifted left” optical illusion from one-sided drop shadows.
         card: 'w-full border border-[#1C5E2C]/12 bg-white rounded-2xl shadow-[0_8px_30px_-8px_rgba(17,24,39,0.12)] ring-1 ring-black/4',
         header: 'text-center',
