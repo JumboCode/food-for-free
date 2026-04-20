@@ -24,18 +24,5 @@ jobs:
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy Project Artifacts to Vercel (with retries)
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "Deploy attempt ${attempt}/3"
-            if vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              sleep 20
-            fi
-          done
-          echo "Vercel deploy failed after 3 attempts"
-          exit 1
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
