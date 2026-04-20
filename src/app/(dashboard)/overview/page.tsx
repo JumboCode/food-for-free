@@ -194,18 +194,11 @@ const OverviewPageContent: React.FC = () => {
                 {/* Page title left; admin org search right on large screens */}
                 <div className="mb-0 flex flex-col gap-3 max-lg:mb-6 lg:mb-1 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                        <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900 sm:mb-2">
                             Statistics Overview
                         </h1>
-                        {isPartnerDashboard && partnerOrganizationName ? (
-                            <p className="mt-2 text-sm text-gray-600">
-                                Partner view:{' '}
-                                <span className="font-medium text-gray-900">
-                                    {partnerOrganizationName}
-                                </span>
-                            </p>
-                        ) : selectedPartner ? (
-                            <p className="mt-2 text-sm text-gray-600">
+                        {isAdmin && selectedPartner ? (
+                            <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
                                 Partner view:{' '}
                                 <span className="font-medium text-gray-900">
                                     {selectedPartner.name}
@@ -264,7 +257,7 @@ const OverviewPageContent: React.FC = () => {
 
                 {!loading && (
                     <>
-                        <div className="flex flex-col gap-5 pt-0 sm:gap-6 lg:pt-3">
+                        <div className="flex flex-col gap-5 pt-0 sm:gap-6">
                             {/* Top stats + trend: compact key metrics column, chart takes rest */}
                             <div className="grid grid-cols-1 gap-y-3 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] lg:gap-y-3 items-stretch">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -278,20 +271,20 @@ const OverviewPageContent: React.FC = () => {
                                 <div className="grid min-h-0 h-full w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-[repeat(3,minmax(0,1fr))] lg:gap-2">
                                     <StatCard
                                         fillHeight
-                                        label="Bulk & Rescue Pounds Delivered"
+                                        label="Pounds Delivered (Bulk & Rescue)"
                                         value={totalPoundsDelivered.toLocaleString()}
                                         unit="lbs"
                                     />
                                     <StatCard
                                         fillHeight
-                                        label="Just Eats Pounds Delivered"
+                                        label="Pounds Delivered (Just Eats)"
                                         value={justEatsPoundsDelivered.toLocaleString()}
                                         unit="lbs"
                                     />
                                     <StatCard
                                         fillHeight
                                         className="col-span-2 lg:col-span-1"
-                                        label="Total Deliveries (Bulk, Rescue, Just Eats)"
+                                        label="Total Deliveries (Bulk, Rescue, and Just Eats)"
                                         value={totalDeliveriesAllPrograms.toLocaleString()}
                                     />
                                 </div>
@@ -318,7 +311,8 @@ const OverviewPageContent: React.FC = () => {
                                             Donation composition
                                         </p>
                                         <p className="mt-0.5 text-xs text-gray-600">
-                                            Breakdown of food types and processing levels.
+                                            Breakdown of food types and processing levels for bulk
+                                            and rescue deliveries.
                                         </p>
                                     </div>
                                 </div>

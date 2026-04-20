@@ -36,7 +36,7 @@ export const PROCESSING_OVERVIEW_COLOR_BY_LABEL: Record<string, string> = {
 
 /** Distribution chip colors: distinct from food-type chips and consistent. */
 export const PROCESSING_DISTRIBUTION_COLOR_BY_LABEL: Record<string, string> = {
-    'Minimally Processed': '#8B5CF6',
+    'Minimally Processed': '#A78BFA',
     Processed: '#E11D48',
     'Not Specified': '#64748B',
 };

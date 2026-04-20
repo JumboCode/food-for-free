@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Settings2 } from 'lucide-react';
+import { Search, Settings2, ShieldCheck } from 'lucide-react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
 import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 interface Organization {
     id: string;
@@ -15,21 +16,21 @@ interface Organization {
     createdAt: string;
 }
 
-const THEME_GREEN = '#B7D7BD';
-
-type OrganizationSortOrder = 'nameAsc' | 'nameDesc';
+type OrganizationSortOrder = 'nameAsc' | 'nameDesc' | 'usersAsc' | 'usersDesc';
 
 function compareOrgName(a: string, b: string): number {
     return a.localeCompare(b, undefined, { sensitivity: 'base' });
 }
 
-function sortOrganizations<T extends { name: string }>(
+function sortOrganizations<T extends { name: string; membersCount: number }>(
     orgs: T[],
     order: OrganizationSortOrder
 ): T[] {
     const copy = [...orgs];
     if (order === 'nameAsc') copy.sort((x, y) => compareOrgName(x.name, y.name));
-    else copy.sort((x, y) => compareOrgName(y.name, x.name));
+    else if (order === 'nameDesc') copy.sort((x, y) => compareOrgName(y.name, x.name));
+    else if (order === 'usersAsc') copy.sort((x, y) => x.membersCount - y.membersCount);
+    else copy.sort((x, y) => y.membersCount - x.membersCount);
     return copy;
 }
 
@@ -118,11 +119,27 @@ const AdminConsolePage: React.FC = () => {
         }
     };
 
-    const filteredOrganizations = organizations.filter(
+    /** Receiving partners only — excludes the internal Food For Free Clerk org from the table and counts. */
+    const partnerOrganizations = useMemo(
+        () => organizations.filter(org => !isDistributorPartnerOrgName(org.name)),
+        [organizations]
+    );
+
+    const internalFoodForFreeOrg = useMemo(
+        () => organizations.find(org => isDistributorPartnerOrgName(org.name)) ?? null,
+        [organizations]
+    );
+
+    const filteredOrganizations = partnerOrganizations.filter(
         org =>
             org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             org.slug.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const searchActive = searchQuery.trim().length > 0;
+    const partnerCountHint = searchActive
+        ? filteredOrganizations.length
+        : partnerOrganizations.length;
 
     const sortedFilteredOrganizations = useMemo(
         () => sortOrganizations(filteredOrganizations, organizationSort),
@@ -130,9 +147,26 @@ const AdminConsolePage: React.FC = () => {
     );
 
     const sortedOrganizationsForModal = useMemo(
-        () => sortOrganizations(organizations, organizationSort),
-        [organizations, organizationSort]
+        () => sortOrganizations(partnerOrganizations, organizationSort),
+        [partnerOrganizations, organizationSort]
     );
+
+    const nameSortActive = organizationSort.startsWith('name');
+    const usersSortActive = organizationSort.startsWith('users');
+    const nameSortDir = organizationSort === 'nameDesc' ? 'desc' : 'asc';
+    const usersSortDir = organizationSort === 'usersDesc' ? 'desc' : 'asc';
+
+    const toggleNameSort = () => {
+        setOrganizationSort(prev =>
+            prev.startsWith('name') ? (prev === 'nameAsc' ? 'nameDesc' : 'nameAsc') : 'nameAsc'
+        );
+    };
+
+    const toggleUsersSort = () => {
+        setOrganizationSort(prev =>
+            prev.startsWith('users') ? (prev === 'usersAsc' ? 'usersDesc' : 'usersAsc') : 'usersAsc'
+        );
+    };
 
     const tableData = sortedFilteredOrganizations.map(org => ({
         id: org.id,
@@ -143,49 +177,63 @@ const AdminConsolePage: React.FC = () => {
 
     return (
         <div className="min-h-screen min-w-0 max-w-full bg-[#FAF9F7]">
-            <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-                <div className="mb-6 sm:mb-8">
-                    <h1 className="text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] font-semibold tracking-tight text-gray-900">
-                        Admin Console
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-500">
-                        Manage partner organizations and their access.
-                    </p>
+            <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 px-8 py-8 sm:py-10 lg:space-y-5">
+                <div className="mb-0 flex flex-col gap-3 max-lg:mb-6 lg:mb-1 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                            Admin Console
+                        </h1>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Manage partner organizations and their access.
+                        </p>
+                    </div>
+                    {internalFoodForFreeOrg ? (
+                        <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
+                            <button
+                                type="button"
+                                onClick={() => handleOrganizationClick(internalFoodForFreeOrg)}
+                                className="inline-flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-lg border border-[#608D6A] bg-white px-4 text-sm font-medium text-[#608D6A] shadow-sm transition-colors hover:bg-[#608D6A]/10 sm:w-auto"
+                            >
+                                <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
+                                Add Admins
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
 
-                {/* Partner Organizations Section */}
+                {/* Partner Organizations Section — spaced below page title via parent space-y */}
                 <section className="min-w-0 space-y-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                        <div className="min-w-0">
-                            <h2 className="text-sm font-semibold text-gray-800 tracking-wide uppercase">
-                                Partner organizations
-                            </h2>
-                            <p className="text-xs text-gray-500 mt-1">
-                                View and edit organizations connected to Food For Free.
-                            </p>
-                        </div>
-                        <span
-                            className="inline-flex w-fit shrink-0 items-center rounded-full border px-3 py-1 text-xs font-medium text-[#608D6A]"
-                            style={{
-                                borderColor: THEME_GREEN,
-                                backgroundColor: 'rgba(183, 215, 189, 0.25)',
-                            }}
-                        >
-                            {organizations.length} total
-                        </span>
+                    <div className="min-w-0 space-y-1 sm:mt-4">
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-800">
+                            Partner organizations
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                            View and edit organizations connected to Food For Free.
+                        </p>
                     </div>
 
                     {/* Search + manage */}
-                    <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                         <div className="relative min-w-0 flex-1 md:min-w-[200px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search by name…"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                                className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white pl-9 pr-[6.75rem] text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] sm:pr-[8.25rem]"
+                                autoComplete="off"
                             />
+                            <span
+                                className="pointer-events-none absolute right-2.5 top-1/2 max-w-[45%] -translate-y-1/2 truncate text-right text-[11px] leading-none text-gray-400 tabular-nums sm:right-3 sm:max-w-[40%] sm:text-xs"
+                                title={
+                                    searchActive
+                                        ? `${filteredOrganizations.length} matching of ${partnerOrganizations.length} partner organizations`
+                                        : `${partnerOrganizations.length} partner organizations`
+                                }
+                            >
+                                {partnerCountHint} {partnerCountHint === 1 ? 'partner' : 'partners'}
+                            </span>
                         </div>
                         <button
                             type="button"
@@ -207,10 +255,12 @@ const AdminConsolePage: React.FC = () => {
                             <div className="p-4 sm:p-6">
                                 <PartnerOrganizationTable
                                     data={tableData}
-                                    nameSort={organizationSort === 'nameAsc' ? 'asc' : 'desc'}
-                                    onNameSortChange={dir =>
-                                        setOrganizationSort(dir === 'asc' ? 'nameAsc' : 'nameDesc')
-                                    }
+                                    nameSort={nameSortActive ? nameSortDir : 'asc'}
+                                    nameSortActive={nameSortActive}
+                                    onNameSortToggle={toggleNameSort}
+                                    usersSort={usersSortActive ? usersSortDir : 'asc'}
+                                    usersSortActive={usersSortActive}
+                                    onUsersSortToggle={toggleUsersSort}
                                 />
                             </div>
                         ) : (

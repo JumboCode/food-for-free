@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { X, User, Mail, BarChart3 } from 'lucide-react';
+import { CautionDialogBody } from '@/components/ui/CautionDialogBody';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 interface Organization {
@@ -370,7 +371,7 @@ export function OrganizationDetailModal({
                                     }}
                                     className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
                                 >
-                                    Edit
+                                    Edit Name
                                 </button>
                             </div>
                         )}
@@ -435,31 +436,33 @@ export function OrganizationDetailModal({
                     </div>
                 )}
 
-                {/* User Table */}
+                {/* Full-bleed header row (gray); first/last column padding matches header / Users sections */}
                 <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
                     {isLoading ? (
-                        <div className="p-8 text-center text-gray-500">Loading users...</div>
+                        <div className="px-4 py-10 text-center text-gray-500 sm:px-6 lg:px-8">
+                            Loading users...
+                        </div>
                     ) : users.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
+                        <div className="px-4 py-10 text-center text-gray-500 sm:px-6 lg:px-8">
                             No users yet. Invite someone to get started.
                         </div>
                     ) : (
                         <table className="w-full min-w-[580px] table-fixed divide-y divide-gray-200">
-                            <thead className="sticky top-0 bg-gray-100">
+                            <thead className="sticky top-0 z-[1] bg-gray-100">
                                 <tr>
-                                    <th className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[20%] py-3 pl-4 pr-2 text-left text-xs font-medium text-gray-700 sm:pl-6 sm:pr-3 sm:text-sm lg:pl-8">
                                         Name
                                     </th>
-                                    <th className="w-[33%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[33%] px-2 py-3 text-left text-xs font-medium text-gray-700 sm:px-3 sm:text-sm">
                                         Email
                                     </th>
-                                    <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[14%] px-2 py-3 text-left text-xs font-medium text-gray-700 sm:px-3 sm:text-sm">
                                         Role
                                     </th>
-                                    <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[14%] px-2 py-3 text-left text-xs font-medium text-gray-700 sm:px-3 sm:text-sm">
                                         Status
                                     </th>
-                                    <th className="w-[19%] px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-4 sm:text-sm lg:px-6">
+                                    <th className="w-[19%] py-3 pl-2 pr-4 text-left text-xs font-medium text-gray-700 sm:pl-3 sm:pr-6 sm:text-sm lg:pr-8">
                                         Actions
                                     </th>
                                 </tr>
@@ -472,20 +475,20 @@ export function OrganizationDetailModal({
                                             activeMenuUserId === user.id ? 'bg-[#FFF7E6]' : ''
                                         }`}
                                     >
-                                        <td className="px-3 py-4 text-sm text-gray-900 sm:px-4 lg:px-6">
+                                        <td className="py-4 pl-4 pr-2 text-sm text-gray-900 sm:pl-6 sm:pr-3 lg:pl-8">
                                             <span className="line-clamp-2 break-words">
                                                 {user.name}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-4 text-sm text-gray-600 sm:px-4 lg:px-6">
+                                        <td className="px-2 py-4 text-sm text-gray-600 sm:px-3">
                                             <span className="block truncate" title={user.email}>
                                                 {user.email}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
+                                        <td className="px-2 py-4 text-sm sm:px-3">
                                             <RoleBadge role={user.role} />
                                         </td>
-                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
+                                        <td className="px-2 py-4 text-sm sm:px-3">
                                             <span
                                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                                                     user.status === 'Active'
@@ -496,7 +499,7 @@ export function OrganizationDetailModal({
                                                 {user.status}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-4 text-sm sm:px-4 lg:px-6">
+                                        <td className="py-4 pl-2 pr-4 text-sm sm:pl-3 sm:pr-6 lg:pr-8">
                                             <div
                                                 ref={
                                                     activeMenuUserId === user.id
@@ -555,42 +558,31 @@ export function OrganizationDetailModal({
 
             {/* Delete Confirmation Modal */}
             {deleteConfirmUser && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70]">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 border border-[#B7D7BD]">
-                        <div className="p-6">
-                            <div className="flex items-start gap-4">
-                                <div
-                                    className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
-                                    style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}
-                                >
-                                    <span className="text-2xl">⚠️</span>
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                        Delete User
-                                    </h3>
-                                    <p className="text-sm text-gray-600">
-                                        Are you sure you want to remove {deleteConfirmUser.name}{' '}
-                                        from {organization.name}?
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="mt-6 flex gap-3 justify-end">
-                                <button
-                                    onClick={() => setDeleteConfirmUser(null)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={confirmDelete}
-                                    className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
-                                    style={{ backgroundColor: THEME_ORANGE }}
-                                >
-                                    Confirm
-                                </button>
-                            </div>
-                        </div>
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
+                        <CautionDialogBody
+                            title="Delete User"
+                            actions={
+                                <>
+                                    <button
+                                        onClick={() => setDeleteConfirmUser(null)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
+                                        style={{ backgroundColor: THEME_ORANGE }}
+                                    >
+                                        Confirm
+                                    </button>
+                                </>
+                            }
+                        >
+                            Are you sure you want to remove {deleteConfirmUser.name} from{' '}
+                            {organization.name}?
+                        </CautionDialogBody>
                     </div>
                 </div>
             )}

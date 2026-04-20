@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Info, Search, X } from 'lucide-react';
+import { CautionDialogBody } from '@/components/ui/CautionDialogBody';
 
 interface AddPartnerModalProps {
     organizations: {
@@ -320,47 +321,36 @@ export function AddPartnerModal({
             {showDeleteConfirm && selectedOrganization && (
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
-                        <div className="p-6">
-                            <div className="flex items-start gap-4">
-                                <div
-                                    className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
-                                    style={{ backgroundColor: 'rgba(250,200,125,0.35)' }}
-                                >
-                                    <span className="text-2xl">⚠️</span>
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                        Delete Partner
-                                    </h3>
-                                    <p className="text-sm text-gray-600">
-                                        Final confirmation: this will permanently delete{' '}
-                                        <span className="font-medium text-gray-900">
-                                            {selectedOrganization.name}
-                                        </span>{' '}
-                                        and associated non-admin user account(s) in Clerk and Neon.
-                                        Admin accounts will not be deleted.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="mt-6 flex gap-3 justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                                    disabled={isSubmitting}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleDelete}
-                                    className="px-4 py-2 text-sm font-medium rounded-lg border border-[#F3CBCB] bg-[#FFF5F5] text-[#B34747] hover:bg-[#FFECEC] disabled:opacity-50"
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? 'Deleting…' : 'Delete partner and users'}
-                                </button>
-                            </div>
-                        </div>
+                        <CautionDialogBody
+                            title="Delete Partner"
+                            actions={
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                                        disabled={isSubmitting}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDelete}
+                                        className="px-4 py-2 text-sm font-medium rounded-lg border border-[#F3CBCB] bg-[#FFF5F5] text-[#B34747] hover:bg-[#FFECEC] disabled:opacity-50"
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? 'Deleting…' : 'Delete partner and users'}
+                                    </button>
+                                </>
+                            }
+                        >
+                            Final confirmation: this will permanently delete{' '}
+                            <span className="font-medium text-gray-900">
+                                {selectedOrganization.name}
+                            </span>{' '}
+                            and associated non-admin user account(s) in Clerk and Neon. Admin
+                            accounts will not be deleted.
+                        </CautionDialogBody>
                     </div>
                 </div>
             )}

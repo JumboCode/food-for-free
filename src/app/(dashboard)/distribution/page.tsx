@@ -537,45 +537,49 @@ thead th{background:#f3f4f6;font-weight:600;}
         <>
             <div className="min-h-screen bg-[#FAF9F7]">
                 <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-8 py-8 sm:py-10">
-                    <div className="mb-3 sm:mb-2">
-                        <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
-                            Distribution
-                        </h1>
-                        {selectedOrg ? (
-                            <p className="mt-1 text-sm text-gray-600">
-                                Showing deliveries for:{' '}
-                                <span className="font-medium text-gray-900">
-                                    {selectedOrg.name}
-                                </span>
-                                <span className="mx-2 text-gray-300">·</span>
-                                <button
-                                    type="button"
-                                    onClick={handleClearOrg}
-                                    className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
-                                >
-                                    View all organizations
-                                </button>
-                            </p>
-                        ) : (
-                            <p className="mt-1 text-sm text-gray-500">
-                                Food delivery records across all programs.
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        {/* Row 1: searches */}
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            {isAdmin ? (
+                    {/* Page title left; admin org search right — same header layout as Overview / Admin */}
+                    <div className="mb-0 flex flex-col gap-3 max-lg:mb-6 lg:mb-1 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
+                                Distribution
+                            </h1>
+                            {isAdmin && selectedOrg ? (
+                                <p className="mt-1 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                    Showing deliveries for:{' '}
+                                    <span className="font-medium text-gray-900">
+                                        {selectedOrg.name}
+                                    </span>
+                                    <span className="mx-2 text-gray-300">·</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleClearOrg}
+                                        className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                    >
+                                        View all organizations
+                                    </button>
+                                </p>
+                            ) : (
+                                <p className="mt-1 text-sm text-gray-500">
+                                    Food delivery records across all programs.
+                                </p>
+                            )}
+                        </div>
+                        {isAdmin ? (
+                            <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                                 <SearchBarOverview
                                     organizations={partnerOrganizations}
                                     onSelectPartner={handleSelectOrg}
                                     selectedPartner={selectedOrg}
                                     onClearPartner={handleClearOrg}
-                                    wrapperClassName="w-52 shrink-0 sm:w-56"
                                     placeholder="Search organizations"
                                 />
-                            ) : null}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        {/* Food search (left) + attribute filters */}
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2 sm:mt-2">
                             <div className="relative w-40 shrink-0 sm:w-44">
                                 <Search
                                     className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
@@ -601,10 +605,6 @@ thead th{background:#f3f4f6;font-weight:600;}
                                     </button>
                                 ) : null}
                             </div>
-                        </div>
-
-                        {/* Row 2: filters */}
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2">
                             {/* Program dropdown */}
                             <div
                                 className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
@@ -622,7 +622,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                             : undefined
                                     }
                                     onClick={() => setProgramDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
                                         filterPrograms.length > 0
                                             ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
                                             : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
@@ -668,11 +668,11 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         ).map(([key, label]) => (
                                             <label
                                                 key={key}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
                                                     checked={filterPrograms.includes(key)}
                                                     onChange={() =>
                                                         setFilterPrograms(prev =>
@@ -704,7 +704,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                             : undefined
                                     }
                                     onClick={() => setFoodTypeDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
                                         filterProductTypes.length > 0
                                             ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
                                             : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
@@ -745,11 +745,11 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         {availableProductTypesSorted.map(pt => (
                                             <label
                                                 key={pt}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
                                                     checked={filterProductTypes.includes(pt)}
                                                     onChange={() =>
                                                         setFilterProductTypes(prev =>
@@ -781,7 +781,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                             : undefined
                                     }
                                     onClick={() => setProcessingDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-medium transition-colors sm:max-w-52 ${
+                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
                                         filterProcessing.length > 0
                                             ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
                                             : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
@@ -828,11 +828,11 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         ).map(([key, label]) => (
                                             <label
                                                 key={key}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
                                                     checked={filterProcessing.includes(key)}
                                                     onChange={() =>
                                                         setFilterProcessing(prev =>
@@ -851,12 +851,12 @@ thead th{background:#f3f4f6;font-weight:600;}
                                 <button
                                     type="button"
                                     onClick={clearAttributeFilters}
-                                    className="h-10 shrink-0 px-2 text-sm font-medium text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+                                    className="h-10 shrink-0 px-2 text-xs font-normal text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
                                 >
                                     Clear filters
                                 </button>
                             )}
-                            <div className="ml-auto flex shrink-0 items-center">
+                            <div className="flex shrink-0 items-center border-l border-gray-200/90 pl-3 sm:pl-4">
                                 <div
                                     className="relative inline-block shrink-0"
                                     ref={exportPanelRef}
@@ -865,7 +865,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         type="button"
                                         onClick={() => setExportMenuOpen(open => !open)}
                                         disabled={exporting}
-                                        className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
+                                        className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-xs font-normal inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
                                         style={{ backgroundColor: 'var(--fff-green)' }}
                                         aria-expanded={exportMenuOpen}
                                         aria-haspopup="menu"
@@ -897,7 +897,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                             option.key as 'csv' | 'excel' | 'pdf'
                                                         )
                                                     }
-                                                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-800 transition-colors hover:bg-gray-50"
+                                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-gray-800 transition-colors hover:bg-gray-50"
                                                     role="menuitem"
                                                 >
                                                     {option.label}
@@ -983,11 +983,11 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                     key={rowKey}
                                                     className="border-b border-gray-100 last:border-b-0"
                                                 >
-                                                    <td className="align-top py-3 px-4 text-sm text-gray-600 tabular-nums">
+                                                    <td className="align-middle py-3 px-4 text-sm text-gray-600 tabular-nums">
                                                         {format(new Date(d.date), 'M/d/yyyy')}
                                                     </td>
                                                     <td
-                                                        className="align-top py-3 px-4 text-sm text-gray-700 min-w-0 max-w-xs"
+                                                        className="align-middle py-3 px-4 text-sm text-gray-700 min-w-0 max-w-xs"
                                                         title={
                                                             foodLabel !== '—'
                                                                 ? foodLabel
@@ -1005,19 +1005,19 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                             {foodLabel}
                                                         </span>
                                                     </td>
-                                                    <td className="align-top py-3 px-4 text-sm font-medium text-gray-900 wrap-break-word">
+                                                    <td className="align-middle py-3 px-4 text-sm font-medium text-gray-900 wrap-break-word">
                                                         {d.organizationName}
                                                     </td>
-                                                    <td className="align-top py-3 px-4 text-sm text-gray-800 text-right tabular-nums">
+                                                    <td className="align-middle py-3 px-4 text-sm text-gray-800 text-right tabular-nums">
                                                         {amt.toLocaleString()}
                                                     </td>
                                                     <td
-                                                        className="align-top py-3 px-4 text-sm font-medium text-gray-900 text-right tabular-nums"
+                                                        className="align-middle py-3 px-4 text-sm font-medium text-gray-900 text-right tabular-nums"
                                                         title={unitHint}
                                                     >
                                                         {formatLbsCell(d.weightLbs)}
                                                     </td>
-                                                    <td className="align-top py-3 px-4">
+                                                    <td className="align-middle py-3 px-4">
                                                         <div className="flex flex-col items-start gap-1.5">
                                                             {isJustEats ? (
                                                                 <span
