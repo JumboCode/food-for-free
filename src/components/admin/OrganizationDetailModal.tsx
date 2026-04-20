@@ -375,7 +375,11 @@ export function OrganizationDetailModal({
                                 </button>
                             </div>
                         )}
-                        <p className="mt-1 text-xs text-gray-500">Partner organization</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                            {isDistributorPartnerOrgName(organization.name)
+                                ? 'Admin organization'
+                                : 'Partner organization'}
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
@@ -397,7 +401,7 @@ export function OrganizationDetailModal({
                     </Link>
                     <p className="mt-2 text-xs text-gray-500">
                         {isDistributorPartnerOrgName(organization.name)
-                            ? 'Opens the full statistics overview (aggregated across all partners). Food For Free is the distributor, not a receiving organization in delivery data.'
+                            ? 'Opens the full statistics overview (aggregated across all partners).'
                             : "Opens the overview dashboard filtered to this partner's delivery data."}
                     </p>
                 </div>
@@ -407,7 +411,9 @@ export function OrganizationDetailModal({
                     <div className="min-w-0 flex-1 pr-2">
                         <h3 className="text-sm font-semibold text-gray-800">Users</h3>
                         <p className="mt-1 text-xs text-gray-500">
-                            Invite and manage people with access to this partner.
+                            {isDistributorPartnerOrgName(organization.name)
+                                ? 'Invite and manage admins within the Food For Free organization.'
+                                : 'Invite and manage people with access to this partner.'}
                         </p>
                     </div>
                     <button

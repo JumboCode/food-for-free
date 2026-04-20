@@ -195,7 +195,7 @@ const AdminConsolePage: React.FC = () => {
                                 className="inline-flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-lg border border-[#608D6A] bg-white px-4 text-sm font-medium text-[#608D6A] shadow-sm transition-colors hover:bg-[#608D6A]/10 sm:w-auto"
                             >
                                 <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
-                                Add Admins
+                                Manage admins
                             </button>
                         </div>
                     ) : null}
