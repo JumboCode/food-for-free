@@ -319,7 +319,7 @@ const OverviewPageContent: React.FC = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
                                     <div className="flex min-h-[380px] min-w-0 flex-col bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
                                         <div className="flex-1">
                                             <FoodTypesDonutChart

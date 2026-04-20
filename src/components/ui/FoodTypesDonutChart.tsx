@@ -116,7 +116,7 @@ export function FoodTypesDonutChart({
             </h3>
             {hasData ? (
                 <div className="mt-1 flex min-h-0 flex-1 w-full flex-col items-center justify-center gap-2 sm:flex-row sm:items-center sm:gap-4">
-                    <div className="relative h-[235px] w-full min-w-0 max-w-[235px] sm:h-[250px] sm:max-w-[250px] sm:self-center">
+                    <div className="relative h-[200px] w-full min-w-0 max-w-[200px] shrink-0 sm:h-[220px] sm:max-w-[220px] sm:self-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -148,7 +148,7 @@ export function FoodTypesDonutChart({
                         >
                             <div className="flex flex-col items-center">
                                 <Apple
-                                    className="h-7 w-7 text-slate-500 sm:h-8 sm:w-8"
+                                    className="h-6 w-6 text-slate-500 sm:h-7 sm:w-7"
                                     style={{ opacity: 1 }}
                                 />
                                 <span
@@ -162,7 +162,7 @@ export function FoodTypesDonutChart({
                         </div>
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 pr-1 sm:gap-2">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1.5 pr-1 sm:gap-2">
                         {data.map((item, index) => {
                             const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                             return (
