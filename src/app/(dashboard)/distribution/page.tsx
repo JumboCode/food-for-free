@@ -578,285 +578,287 @@ thead th{background:#f3f4f6;font-weight:600;}
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        {/* Food search (left) + attribute filters */}
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2 sm:mt-2">
-                            <div className="relative w-40 shrink-0 sm:w-44">
-                                <Search
-                                    className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
-                                    aria-hidden
-                                />
-                                <input
-                                    id={foodSearchId}
-                                    type="text"
-                                    placeholder="Search food"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-(--fff-green) focus:outline-none focus:ring-2 focus:ring-(--fff-green)"
-                                    autoComplete="off"
-                                />
-                                {searchTerm.trim().length > 0 ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearchTerm('')}
-                                        className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                                        aria-label="Clear food search"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                ) : null}
-                            </div>
-                            {/* Program dropdown */}
-                            <div
-                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
-                                    filterPrograms.length > 0
-                                        ? 'border-[#9fc5a9]'
-                                        : 'border-gray-200'
-                                }`}
-                                ref={programDropdownRef}
-                            >
-                                <button
-                                    type="button"
-                                    title={
+                        {/* Filters (left) + Export (right, page-level action) */}
+                        <div className="mt-2 flex w-full min-w-0 flex-col gap-1.5 md:flex-row md:items-end md:justify-between md:gap-3">
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2">
+                                <div className="relative w-40 shrink-0 sm:w-44">
+                                    <Search
+                                        className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                                        aria-hidden
+                                    />
+                                    <input
+                                        id={foodSearchId}
+                                        type="text"
+                                        placeholder="Search food"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-(--fff-green) focus:outline-none focus:ring-2 focus:ring-(--fff-green)"
+                                        autoComplete="off"
+                                    />
+                                    {searchTerm.trim().length > 0 ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchTerm('')}
+                                            className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                                            aria-label="Clear food search"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    ) : null}
+                                </div>
+                                {/* Program dropdown */}
+                                <div
+                                    className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
                                         filterPrograms.length > 0
-                                            ? 'Change program filter'
-                                            : undefined
-                                    }
-                                    onClick={() => setProgramDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
-                                        filterPrograms.length > 0
-                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
-                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                            ? 'border-[#9fc5a9]'
+                                            : 'border-gray-200'
                                     }`}
+                                    ref={programDropdownRef}
                                 >
-                                    <span className="min-w-0 truncate">
-                                        {programLabel ?? 'Program'}
-                                    </span>
-                                    {filterPrograms.length === 0 ? (
-                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                                    ) : null}
-                                </button>
-                                {filterPrograms.length > 0 ? (
                                     <button
                                         type="button"
-                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
-                                        aria-label="Clear program filter"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setFilterPrograms([]);
-                                            setProgramDropdownOpen(false);
-                                        }}
+                                        title={
+                                            filterPrograms.length > 0
+                                                ? 'Change program filter'
+                                                : undefined
+                                        }
+                                        onClick={() => setProgramDropdownOpen(o => !o)}
+                                        className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-normal transition-colors sm:max-w-52 ${
+                                            filterPrograms.length > 0
+                                                ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                                : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                        }`}
                                     >
-                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        <span className="min-w-0 truncate">
+                                            {programLabel ?? 'Program'}
+                                        </span>
+                                        {filterPrograms.length === 0 ? (
+                                            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                        ) : null}
                                     </button>
-                                ) : null}
-                                {programDropdownOpen && (
-                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-44 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
-                                        {filterPrograms.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setFilterPrograms([])}
-                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
-                                            >
-                                                Clear
-                                            </button>
-                                        )}
-                                        {(
-                                            [
-                                                ['bulk_rescue', 'Bulk & Rescue'],
-                                                ['just_eats', 'Just Eats'],
-                                            ] as const
-                                        ).map(([key, label]) => (
-                                            <label
-                                                key={key}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                    checked={filterPrograms.includes(key)}
-                                                    onChange={() =>
-                                                        setFilterPrograms(prev =>
-                                                            toggleProgramList(prev, key)
-                                                        )
-                                                    }
-                                                />
-                                                {label}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                    {filterPrograms.length > 0 ? (
+                                        <button
+                                            type="button"
+                                            className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                            aria-label="Clear program filter"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setFilterPrograms([]);
+                                                setProgramDropdownOpen(false);
+                                            }}
+                                        >
+                                            <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        </button>
+                                    ) : null}
+                                    {programDropdownOpen && (
+                                        <div className="absolute left-0 top-full z-100 mt-1.5 w-44 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                            {filterPrograms.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFilterPrograms([])}
+                                                    className="mb-1.5 w-full text-left px-2 py-1 text-sm text-[#1C5E2C] font-medium hover:underline"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                            {(
+                                                [
+                                                    ['bulk_rescue', 'Bulk & Rescue'],
+                                                    ['just_eats', 'Just Eats'],
+                                                ] as const
+                                            ).map(([key, label]) => (
+                                                <label
+                                                    key={key}
+                                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                        checked={filterPrograms.includes(key)}
+                                                        onChange={() =>
+                                                            setFilterPrograms(prev =>
+                                                                toggleProgramList(prev, key)
+                                                            )
+                                                        }
+                                                    />
+                                                    {label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Food type dropdown */}
-                            <div
-                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
-                                    filterProductTypes.length > 0
-                                        ? 'border-[#9fc5a9]'
-                                        : 'border-gray-200'
-                                }`}
-                                ref={foodTypeDropdownRef}
-                            >
-                                <button
-                                    type="button"
-                                    title={
+                                {/* Food type dropdown */}
+                                <div
+                                    className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
                                         filterProductTypes.length > 0
-                                            ? 'Change food type filter'
-                                            : undefined
-                                    }
-                                    onClick={() => setFoodTypeDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
-                                        filterProductTypes.length > 0
-                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
-                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                            ? 'border-[#9fc5a9]'
+                                            : 'border-gray-200'
                                     }`}
+                                    ref={foodTypeDropdownRef}
                                 >
-                                    <span className="min-w-0 truncate">
-                                        {foodTypeLabel ?? 'Food Type'}
-                                    </span>
-                                    {filterProductTypes.length === 0 ? (
-                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                                    ) : null}
-                                </button>
-                                {filterProductTypes.length > 0 ? (
                                     <button
                                         type="button"
-                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
-                                        aria-label="Clear food type filter"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setFilterProductTypes([]);
-                                            setFoodTypeDropdownOpen(false);
-                                        }}
+                                        title={
+                                            filterProductTypes.length > 0
+                                                ? 'Change food type filter'
+                                                : undefined
+                                        }
+                                        onClick={() => setFoodTypeDropdownOpen(o => !o)}
+                                        className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-normal transition-colors sm:max-w-52 ${
+                                            filterProductTypes.length > 0
+                                                ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                                : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                        }`}
                                     >
-                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        <span className="min-w-0 truncate">
+                                            {foodTypeLabel ?? 'Food Type'}
+                                        </span>
+                                        {filterProductTypes.length === 0 ? (
+                                            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                        ) : null}
                                     </button>
-                                ) : null}
-                                {foodTypeDropdownOpen && (
-                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-52 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
-                                        {filterProductTypes.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setFilterProductTypes([])}
-                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
-                                            >
-                                                Clear
-                                            </button>
-                                        )}
-                                        {availableProductTypesSorted.map(pt => (
-                                            <label
-                                                key={pt}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                    checked={filterProductTypes.includes(pt)}
-                                                    onChange={() =>
-                                                        setFilterProductTypes(prev =>
-                                                            toggleInList(prev, pt)
-                                                        )
-                                                    }
-                                                />
-                                                {pt}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Processing dropdown */}
-                            <div
-                                className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
-                                    filterProcessing.length > 0
-                                        ? 'border-[#9fc5a9]'
-                                        : 'border-gray-200'
-                                }`}
-                                ref={processingDropdownRef}
-                            >
-                                <button
-                                    type="button"
-                                    title={
-                                        filterProcessing.length > 0
-                                            ? 'Change processing filter'
-                                            : undefined
-                                    }
-                                    onClick={() => setProcessingDropdownOpen(o => !o)}
-                                    className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-xs font-normal transition-colors sm:max-w-52 ${
-                                        filterProcessing.length > 0
-                                            ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
-                                            : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <span className="min-w-0 truncate">
-                                        {processingLabel ?? 'Processing'}
-                                    </span>
-                                    {filterProcessing.length === 0 ? (
-                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                    {filterProductTypes.length > 0 ? (
+                                        <button
+                                            type="button"
+                                            className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                            aria-label="Clear food type filter"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setFilterProductTypes([]);
+                                                setFoodTypeDropdownOpen(false);
+                                            }}
+                                        >
+                                            <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        </button>
                                     ) : null}
-                                </button>
-                                {filterProcessing.length > 0 ? (
+                                    {foodTypeDropdownOpen && (
+                                        <div className="absolute left-0 top-full z-100 mt-1.5 w-52 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                            {filterProductTypes.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFilterProductTypes([])}
+                                                    className="mb-1.5 w-full text-left px-2 py-1 text-sm text-[#1C5E2C] font-medium hover:underline"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                            {availableProductTypesSorted.map(pt => (
+                                                <label
+                                                    key={pt}
+                                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                        checked={filterProductTypes.includes(pt)}
+                                                        onChange={() =>
+                                                            setFilterProductTypes(prev =>
+                                                                toggleInList(prev, pt)
+                                                            )
+                                                        }
+                                                    />
+                                                    {pt}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Processing dropdown */}
+                                <div
+                                    className={`relative inline-flex shrink-0 rounded-lg border bg-white ${
+                                        filterProcessing.length > 0
+                                            ? 'border-[#9fc5a9]'
+                                            : 'border-gray-200'
+                                    }`}
+                                    ref={processingDropdownRef}
+                                >
                                     <button
                                         type="button"
-                                        className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
-                                        aria-label="Clear processing filter"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setFilterProcessing([]);
-                                            setProcessingDropdownOpen(false);
-                                        }}
+                                        title={
+                                            filterProcessing.length > 0
+                                                ? 'Change processing filter'
+                                                : undefined
+                                        }
+                                        onClick={() => setProcessingDropdownOpen(o => !o)}
+                                        className={`h-10 inline-flex max-w-44 items-center gap-1.5 border-0 px-2.5 text-sm font-normal transition-colors sm:max-w-52 ${
+                                            filterProcessing.length > 0
+                                                ? 'rounded-l-lg bg-[#e8f4eb] text-[#1C5E2C]'
+                                                : 'rounded-lg bg-white text-gray-700 hover:bg-gray-50'
+                                        }`}
                                     >
-                                        <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        <span className="min-w-0 truncate">
+                                            {processingLabel ?? 'Processing'}
+                                        </span>
+                                        {filterProcessing.length === 0 ? (
+                                            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                                        ) : null}
                                     </button>
-                                ) : null}
-                                {processingDropdownOpen && (
-                                    <div className="absolute left-0 top-full z-100 mt-1.5 w-52 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
-                                        {filterProcessing.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setFilterProcessing([])}
-                                                className="mb-1.5 w-full text-left px-2 py-1 text-xs text-[#1C5E2C] font-medium hover:underline"
-                                            >
-                                                Clear
-                                            </button>
-                                        )}
-                                        {(
-                                            [
-                                                ['minimal', 'Minimally Processed'],
-                                                ['processed', 'Processed'],
-                                                ['unspecified', 'Not Specified'],
-                                            ] as const
-                                        ).map(([key, label]) => (
-                                            <label
-                                                key={key}
-                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-800 hover:bg-gray-50"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
-                                                    checked={filterProcessing.includes(key)}
-                                                    onChange={() =>
-                                                        setFilterProcessing(prev =>
-                                                            toggleProcessingList(prev, key)
-                                                        )
-                                                    }
-                                                />
-                                                {label}
-                                            </label>
-                                        ))}
-                                    </div>
+                                    {filterProcessing.length > 0 ? (
+                                        <button
+                                            type="button"
+                                            className="flex h-10 shrink-0 items-center rounded-r-lg border-l border-[#9fc5a9] bg-[#e8f4eb] px-2 text-[#1C5E2C] transition-colors hover:bg-[#dceee0]"
+                                            aria-label="Clear processing filter"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setFilterProcessing([]);
+                                                setProcessingDropdownOpen(false);
+                                            }}
+                                        >
+                                            <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        </button>
+                                    ) : null}
+                                    {processingDropdownOpen && (
+                                        <div className="absolute left-0 top-full z-100 mt-1.5 w-52 rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl">
+                                            {filterProcessing.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFilterProcessing([])}
+                                                    className="mb-1.5 w-full text-left px-2 py-1 text-sm text-[#1C5E2C] font-medium hover:underline"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                            {(
+                                                [
+                                                    ['minimal', 'Minimally Processed'],
+                                                    ['processed', 'Processed'],
+                                                    ['unspecified', 'Not Specified'],
+                                                ] as const
+                                            ).map(([key, label]) => (
+                                                <label
+                                                    key={key}
+                                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-[#1C5E2C]"
+                                                        checked={filterProcessing.includes(key)}
+                                                        onChange={() =>
+                                                            setFilterProcessing(prev =>
+                                                                toggleProcessingList(prev, key)
+                                                            )
+                                                        }
+                                                    />
+                                                    {label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {activeAttributeFilterCount > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={clearAttributeFilters}
+                                        className="h-10 shrink-0 px-2 text-sm font-medium text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+                                    >
+                                        Clear filters
+                                    </button>
                                 )}
                             </div>
-
-                            {activeAttributeFilterCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={clearAttributeFilters}
-                                    className="h-10 shrink-0 px-2 text-xs font-normal text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
-                                >
-                                    Clear filters
-                                </button>
-                            )}
-                            <div className="flex shrink-0 items-center border-l border-gray-200/90 pl-3 sm:pl-4">
+                            <div className="flex w-full shrink-0 items-center justify-start pt-1.5 md:w-auto md:justify-end md:pt-0 md:pl-4">
                                 <div
                                     className="relative inline-block shrink-0"
                                     ref={exportPanelRef}
@@ -865,7 +867,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         type="button"
                                         onClick={() => setExportMenuOpen(open => !open)}
                                         disabled={exporting}
-                                        className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-xs font-normal inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
+                                        className="h-10 shrink-0 px-4 rounded-lg text-gray-800 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors border border-[#9fc5a9] hover:bg-[#9fc5a9]/80"
                                         style={{ backgroundColor: 'var(--fff-green)' }}
                                         aria-expanded={exportMenuOpen}
                                         aria-haspopup="menu"
@@ -880,7 +882,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                     </button>
                                     {exportMenuOpen ? (
                                         <div
-                                            className="absolute left-0 top-full z-100 mt-2 min-w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-xl ring-1 ring-black/5"
+                                            className="absolute right-0 top-full z-100 mt-2 min-w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-xl ring-1 ring-black/5"
                                             role="menu"
                                             aria-label="Export format"
                                         >
@@ -897,7 +899,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                             option.key as 'csv' | 'excel' | 'pdf'
                                                         )
                                                     }
-                                                    className="w-full rounded-lg px-3 py-2 text-left text-xs text-gray-800 transition-colors hover:bg-gray-50"
+                                                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-800 transition-colors hover:bg-gray-50"
                                                     role="menuitem"
                                                 >
                                                     {option.label}
