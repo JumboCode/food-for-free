@@ -64,36 +64,75 @@ export async function GET(request: NextRequest) {
                 destination: string | null;
                 totalPounds: number | null;
             };
-            const rows = await prisma.$queryRaw<PartnerDeliveryRow[]>`
-                SELECT
-                    TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
-                    COALESCE(MAX(pt."organizationName"), MAX(d."householdName")) AS "destination",
-                    SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
-                FROM "AllInventoryTransactions" t
-                INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
-                INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
-                LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
-                WHERE d."householdId18" = ${partnerHouseholdId18}
-                  AND d."date" >= ${range.start}
-                  AND d."date" <= ${range.end}
-                GROUP BY DATE_TRUNC('day', d."date")
-                HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
-                ORDER BY DATE_TRUNC('day', d."date") DESC
-                LIMIT 10
-            `;
+            type PartnerJustEatsRow = {
+                day: string;
+                totalPounds: number | null;
+            };
+            const [brRows, jeRows] = await Promise.all([
+                prisma.$queryRaw<PartnerDeliveryRow[]>`
+                    SELECT
+                        TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
+                        COALESCE(MAX(pt."organizationName"), MAX(d."householdName")) AS "destination",
+                        SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                    FROM "AllInventoryTransactions" t
+                    INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                    INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
+                    LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
+                    WHERE d."householdId18" = ${partnerHouseholdId18}
+                      AND d."date" >= ${range.start}
+                      AND d."date" <= ${range.end}
+                    GROUP BY DATE_TRUNC('day', d."date")
+                    HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
+                `,
+                prisma.$queryRaw<PartnerJustEatsRow[]>`
+                    SELECT
+                        TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
+                        COUNT(*) * 25 AS "totalPounds"
+                    FROM "JustEatsBoxes" t
+                    WHERE t."householdId" = ${partnerHouseholdId18}
+                      AND t."pantryVisitDateTime" >= ${range.start}
+                      AND t."pantryVisitDateTime" <= ${range.end}
+                    GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime")
+                    HAVING COUNT(*) * 25 > 0
+                `,
+            ]);
+
+            const destinationForRow =
+                brRows[0]?.destination?.trim() || scopedDestinationName || partnerHouseholdId18;
+
+            type PartnerMerged = {
+                day: string;
+                program: 'bulk_rescue' | 'just_eats';
+                totalPounds: number;
+                destination: string;
+            };
+            const merged: PartnerMerged[] = [
+                ...brRows.map(r => ({
+                    day: r.day,
+                    program: 'bulk_rescue' as const,
+                    totalPounds: Math.round(Number(r.totalPounds ?? 0)),
+                    destination:
+                        r.destination?.trim() || scopedDestinationName || partnerHouseholdId18,
+                })),
+                ...jeRows.map(r => ({
+                    day: r.day,
+                    program: 'just_eats' as const,
+                    totalPounds: Math.round(Number(r.totalPounds ?? 0)),
+                    destination: destinationForRow,
+                })),
+            ]
+                .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+                .slice(0, 10);
+
             return NextResponse.json({
-                deliveries: rows.map(r => {
-                    const day = r.day;
-                    const destination =
-                        r.destination?.trim() || scopedDestinationName || partnerHouseholdId18;
-                    return {
-                        id: `${day}|${partnerHouseholdId18}`,
-                        date: `${day}T00:00:00.000Z`,
-                        totalPounds: Math.round(Number(r.totalPounds ?? 0)),
-                        destination,
-                        householdId18: partnerHouseholdId18,
-                    };
-                }),
+                deliveries: merged.map(r => ({
+                    id: `${r.day}|${partnerHouseholdId18}|${r.program}`,
+                    date: `${r.day}T00:00:00.000Z`,
+                    totalPounds: r.totalPounds,
+                    destination: r.destination,
+                    householdId18: partnerHouseholdId18,
+                    program: r.program,
+                })),
             });
         }
         type DeliveryRow = {
@@ -101,13 +140,15 @@ export async function GET(request: NextRequest) {
             destination: string | null;
             totalPounds: number | null;
             householdId18: string | null;
+            program: string;
         };
         const rows = await prisma.$queryRaw<DeliveryRow[]>`
             SELECT
                 TO_CHAR(DATE_TRUNC('day', d."date"), 'YYYY-MM-DD') AS "day",
                 COALESCE(pt."organizationName", d."householdName") AS "destination",
                 d."householdId18" AS "householdId18",
-                SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds"
+                SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "totalPounds",
+                'bulk_rescue'::text AS "program"
             FROM "AllInventoryTransactions" t
             INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
             INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
@@ -123,7 +164,8 @@ export async function GET(request: NextRequest) {
                 TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                 COALESCE(pt."organizationName", t."householdName") AS "destination",
                 t."householdId" AS "householdId18",
-                COUNT(*) * 25 as "totalPounds"
+                COUNT(*) * 25 as "totalPounds",
+                'just_eats'::text AS "program"
             FROM "JustEatsBoxes" t
             LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
             WHERE t."pantryVisitDateTime" >= ${range.start}
@@ -140,11 +182,12 @@ export async function GET(request: NextRequest) {
                 const destination = r.destination ?? null;
                 const householdId18 = r.householdId18 ?? null;
                 return {
-                    id: `${day}|${householdId18 ?? destination ?? ''}`,
+                    id: `${day}|${householdId18 ?? destination ?? ''}|${r.program}`,
                     date: `${day}T00:00:00.000Z`,
                     totalPounds: Math.round(Number(r.totalPounds ?? 0)),
                     destination,
                     householdId18,
+                    program: r.program,
                 };
             }),
         });

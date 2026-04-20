@@ -10,12 +10,21 @@ type Delivery = {
     id: string;
     destination?: string | null;
     householdId18?: string | null;
+    /** Present for API rows; used in partner view for the middle column. */
+    program?: 'bulk_rescue' | 'just_eats' | null;
 };
 
 type DeliverySummaryProps = {
     deliveries: Delivery[];
     historyLink: string;
+    /** Partner dashboard: show Bulk & Rescue / Just Eats instead of repeating org name. */
+    middleColumn?: 'partner' | 'deliveryProgram';
 };
+
+function deliveryProgramLabel(program?: string | null): string {
+    if (program === 'just_eats') return 'Just Eats';
+    return 'Bulk & Rescue';
+}
 
 type PopupData = {
     date: string;
@@ -25,7 +34,10 @@ type PopupData = {
     foodsDelivered: { name: string; weight: string }[];
 };
 
-const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
+const DeliverySummary: React.FC<DeliverySummaryProps> = ({
+    deliveries,
+    middleColumn = 'partner',
+}) => {
     const [popupOpen, setPopupOpen] = useState(false);
     const [popupData, setPopupData] = useState<PopupData | null>(null);
 
@@ -70,7 +82,7 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
                             Date
                         </span>
                         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Partner
+                            {middleColumn === 'deliveryProgram' ? 'Delivery Program' : 'Partner'}
                         </span>
                         <span className="text-xs font-medium uppercase tracking-wide text-gray-500 text-right">
                             Pounds
@@ -88,7 +100,11 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({ deliveries }) => {
                         <DeliverySummaryRow
                             key={delivery.id}
                             date={delivery.date}
-                            organization={delivery.destination?.trim() ?? 'Unknown'}
+                            organization={
+                                middleColumn === 'deliveryProgram'
+                                    ? deliveryProgramLabel(delivery.program)
+                                    : (delivery.destination?.trim() ?? 'Unknown')
+                            }
                             totalPounds={delivery.totalPounds}
                             id={delivery.id}
                             onClick={() => {

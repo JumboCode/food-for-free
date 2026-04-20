@@ -27,6 +27,7 @@ type DeliverySummaryItem = {
     totalPounds: number;
     destination?: string | null;
     householdId18?: string | null;
+    program?: 'bulk_rescue' | 'just_eats' | null;
 };
 
 const formatDateParam = (d: Date) => {
@@ -160,12 +161,14 @@ const OverviewPageContent: React.FC = () => {
                         totalPounds: number;
                         destination?: string | null;
                         householdId18?: string | null;
+                        program?: 'bulk_rescue' | 'just_eats' | null;
                     }) => ({
                         id: d.id,
                         date: new Date(d.date),
                         totalPounds: d.totalPounds,
                         destination: d.destination ?? null,
                         householdId18: d.householdId18 ?? null,
+                        program: d.program ?? null,
                     })
                 )
             );
@@ -352,6 +355,9 @@ const OverviewPageContent: React.FC = () => {
                                     <DeliverySummary
                                         deliveries={deliverySummaryData}
                                         historyLink="distribution"
+                                        middleColumn={
+                                            isPartnerDashboard ? 'deliveryProgram' : 'partner'
+                                        }
                                     />
                                     <div className="flex justify-end mt-4">
                                         <Link
