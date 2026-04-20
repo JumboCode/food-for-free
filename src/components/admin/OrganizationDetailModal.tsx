@@ -284,11 +284,10 @@ export function OrganizationDetailModal({
         setDeleteConfirmUser(user);
     };
 
-    const overviewHref = isDistributorPartnerOrgName(organization.name)
-        ? '/overview'
-        : organization.householdId18
-          ? `/overview?householdId18=${encodeURIComponent(organization.householdId18)}`
-          : '/overview';
+    const isDistributorOrg = isDistributorPartnerOrgName(organization.name);
+    const partnerOverviewHref = organization.householdId18
+        ? `/overview?householdId18=${encodeURIComponent(organization.householdId18)}`
+        : '/overview';
 
     const confirmDelete = async () => {
         if (!deleteConfirmUser) return;
@@ -376,9 +375,7 @@ export function OrganizationDetailModal({
                             </div>
                         )}
                         <p className="mt-1 text-xs text-gray-500">
-                            {isDistributorPartnerOrgName(organization.name)
-                                ? 'Admin organization'
-                                : 'Partner organization'}
+                            {isDistributorOrg ? 'Admin organization' : 'Partner organization'}
                         </p>
                     </div>
                     <button
@@ -390,29 +387,32 @@ export function OrganizationDetailModal({
                     </button>
                 </div>
 
-                <div className="border-b border-gray-100 bg-[#FAFDFB] px-4 py-3 sm:px-6 lg:px-8">
-                    <Link
-                        href={overviewHref}
-                        onClick={() => onClose()}
-                        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#9fc5a9] bg-white text-sm font-medium text-[#608D6A] hover:bg-[#F7FAF7] transition-colors"
-                    >
-                        <BarChart3 className="h-4 w-4" />
-                        View statistics overview
-                    </Link>
-                    <p className="mt-2 text-xs text-gray-500">
-                        {isDistributorPartnerOrgName(organization.name)
-                            ? 'Opens the full statistics overview (aggregated across all partners).'
-                            : "Opens the overview dashboard filtered to this partner's delivery data."}
-                    </p>
-                </div>
+                {!isDistributorOrg ? (
+                    <div className="border-b border-gray-100 bg-[#FAFDFB] px-4 py-3 sm:px-6 lg:px-8">
+                        <Link
+                            href={partnerOverviewHref}
+                            onClick={() => onClose()}
+                            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#9fc5a9] bg-white text-sm font-medium text-[#608D6A] hover:bg-[#F7FAF7] transition-colors"
+                        >
+                            <BarChart3 className="h-4 w-4" />
+                            View statistics overview
+                        </Link>
+                        <p className="mt-2 text-xs text-gray-500">
+                            Opens the overview dashboard filtered to this partner&apos;s delivery
+                            data.
+                        </p>
+                    </div>
+                ) : null}
 
                 {/* Users header + Add User Button */}
                 <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:items-center sm:px-6 lg:px-8 lg:pt-5">
                     <div className="min-w-0 flex-1 pr-2">
-                        <h3 className="text-sm font-semibold text-gray-800">Users</h3>
+                        <h3 className="text-sm font-semibold text-gray-800">
+                            {isDistributorOrg ? 'Admins' : 'Users'}
+                        </h3>
                         <p className="mt-1 text-xs text-gray-500">
-                            {isDistributorPartnerOrgName(organization.name)
-                                ? 'Invite and manage admins within the Food For Free organization.'
+                            {isDistributorOrg
+                                ? 'Invite and manage admins within Food For Free.'
                                 : 'Invite and manage people with access to this partner.'}
                         </p>
                     </div>
@@ -421,7 +421,7 @@ export function OrganizationDetailModal({
                         onClick={() => setIsAddUserModalOpen(true)}
                         className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4d7155]"
                     >
-                        Add user
+                        {isDistributorOrg ? 'Add admin' : 'Add user'}
                     </button>
                 </div>
 

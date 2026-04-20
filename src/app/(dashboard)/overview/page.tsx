@@ -59,7 +59,10 @@ const OverviewPageContent: React.FC = () => {
         if (!isAdmin) return;
         const householdId18 = searchParams.get('householdId18')?.trim();
         if (householdId18) {
-            setSelectedOrg({ name: 'Selected organization', householdId18 });
+            // Set scope immediately from URL, then hydrate display name once partners load.
+            setSelectedOrg(current =>
+                current?.householdId18 === householdId18 ? current : { name: '', householdId18 }
+            );
         }
     }, [isAdmin, searchParams, setSelectedOrg]);
 
@@ -81,14 +84,32 @@ const OverviewPageContent: React.FC = () => {
     }, [isAdmin]);
 
     useEffect(() => {
-        if (!selectedOrg || selectedOrg.householdId18 || partnerOrganizations.length === 0) return;
-        const match = partnerOrganizations.find(
-            partner => partner.name.toLowerCase() === selectedOrg.name.toLowerCase()
-        );
-        if (match?.householdId18) {
+        if (!selectedOrg || partnerOrganizations.length === 0) return;
+
+        // Deep links use householdId18; resolve the display name once partner metadata is loaded.
+        if (selectedOrg.householdId18) {
+            const byHousehold = partnerOrganizations.find(
+                partner => partner.householdId18 === selectedOrg.householdId18
+            );
+            if (byHousehold && byHousehold.name !== selectedOrg.name) {
+                setSelectedOrg(current =>
+                    current && current.householdId18 === byHousehold.householdId18
+                        ? { ...current, name: byHousehold.name }
+                        : current
+                );
+            }
+            return;
+        }
+
+        const byName = selectedOrg.name
+            ? partnerOrganizations.find(
+                  partner => partner.name.toLowerCase() === selectedOrg.name.toLowerCase()
+              )
+            : null;
+        if (byName?.householdId18) {
             setSelectedOrg(current =>
                 current && !current.householdId18
-                    ? { ...current, householdId18: match.householdId18 }
+                    ? { ...current, householdId18: byName.householdId18, name: byName.name }
                     : current
             );
         }
@@ -200,7 +221,7 @@ const OverviewPageContent: React.FC = () => {
                         <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900 sm:mb-2">
                             Statistics Overview
                         </h1>
-                        {isAdmin && selectedPartner ? (
+                        {isAdmin && selectedPartner?.name ? (
                             <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
                                 Partner view:{' '}
                                 <span className="font-medium text-gray-900">
