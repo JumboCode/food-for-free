@@ -348,8 +348,7 @@ export function AddPartnerModal({
                             <span className="font-medium text-gray-900">
                                 {selectedOrganization.name}
                             </span>{' '}
-                            and associated non-admin user account(s) in Clerk and Neon. Admin
-                            accounts will not be deleted.
+                            and associated user accounts.
                         </CautionDialogBody>
                     </div>
                 </div>
