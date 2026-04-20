@@ -82,6 +82,10 @@ export default async function SignUpPage({
         <main className="flex min-h-screen items-center justify-center bg-[#E7F3EB] px-4 py-10">
             <div className="flex w-full max-w-md flex-col items-stretch gap-6">
                 <PartnerPortalAuthHeader subtitle="Complete sign up using your invitation." />
+                <p className="-mt-3 text-center text-xs text-gray-500">
+                    Use the same email address this invitation was sent to (including Google
+                    sign-in).
+                </p>
                 <div className="w-full">
                     <SignUp
                         forceRedirectUrl={overviewRedirectUrl}
