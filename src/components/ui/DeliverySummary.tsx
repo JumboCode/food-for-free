@@ -19,6 +19,8 @@ type DeliverySummaryProps = {
     historyLink: string;
     /** Partner dashboard: show Bulk & Rescue / Just Eats instead of repeating org name. */
     middleColumn?: 'partner' | 'deliveryProgram';
+    /** Use embedded styling when parent already renders the outer card shell. */
+    containerStyle?: 'standalone' | 'embedded';
 };
 
 function deliveryProgramLabel(program?: string | null): string {
@@ -37,6 +39,7 @@ type PopupData = {
 const DeliverySummary: React.FC<DeliverySummaryProps> = ({
     deliveries,
     middleColumn = 'partner',
+    containerStyle = 'standalone',
 }) => {
     const [popupOpen, setPopupOpen] = useState(false);
     const [popupData, setPopupData] = useState<PopupData | null>(null);
@@ -75,8 +78,20 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
 
     return (
         <div className="w-full">
-            <div className="rounded-xl border overflow-hidden shadow-sm border-[#B7D7BD]">
-                <div className="divide-y divide-[#B7D7BD]/40 bg-white">
+            <div
+                className={
+                    containerStyle === 'embedded'
+                        ? 'overflow-hidden rounded-lg bg-white'
+                        : 'overflow-hidden rounded-xl border border-[#B7D7BD] shadow-sm'
+                }
+            >
+                <div
+                    className={
+                        containerStyle === 'embedded'
+                            ? 'divide-y divide-gray-100 bg-white'
+                            : 'divide-y divide-[#B7D7BD]/40 bg-white'
+                    }
+                >
                     <div className="grid grid-cols-[100px_1fr_72px_auto] items-center gap-4 px-4 py-2.5 bg-gray-50/80">
                         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
                             Date

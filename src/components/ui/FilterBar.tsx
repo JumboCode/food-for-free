@@ -57,7 +57,7 @@ export default function FilterBar() {
                                 type="button"
                                 title={title}
                                 onClick={() => setQuickFilter(key)}
-                                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium leading-none transition-colors ${
                                     activeFilter === key
                                         ? 'text-gray-900 border-transparent'
                                         : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'

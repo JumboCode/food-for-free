@@ -284,11 +284,11 @@ const OverviewPageContent: React.FC = () => {
                         <div className="flex flex-col gap-5 pt-0 sm:gap-6">
                             {/* Top stats + trend: compact key metrics column, chart takes rest */}
                             <div className="grid grid-cols-1 gap-y-3 gap-x-4 lg:grid-cols-[minmax(0,220px)_minmax(0,2fr)] lg:grid-rows-[auto_minmax(220px,1fr)] lg:gap-y-3 items-stretch">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                     Key metrics
                                 </p>
                                 <div className="hidden lg:block">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                         Delivery trend
                                     </p>
                                 </div>
@@ -314,7 +314,7 @@ const OverviewPageContent: React.FC = () => {
                                 </div>
                                 <div className="flex min-h-0 flex-col max-lg:mt-1">
                                     <div className="mb-1 max-lg:mb-2 lg:hidden">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                             Delivery trend
                                         </p>
                                     </div>
@@ -331,7 +331,7 @@ const OverviewPageContent: React.FC = () => {
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                             Donation composition
                                         </p>
                                         <p className="mt-0.5 text-xs text-gray-600">
@@ -364,7 +364,7 @@ const OverviewPageContent: React.FC = () => {
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                             Recent deliveries
                                         </p>
                                         <p className="text-sm text-gray-600">
@@ -379,6 +379,7 @@ const OverviewPageContent: React.FC = () => {
                                         middleColumn={
                                             isPartnerDashboard ? 'deliveryProgram' : 'partner'
                                         }
+                                        containerStyle="embedded"
                                     />
                                     <div className="flex justify-end mt-4">
                                         <Link
