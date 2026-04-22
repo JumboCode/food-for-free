@@ -334,7 +334,7 @@ const OverviewPageContent: React.FC = () => {
                                         <p className="text-sm font-semibold uppercase tracking-wide text-gray-700">
                                             Donation composition
                                         </p>
-                                        <p className="mt-0.5 text-xs text-gray-600">
+                                        <p className="mt-0.5 text-sm text-gray-600">
                                             Breakdown of food types and processing levels for bulk
                                             and rescue deliveries.
                                         </p>
@@ -372,7 +372,7 @@ const OverviewPageContent: React.FC = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="w-full bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4">
+                                <div className="w-full overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">
                                     <DeliverySummary
                                         deliveries={deliverySummaryData}
                                         historyLink="distribution"
@@ -381,7 +381,7 @@ const OverviewPageContent: React.FC = () => {
                                         }
                                         containerStyle="embedded"
                                     />
-                                    <div className="flex justify-end mt-4">
+                                    <div className="flex justify-end border-t border-gray-100 px-3 py-3 sm:px-4">
                                         <Link
                                             href={
                                                 selectedPartner?.householdId18
