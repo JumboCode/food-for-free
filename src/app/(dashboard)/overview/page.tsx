@@ -295,7 +295,7 @@ const OverviewPageContent: React.FC = () => {
                                 <div className="grid min-h-0 h-full w-full grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-1 lg:grid-rows-[repeat(3,minmax(0,1fr))] lg:gap-2">
                                     <StatCard
                                         fillHeight
-                                        label="Pounds Delivered (Bulk & Rescue)"
+                                        label="Pounds Delivered (Bulk & Recovery)"
                                         value={totalPoundsDelivered.toLocaleString()}
                                         unit="lbs"
                                     />
@@ -308,7 +308,7 @@ const OverviewPageContent: React.FC = () => {
                                     <StatCard
                                         fillHeight
                                         className="col-span-2 lg:col-span-1"
-                                        label="Total Deliveries (Bulk, Rescue, and Just Eats)"
+                                        label="Total Deliveries (Bulk, Recovery, and Just Eats)"
                                         value={totalDeliveriesAllPrograms.toLocaleString()}
                                     />
                                 </div>
@@ -336,7 +336,7 @@ const OverviewPageContent: React.FC = () => {
                                         </p>
                                         <p className="mt-0.5 text-sm text-gray-600">
                                             Breakdown of food types and processing levels for bulk
-                                            and rescue deliveries.
+                                            and recovery deliveries.
                                         </p>
                                     </div>
                                 </div>

@@ -43,7 +43,7 @@ function rowProgram(row: DeliveryRecord): 'bulk_rescue' | 'just_eats' {
 }
 
 function programExportLabel(row: DeliveryRecord): string {
-    return rowProgram(row) === 'just_eats' ? 'Just Eats' : 'Bulk & Rescue';
+    return rowProgram(row) === 'just_eats' ? 'Just Eats' : 'Bulk & Recovery';
 }
 
 type ProgramFilterKey = 'bulk_rescue' | 'just_eats';
@@ -281,7 +281,7 @@ function DistributionContent() {
             : filterPrograms.length === 2
               ? 'Both programs'
               : filterPrograms[0] === 'bulk_rescue'
-                ? 'Bulk & Rescue'
+                ? 'Bulk & Recovery'
                 : 'Just Eats';
 
     const foodTypeLabel =
@@ -326,7 +326,7 @@ function DistributionContent() {
             'Processing',
             'Inventory type',
             'Source',
-            'Food rescue program',
+            'Food recovery program',
         ],
         []
     );
@@ -663,7 +663,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                             )}
                                             {(
                                                 [
-                                                    ['bulk_rescue', 'Bulk & Rescue'],
+                                                    ['bulk_rescue', 'Bulk & Recovery'],
                                                     ['just_eats', 'Just Eats'],
                                                 ] as const
                                             ).map(([key, label]) => (

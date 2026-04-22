@@ -17,7 +17,7 @@ type Delivery = {
 type DeliverySummaryProps = {
     deliveries: Delivery[];
     historyLink: string;
-    /** Partner dashboard: show Bulk & Rescue / Just Eats instead of repeating org name. */
+    /** Partner dashboard: show Bulk & Recovery / Just Eats instead of repeating org name. */
     middleColumn?: 'partner' | 'deliveryProgram';
     /** Use embedded styling when parent already renders the outer card shell. */
     containerStyle?: 'standalone' | 'embedded';
@@ -25,7 +25,7 @@ type DeliverySummaryProps = {
 
 function deliveryProgramLabel(program?: string | null): string {
     if (program === 'just_eats') return 'Just Eats';
-    return 'Bulk & Rescue';
+    return 'Bulk & Recovery';
 }
 
 type PopupData = {
