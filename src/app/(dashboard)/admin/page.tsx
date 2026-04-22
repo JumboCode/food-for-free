@@ -188,14 +188,17 @@ const AdminConsolePage: React.FC = () => {
                         </p>
                     </div>
                     {internalFoodForFreeOrg ? (
-                        <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
+                        <div className="w-fit shrink-0 self-start lg:pt-1">
                             <button
                                 type="button"
                                 onClick={() => handleOrganizationClick(internalFoodForFreeOrg)}
-                                className="inline-flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-lg border border-[#608D6A] bg-white px-4 text-sm font-medium text-[#608D6A] shadow-sm transition-colors hover:bg-[#608D6A]/10 sm:w-auto"
+                                className="inline-flex h-10 w-auto items-center justify-center gap-2 rounded-lg border border-[#608D6A] bg-white px-4 text-sm font-medium text-[#608D6A] shadow-sm transition-colors hover:bg-[#608D6A]/10"
                             >
-                                <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
-                                Manage admins
+                                <ShieldCheck
+                                    className="h-4 w-4 shrink-0 translate-y-[0.5px]"
+                                    aria-hidden
+                                />
+                                <span className="leading-none">Manage admins</span>
                             </button>
                         </div>
                     ) : null}
@@ -238,7 +241,7 @@ const AdminConsolePage: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setIsManagePartnerModalOpen(true)}
-                            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4d7155] md:w-auto"
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4d7155] sm:w-auto sm:shrink-0"
                         >
                             <Settings2 className="h-4 w-4 shrink-0" />
                             Manage partners
