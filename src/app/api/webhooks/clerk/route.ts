@@ -7,6 +7,10 @@ import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
+function normalizeEmail(email: string | null | undefined): string {
+    return email?.trim().toLowerCase() ?? '';
+}
+
 async function upsertNeonUserFromClerk(userId: string): Promise<void> {
     const client = await clerkClient();
     const cu = await client.users.getUser(userId);
@@ -53,6 +57,44 @@ async function isFoodForFreeOrganization(clerkOrganizationId: string): Promise<b
         select: { organizationName: true },
     });
     return isDistributorPartnerOrgName(partner?.organizationName);
+}
+
+async function userHasVerifiedEmail(userId: string, email: string): Promise<boolean> {
+    const target = normalizeEmail(email);
+    if (!target) return false;
+    const client = await clerkClient();
+    const cu = await client.users.getUser(userId);
+    return cu.emailAddresses.some(addr => {
+        const matches = normalizeEmail(addr.emailAddress) === target;
+        const verified = addr.verification?.status === 'verified';
+        return matches && verified;
+    });
+}
+
+async function rollbackMembershipForEmailMismatch(
+    userId: string,
+    organizationId: string,
+    invitedEmail: string
+): Promise<void> {
+    const client = await clerkClient();
+    try {
+        await client.organizations.deleteOrganizationMembership({
+            organizationId,
+            userId,
+        });
+    } catch (clerkErr) {
+        const status = (clerkErr as { status?: number }).status;
+        if (status !== 404) throw clerkErr;
+    }
+    await prisma.user.updateMany({
+        where: { clerkId: userId },
+        data: { partnerId: null },
+    });
+    console.warn('Rejected invitation acceptance due to email mismatch', {
+        userId,
+        organizationId,
+        invitedEmail,
+    });
 }
 
 /**
@@ -154,20 +196,51 @@ export async function POST(req: Request) {
             console.log(`${eventType}:`, id, 'Role:', nextRole);
         }
 
+        if (eventType === 'user.deleted') {
+            const d = evt.data as { id?: string };
+            const deletedClerkUserId = d.id;
+            if (!deletedClerkUserId) {
+                console.error('user.deleted: missing id', JSON.stringify(d));
+            } else {
+                await prisma.user.deleteMany({
+                    where: { clerkId: deletedClerkUserId },
+                });
+                console.log('user.deleted: removed local user row', deletedClerkUserId);
+            }
+        }
+
         // Invite accepted: reliable path for Neon user + partner link (often the only event apps subscribe to).
         if (eventType === 'organizationInvitation.accepted') {
             const d = evt.data as {
                 user_id?: string;
                 organization_id?: string;
+                email_address?: string;
             };
             const userId = d.user_id;
             const organizationId = d.organization_id;
+            const invitedEmail = normalizeEmail(d.email_address);
             if (!userId || !organizationId) {
                 console.error(
                     'organizationInvitation.accepted: missing user_id or organization_id',
                     JSON.stringify(d)
                 );
             } else {
+                if (!invitedEmail) {
+                    console.error(
+                        'organizationInvitation.accepted: missing invited email address',
+                        JSON.stringify(d)
+                    );
+                } else {
+                    const hasInviteEmail = await userHasVerifiedEmail(userId, invitedEmail);
+                    if (!hasInviteEmail) {
+                        await rollbackMembershipForEmailMismatch(
+                            userId,
+                            organizationId,
+                            invitedEmail
+                        );
+                        return new Response('Invitation email mismatch', { status: 200 });
+                    }
+                }
                 await assignPartnerByClerkOrgId(userId, organizationId);
                 if (await isFoodForFreeOrganization(organizationId)) {
                     await prisma.user.update({

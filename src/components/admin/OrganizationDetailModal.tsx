@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useUser } from '@clerk/nextjs';
 import { X, User, Mail, BarChart3 } from 'lucide-react';
 import { CautionDialogBody } from '@/components/ui/CautionDialogBody';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
@@ -62,6 +63,10 @@ export function OrganizationDetailModal({
     onClose,
     onUpdate,
 }: OrganizationDetailModalProps) {
+    const { user: clerkUser } = useUser();
+    const currentUserPrimaryEmail = clerkUser?.primaryEmailAddress?.emailAddress
+        ?.trim()
+        .toLowerCase();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -474,88 +479,104 @@ export function OrganizationDetailModal({
                                 </tr>
                             </thead>
                             <tbody className="bg-white">
-                                {users.map(user => (
-                                    <tr
-                                        key={user.id}
-                                        className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${
-                                            activeMenuUserId === user.id ? 'bg-[#FFF7E6]' : ''
-                                        }`}
-                                    >
-                                        <td className="py-4 pl-4 pr-2 text-sm text-gray-900 sm:pl-6 sm:pr-3 lg:pl-8">
-                                            <span className="line-clamp-2 break-words">
-                                                {user.name}
-                                            </span>
-                                        </td>
-                                        <td className="px-2 py-4 text-sm text-gray-600 sm:px-3">
-                                            <span className="block truncate" title={user.email}>
-                                                {user.email}
-                                            </span>
-                                        </td>
-                                        <td className="px-2 py-4 text-sm sm:px-3">
-                                            <RoleBadge role={user.role} />
-                                        </td>
-                                        <td className="px-2 py-4 text-sm sm:px-3">
-                                            <span
-                                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                                                    user.status === 'Active'
-                                                        ? 'bg-[rgba(183,215,189,0.35)] text-[#608D6A]'
-                                                        : 'bg-[rgba(250,200,125,0.35)] text-[#744210]'
-                                                }`}
-                                            >
-                                                {user.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 pl-2 pr-4 text-sm sm:pl-3 sm:pr-6 lg:pr-8">
-                                            <div
-                                                ref={
-                                                    activeMenuUserId === user.id
-                                                        ? menuTriggerRef
-                                                        : undefined
-                                                }
-                                                className="relative inline-block text-left"
-                                            >
-                                                <button
-                                                    onClick={() =>
-                                                        setActiveMenuUserId(
-                                                            activeMenuUserId === user.id
-                                                                ? null
-                                                                : user.id
-                                                        )
-                                                    }
-                                                    className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                {users.map(user => {
+                                    // UI guard: hide delete action for the currently signed-in account.
+                                    // Backend still enforces this check as a hard stop.
+                                    // We compare normalized emails because the table rows are keyed on Neon user ids.
+                                    const rowEmail = user.email.trim().toLowerCase();
+                                    const isCurrentUserRow =
+                                        user.status === 'Active' &&
+                                        !!currentUserPrimaryEmail &&
+                                        rowEmail === currentUserPrimaryEmail;
+                                    return (
+                                        <tr
+                                            key={user.id}
+                                            className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${
+                                                activeMenuUserId === user.id ? 'bg-[#FFF7E6]' : ''
+                                            }`}
+                                        >
+                                            <td className="py-4 pl-4 pr-2 text-sm text-gray-900 sm:pl-6 sm:pr-3 lg:pl-8">
+                                                <span className="line-clamp-2 break-words">
+                                                    {user.name}
+                                                </span>
+                                            </td>
+                                            <td className="px-2 py-4 text-sm text-gray-600 sm:px-3">
+                                                <span className="block truncate" title={user.email}>
+                                                    {user.email}
+                                                </span>
+                                            </td>
+                                            <td className="px-2 py-4 text-sm sm:px-3">
+                                                <RoleBadge role={user.role} />
+                                            </td>
+                                            <td className="px-2 py-4 text-sm sm:px-3">
+                                                <span
+                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                                        user.status === 'Active'
+                                                            ? 'bg-[rgba(183,215,189,0.35)] text-[#608D6A]'
+                                                            : 'bg-[rgba(250,200,125,0.35)] text-[#744210]'
+                                                    }`}
                                                 >
-                                                    ⋯
-                                                </button>
-                                                {activeMenuUserId === user.id && (
-                                                    <UserActionsMenu
-                                                        triggerRef={menuTriggerRef}
-                                                        onEdit={() => {
-                                                            startEditUser(user);
-                                                            setActiveMenuUserId(null);
-                                                        }}
-                                                        onResendInvitation={
-                                                            user.status === 'Invited' &&
-                                                            user.invitationId
-                                                                ? () => {
-                                                                      void handleResendInvitation(
-                                                                          user.invitationId!,
-                                                                          user.email
-                                                                      );
-                                                                      setActiveMenuUserId(null);
-                                                                  }
-                                                                : undefined
+                                                    {user.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 pl-2 pr-4 text-sm sm:pl-3 sm:pr-6 lg:pr-8">
+                                                <div
+                                                    ref={
+                                                        activeMenuUserId === user.id
+                                                            ? menuTriggerRef
+                                                            : undefined
+                                                    }
+                                                    className="relative inline-block text-left"
+                                                >
+                                                    <button
+                                                        onClick={() =>
+                                                            setActiveMenuUserId(
+                                                                activeMenuUserId === user.id
+                                                                    ? null
+                                                                    : user.id
+                                                            )
                                                         }
-                                                        onDelete={() => {
-                                                            handleDeleteUser(user);
-                                                            setActiveMenuUserId(null);
-                                                        }}
-                                                        onClose={() => setActiveMenuUserId(null)}
-                                                    />
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                        className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                                    >
+                                                        ⋯
+                                                    </button>
+                                                    {activeMenuUserId === user.id && (
+                                                        <UserActionsMenu
+                                                            triggerRef={menuTriggerRef}
+                                                            onEdit={() => {
+                                                                startEditUser(user);
+                                                                setActiveMenuUserId(null);
+                                                            }}
+                                                            onResendInvitation={
+                                                                user.status === 'Invited' &&
+                                                                user.invitationId
+                                                                    ? () => {
+                                                                          void handleResendInvitation(
+                                                                              user.invitationId!,
+                                                                              user.email
+                                                                          );
+                                                                          setActiveMenuUserId(null);
+                                                                      }
+                                                                    : undefined
+                                                            }
+                                                            onDelete={
+                                                                isCurrentUserRow
+                                                                    ? undefined
+                                                                    : () => {
+                                                                          handleDeleteUser(user);
+                                                                          setActiveMenuUserId(null);
+                                                                      }
+                                                            }
+                                                            onClose={() =>
+                                                                setActiveMenuUserId(null)
+                                                            }
+                                                        />
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
@@ -780,7 +801,7 @@ function UserActionsMenu({
     triggerRef: React.RefObject<HTMLDivElement | null>;
     onEdit?: () => void;
     onResendInvitation?: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
     onClose: () => void;
 }) {
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -790,7 +811,7 @@ function UserActionsMenu({
             const el = triggerRef?.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
-            const itemCount = (onEdit ? 1 : 0) + 1 + (onResendInvitation ? 1 : 0);
+            const itemCount = (onEdit ? 1 : 0) + (onDelete ? 1 : 0) + (onResendInvitation ? 1 : 0);
             const menuHeight = MENU_ITEM_HEIGHT * itemCount + MENU_PADDING * 2;
             let top = rect.bottom + MENU_PADDING;
             let left = rect.right + MENU_PADDING;
@@ -807,7 +828,7 @@ function UserActionsMenu({
             });
             return () => cancelAnimationFrame(raf);
         }
-    }, [triggerRef, onEdit, onResendInvitation]);
+    }, [triggerRef, onDelete, onEdit, onResendInvitation]);
 
     useEffect(() => {
         const handleClickOutside = () => onClose();
@@ -837,12 +858,14 @@ function UserActionsMenu({
                     Edit
                 </button>
             )}
-            <button
-                onClick={onDelete}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-            >
-                Delete
-            </button>
+            {onDelete && (
+                <button
+                    onClick={onDelete}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                >
+                    Delete
+                </button>
+            )}
             {onResendInvitation && (
                 <button
                     onClick={onResendInvitation}

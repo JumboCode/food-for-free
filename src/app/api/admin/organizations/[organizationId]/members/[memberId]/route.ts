@@ -62,6 +62,12 @@ export async function DELETE(
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+        if (user.clerkId === userId) {
+            return NextResponse.json(
+                { error: 'You cannot delete your own account from Admin Console.' },
+                { status: 400 }
+            );
+        }
 
         const client = await clerkClient();
 
