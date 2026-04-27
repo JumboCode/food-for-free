@@ -49,6 +49,7 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
         const dateStr = new Date(delivery.date).toISOString().slice(0, 10);
         const params = new URLSearchParams({ date: dateStr, org });
         if (delivery.householdId18) params.set('householdId18', delivery.householdId18);
+        else params.set('destination', org);
         try {
             const res = await fetch(`/api/overview/deliveries/detail?${params.toString()}`);
             if (!res.ok) return;

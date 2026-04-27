@@ -1,8 +1,13 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import type { OverviewScope } from '~/lib/overviewAccess';
+import {
+    distributionInventoryTypeCondition,
+    inventoryTxPoundsSql,
+    orphanInventoryCondition,
+} from '~/lib/inventoryDistributionSql';
 
-/** Org name filter for distribution SQL (ILIKE). Undefined = all orgs (admin, no destination). */
+/** Org name filter for distribution SQL (ILIKE pattern or exact normalized match via caller). */
 export function distributionOrgScopeFromOverview(scope: OverviewScope): string | undefined {
     if (scope.kind === 'admin') return scope.destination;
     if (scope.kind === 'partner') return scope.destination;
@@ -12,7 +17,7 @@ export function distributionOrgScopeFromOverview(scope: OverviewScope): string |
 export type DistributionDeliveryRow = {
     date: Date;
     organizationName: string;
-    householdId18: string;
+    householdId18: string | null;
     productName: string | null;
     distributionAmount: number;
     unitWeightLbs: number | null;
@@ -31,6 +36,21 @@ type BulkRowDb = Omit<DistributionDeliveryRow, 'program' | 'lineId'>;
 
 type Db = Pick<PrismaClient, '$queryRaw'>;
 
+function orphanOrgClause(params: {
+    partnerHouseholdId18?: string;
+    orgFilter?: string;
+    destinationLabel?: string;
+}): Prisma.Sql {
+    const label = params.destinationLabel?.trim();
+    if (params.partnerHouseholdId18 && label) {
+        return Prisma.sql` AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${label})) `;
+    }
+    if (params.orgFilter?.trim()) {
+        return Prisma.sql` AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `;
+    }
+    return Prisma.empty;
+}
+
 export async function queryDistributionDeliveries(
     db: Db,
     params: {
@@ -38,8 +58,9 @@ export async function queryDistributionDeliveries(
         end: Date;
         search: string;
         orgFilter: string | undefined;
-        /** When set (partner scope), filter by destination household id — matches overview stats. */
         partnerHouseholdId18?: string | undefined;
+        /** Matches orphan `destination` when scoped by Salesforce household id. */
+        destinationLabel?: string | undefined;
     }
 ): Promise<DistributionDeliveryRow[]> {
     const search = params.search.trim().toLowerCase();
@@ -52,37 +73,70 @@ export async function queryDistributionDeliveries(
         params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
             ? Prisma.sql` AND d."householdId18" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND d."householdName" ILIKE ${params.orgFilter} `
+              ? Prisma.sql` AND LOWER(TRIM(COALESCE(d."householdName", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `
               : Prisma.empty;
 
-    // Do not require t.destination: source exports often leave it blank; org is d.householdName via join.
-    // Use d.date (pantry visit date/time) for the delivery date shown in UI.
+    const orphanSearchClause = search
+        ? Prisma.sql`AND COALESCE(t."pantryProductName", '') ILIKE ${searchFilter}`
+        : Prisma.empty;
+
+    const orphanOrg = orphanOrgClause({
+        partnerHouseholdId18: params.partnerHouseholdId18,
+        orgFilter: params.orgFilter,
+        destinationLabel: params.destinationLabel,
+    });
+
     const rows = await db.$queryRaw<BulkRowDb[]>`
-        SELECT
-            d."date" AS "date",
-            COALESCE(pt."organizationName", d."householdName") AS "organizationName",
-            d."householdId18" AS "householdId18",
-            p."pantryProductName" AS "productName",
-            COALESCE(p."distributionAmount", 1) AS "distributionAmount",
-            p."pantryProductWeightLbs" AS "unitWeightLbs",
-            (COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "weightLbs",
-            t."inventoryType" AS "inventoryType",
-            t."productType" AS "productType",
-            t."minimallyProcessedFood" AS "minimallyProcessedFood",
-            p."lotFoodRescueProgram" AS "foodRescueProgram",
-            t."source" AS "source"
-        FROM "AllInventoryTransactions" t
-        INNER JOIN "AllPackagesByItem" p
-            ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
-        INNER JOIN "AllProductPackageDestinations" d
-            ON d."productPackageId18" = p."productPackageId18"
-        LEFT JOIN "Partner" pt
-            ON pt."householdId18" = d."householdId18"
-        WHERE d."date" >= ${params.start}
-          AND d."date" <= ${params.end}
-          ${destClause}
-          ${searchClause}
-        ORDER BY d."date" DESC
+        SELECT * FROM (
+            SELECT
+                d."date" AS "date",
+                COALESCE(pt."organizationName", d."householdName") AS "organizationName",
+                d."householdId18" AS "householdId18",
+                p."pantryProductName" AS "productName",
+                COALESCE(p."distributionAmount", 1) AS "distributionAmount",
+                p."pantryProductWeightLbs" AS "unitWeightLbs",
+                (COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "weightLbs",
+                t."inventoryType" AS "inventoryType",
+                t."productType" AS "productType",
+                t."minimallyProcessedFood" AS "minimallyProcessedFood",
+                p."lotFoodRescueProgram" AS "foodRescueProgram",
+                t."source" AS "source"
+            FROM "AllInventoryTransactions" t
+            INNER JOIN "AllPackagesByItem" p
+                ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+            INNER JOIN "AllProductPackageDestinations" d
+                ON d."productPackageId18" = p."productPackageId18"
+            LEFT JOIN "Partner" pt
+                ON pt."householdId18" = d."householdId18"
+            WHERE d."date" >= ${params.start}
+              AND d."date" <= ${params.end}
+              ${destClause}
+              ${searchClause}
+
+            UNION ALL
+
+            SELECT
+                t."date" AS "date",
+                TRIM(t."destination") AS "organizationName",
+                NULL::text AS "householdId18",
+                t."pantryProductName" AS "productName",
+                1 AS "distributionAmount",
+                NULL::double precision AS "unitWeightLbs",
+                ${inventoryTxPoundsSql()} AS "weightLbs",
+                t."inventoryType" AS "inventoryType",
+                t."productType" AS "productType",
+                t."minimallyProcessedFood" AS "minimallyProcessedFood",
+                NULL::text AS "foodRescueProgram",
+                t."source" AS "source"
+            FROM "AllInventoryTransactions" t
+            WHERE t."date" >= ${params.start}
+              AND t."date" <= ${params.end}
+              AND ${distributionInventoryTypeCondition}
+              AND ${orphanInventoryCondition}
+              ${orphanOrg}
+              ${orphanSearchClause}
+        ) AS combined_bulk
+        ORDER BY combined_bulk."date" DESC
     `;
     return rows.map(r => ({
         ...r,
@@ -116,7 +170,7 @@ export async function queryJustEatsDistributionDeliveries(
         params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
             ? Prisma.sql` AND j."householdId" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND j."householdName" ILIKE ${params.orgFilter} `
+              ? Prisma.sql` AND LOWER(TRIM(COALESCE(j."householdName", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `
               : Prisma.empty;
 
     const rows = await db.$queryRaw<JustEatsRowDb[]>`

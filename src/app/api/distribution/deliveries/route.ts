@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '~/lib/prisma';
+import type { OverviewScope } from '~/lib/overviewAccess';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerHouseholdId18,
+    scopeEffectiveHouseholdId18,
 } from '~/lib/overviewAccess';
 import {
+    distributionOrgScopeFromOverview,
     queryDistributionDeliveries,
     queryJustEatsDistributionDeliveries,
 } from '~/lib/distributionDeliveries';
+
+function destinationLabel(scope: OverviewScope): string | undefined {
+    if (scope.kind === 'partner' || scope.kind === 'admin') {
+        return scope.destination?.trim();
+    }
+    return undefined;
+}
 
 /**
  * GET /api/distribution/deliveries?start=&end=&search=&destination=
@@ -36,21 +45,24 @@ export async function GET(req: NextRequest) {
     }
 
     const search = (searchParams.get('search') || '').trim().toLowerCase();
-    const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
+    const partnerHouseholdId18 = scopeEffectiveHouseholdId18(scope);
+    const orgFilter = partnerHouseholdId18 ? undefined : distributionOrgScopeFromOverview(scope);
+    const destForOrphan = partnerHouseholdId18 ? destinationLabel(scope) : undefined;
 
     const [bulk, justEats] = await Promise.all([
         queryDistributionDeliveries(prisma, {
             start,
             end,
             search,
-            orgFilter: undefined,
+            orgFilter,
             partnerHouseholdId18,
+            destinationLabel: destForOrphan,
         }),
         queryJustEatsDistributionDeliveries(prisma, {
             start,
             end,
             search,
-            orgFilter: undefined,
+            orgFilter,
             partnerHouseholdId18,
         }),
     ]);

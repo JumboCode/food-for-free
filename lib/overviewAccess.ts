@@ -67,11 +67,46 @@ export async function getOverviewScope(
     };
 }
 
+/** Synthetic Partner.householdId18 when no Salesforce id was provided at signup. */
+export const PENDING_PARTNER_HOUSEHOLD_PREFIX = 'pending-' as const;
+
 /** Partner account: Salesforce household id for `JustEatsBoxes.householdId` joins. */
 export function scopeToPartnerHouseholdId18(scope: OverviewScope): string | undefined {
     if (scope.kind === 'admin') return scope.destinationHouseholdId18;
     if (scope.kind === 'partner') return scope.partnerHouseholdId18;
     return undefined;
+}
+
+/**
+ * When true, bulk/rescue metrics come from destination/org name (inventory `destination`,
+ * destination tables’ household names), not Salesforce household id joins.
+ */
+export function partnerUsesDestinationNameOnly(scope: OverviewScope): boolean {
+    if (scope.kind === 'partner') {
+        return scope.partnerHouseholdId18.startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX);
+    }
+    if (scope.kind === 'admin') {
+        return Boolean(scope.destination && !scope.destinationHouseholdId18);
+    }
+    return false;
+}
+
+/**
+ * Exact case-insensitive match for filtering by partner or destination display name.
+ */
+export function scopeOrganizationNameFilter(scope: OverviewScope): string | undefined {
+    if (!partnerUsesDestinationNameOnly(scope)) return undefined;
+    if (scope.kind === 'partner') return scope.destination.trim();
+    if (scope.kind === 'admin' && scope.destination) return scope.destination.trim();
+    return undefined;
+}
+
+/**
+ * True scoped household id for JE / joined bulk; omit when using destination-name-only scope.
+ */
+export function scopeEffectiveHouseholdId18(scope: OverviewScope): string | undefined {
+    if (partnerUsesDestinationNameOnly(scope)) return undefined;
+    return scopeToPartnerHouseholdId18(scope);
 }
 
 export function overviewScopeErrorResponse(scope: OverviewScope): NextResponse | null {

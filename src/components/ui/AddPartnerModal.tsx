@@ -11,7 +11,7 @@ interface AddPartnerModalProps {
         membersCount: number;
     }[];
     onClose: () => void;
-    onSubmit: (data: { name: string; householdId18: string }) => Promise<void>;
+    onSubmit: (data: { name: string; householdId18?: string }) => Promise<void>;
     onDelete: (organizationId: string) => Promise<void>;
 }
 
@@ -55,16 +55,11 @@ export function AddPartnerModal({
             setError('Organization name is required');
             return;
         }
-        if (!householdId18.trim()) {
-            setError('Household ID 18 is required');
-            return;
-        }
-
         try {
             setIsSubmitting(true);
             await onSubmit({
                 name: name.trim(),
-                householdId18: householdId18.trim(),
+                ...(householdId18.trim() ? { householdId18: householdId18.trim() } : {}),
             });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create organization');
@@ -171,7 +166,7 @@ export function AddPartnerModal({
                                     htmlFor="householdId18"
                                     className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5 uppercase tracking-wide"
                                 >
-                                    Salesforce ID <span className="text-red-500">*</span>
+                                    Salesforce household ID (optional)
                                     <span className="relative inline-flex group">
                                         <button
                                             type="button"

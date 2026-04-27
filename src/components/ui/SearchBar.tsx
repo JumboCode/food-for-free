@@ -4,7 +4,7 @@ import { Search, ChevronRight } from 'lucide-react';
 import PartnerCard from './PartnerCard';
 
 type PartnerCardType = {
-    id: number;
+    id: number | string;
     name: string;
     location: string;
     type: string;

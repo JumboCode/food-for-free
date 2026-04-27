@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
+import type { OverviewScope } from '~/lib/overviewAccess';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
-    scopeToPartnerHouseholdId18,
+    scopeEffectiveHouseholdId18,
+    scopeOrganizationNameFilter,
 } from '~/lib/overviewAccess';
+import {
+    distributionInventoryTypeCondition,
+    inventoryTxPoundsSql,
+    orphanInventoryCondition,
+} from '~/lib/inventoryDistributionSql';
 
 function parseDateRange(searchParams: URLSearchParams): { start: Date; end: Date } | null {
     const startParam = searchParams.get('start');
@@ -48,23 +55,55 @@ type JustEatsStatsRow = {
     justEatsTotalDeliveries: number;
 };
 
+function destinationLabel(scope: OverviewScope): string {
+    if (scope.kind === 'partner' || scope.kind === 'admin') {
+        return scope.destination?.trim() ?? '';
+    }
+    return '';
+}
+
 async function queryBulkAndRescueStats(
     range: { start: Date; end: Date },
-    partnerHouseholdId18: string | undefined
+    scope: OverviewScope
 ): Promise<BulkRescueStatsRow> {
-    if (partnerHouseholdId18) {
+    const orgNameOnly = scopeOrganizationNameFilter(scope);
+    if (orgNameOnly) {
         const rows = await prisma.$queryRaw<BulkRescueStatsRow[]>`
-            WITH per_day AS (
+            WITH joined AS (
                 SELECT
                     DATE_TRUNC('day', d."date") AS day_bucket,
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS day_pounds
                 FROM "AllProductPackageDestinations" d
                 LEFT JOIN "AllPackagesByItem" p
                     ON p."productPackageId18" = d."productPackageId18"
-                WHERE d."householdId18" = ${partnerHouseholdId18}
-                  AND d."date" >= ${range.start}
+                LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
+                WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
+                  AND LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${orgNameOnly}))
                 GROUP BY DATE_TRUNC('day', d."date")
+            ),
+            orphan AS (
+                SELECT
+                    DATE_TRUNC('day', t."date") AS day_bucket,
+                    SUM(${inventoryTxPoundsSql()}) AS day_pounds
+                FROM "AllInventoryTransactions" t
+                WHERE t."date" >= ${range.start}
+                  AND t."date" <= ${range.end}
+                  AND ${distributionInventoryTypeCondition}
+                  AND ${orphanInventoryCondition}
+                  AND TRIM(COALESCE(t."destination", '')) <> ''
+                  AND LOWER(TRIM(t."destination")) = LOWER(TRIM(${orgNameOnly}))
+                GROUP BY DATE_TRUNC('day', t."date")
+            ),
+            merged AS (
+                SELECT day_bucket, day_pounds FROM joined
+                UNION ALL
+                SELECT day_bucket, day_pounds FROM orphan
+            ),
+            per_day AS (
+                SELECT day_bucket, SUM(day_pounds) AS day_pounds
+                FROM merged
+                GROUP BY day_bucket
             )
             SELECT
                 COALESCE(SUM(day_pounds) FILTER (WHERE day_pounds > 0), 0) AS "totalPoundsDelivered",
@@ -73,8 +112,76 @@ async function queryBulkAndRescueStats(
         `;
         return rows[0] ?? { totalPoundsDelivered: 0, deliveriesCompleted: 0 };
     }
+
+    const hh = scopeEffectiveHouseholdId18(scope);
+
+    if (hh) {
+        const destLabel = destinationLabel(scope);
+        const rows =
+            destLabel.length > 0
+                ? await prisma.$queryRaw<BulkRescueStatsRow[]>`
+                    WITH joined AS (
+                        SELECT
+                            DATE_TRUNC('day', d."date") AS day_bucket,
+                            SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS day_pounds
+                        FROM "AllProductPackageDestinations" d
+                        LEFT JOIN "AllPackagesByItem" p
+                            ON p."productPackageId18" = d."productPackageId18"
+                        WHERE d."householdId18" = ${hh}
+                          AND d."date" >= ${range.start}
+                          AND d."date" <= ${range.end}
+                        GROUP BY DATE_TRUNC('day', d."date")
+                    ),
+                    orphan AS (
+                        SELECT
+                            DATE_TRUNC('day', t."date") AS day_bucket,
+                            SUM(${inventoryTxPoundsSql()}) AS day_pounds
+                        FROM "AllInventoryTransactions" t
+                        WHERE t."date" >= ${range.start}
+                          AND t."date" <= ${range.end}
+                          AND ${distributionInventoryTypeCondition}
+                          AND ${orphanInventoryCondition}
+                          AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))
+                        GROUP BY DATE_TRUNC('day', t."date")
+                    ),
+                    merged AS (
+                        SELECT day_bucket, day_pounds FROM joined
+                        UNION ALL
+                        SELECT day_bucket, day_pounds FROM orphan
+                    ),
+                    per_day AS (
+                        SELECT day_bucket, SUM(day_pounds) AS day_pounds
+                        FROM merged
+                        GROUP BY day_bucket
+                    )
+                    SELECT
+                        COALESCE(SUM(day_pounds) FILTER (WHERE day_pounds > 0), 0) AS "totalPoundsDelivered",
+                        COUNT(*) FILTER (WHERE day_pounds > 0)::int AS "deliveriesCompleted"
+                    FROM per_day
+                `
+                : await prisma.$queryRaw<BulkRescueStatsRow[]>`
+                    WITH per_day AS (
+                        SELECT
+                            DATE_TRUNC('day', d."date") AS day_bucket,
+                            SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS day_pounds
+                        FROM "AllProductPackageDestinations" d
+                        LEFT JOIN "AllPackagesByItem" p
+                            ON p."productPackageId18" = d."productPackageId18"
+                        WHERE d."householdId18" = ${hh}
+                          AND d."date" >= ${range.start}
+                          AND d."date" <= ${range.end}
+                        GROUP BY DATE_TRUNC('day', d."date")
+                    )
+                    SELECT
+                        COALESCE(SUM(day_pounds) FILTER (WHERE day_pounds > 0), 0) AS "totalPoundsDelivered",
+                        COUNT(*) FILTER (WHERE day_pounds > 0)::int AS "deliveriesCompleted"
+                    FROM per_day
+                `;
+        return rows[0] ?? { totalPoundsDelivered: 0, deliveriesCompleted: 0 };
+    }
+
     const rows = await prisma.$queryRaw<BulkRescueStatsRow[]>`
-        WITH per_delivery AS (
+        WITH joined AS (
             SELECT
                 DATE_TRUNC('day', d."date") AS day_bucket,
                 d."householdId18" AS household_id,
@@ -85,31 +192,65 @@ async function queryBulkAndRescueStats(
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
             GROUP BY DATE_TRUNC('day', d."date"), d."householdId18"
+        ),
+        orphan AS (
+            SELECT
+                DATE_TRUNC('day', t."date") AS day_bucket,
+                TRIM(t."destination") AS dest_key,
+                SUM(${inventoryTxPoundsSql()}) AS delivery_pounds
+            FROM "AllInventoryTransactions" t
+            WHERE t."date" >= ${range.start}
+              AND t."date" <= ${range.end}
+              AND ${distributionInventoryTypeCondition}
+              AND ${orphanInventoryCondition}
+              AND TRIM(COALESCE(t."destination", '')) <> ''
+            GROUP BY DATE_TRUNC('day', t."date"), TRIM(t."destination")
+        ),
+        combined AS (
+            SELECT delivery_pounds FROM joined
+            UNION ALL
+            SELECT delivery_pounds FROM orphan
         )
         SELECT
             COALESCE(SUM(delivery_pounds) FILTER (WHERE delivery_pounds > 0), 0) AS "totalPoundsDelivered",
             COUNT(*) FILTER (WHERE delivery_pounds > 0)::int AS "deliveriesCompleted"
-        FROM per_delivery
+        FROM combined
     `;
     return rows[0] ?? { totalPoundsDelivered: 0, deliveriesCompleted: 0 };
 }
 
 async function queryJustEatsStats(
     range: { start: Date; end: Date },
-    partnerHouseholdId18: string | undefined
+    scope: OverviewScope
 ): Promise<JustEatsStatsRow> {
-    if (partnerHouseholdId18) {
+    const orgNameOnly = scopeOrganizationNameFilter(scope);
+    if (orgNameOnly) {
         const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
             SELECT
                 (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
                 COUNT(*)::int AS "justEatsTotalDeliveries"
             FROM "JustEatsBoxes" j
-            WHERE j."householdId" = ${partnerHouseholdId18}
+            WHERE j."pantryVisitDateTime" >= ${range.start}
+              AND j."pantryVisitDateTime" <= ${range.end}
+              AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
+        `;
+        return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
+    }
+
+    const hh = scopeEffectiveHouseholdId18(scope);
+    if (hh) {
+        const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
+            SELECT
+                (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
+                COUNT(*)::int AS "justEatsTotalDeliveries"
+            FROM "JustEatsBoxes" j
+            WHERE j."householdId" = ${hh}
               AND j."pantryVisitDateTime" >= ${range.start}
               AND j."pantryVisitDateTime" <= ${range.end}
         `;
         return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
     }
+
     const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
         SELECT
             (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
@@ -123,7 +264,7 @@ async function queryJustEatsStats(
 
 /**
  * GET /api/overview/stats?start=...&end=...&destination=...
- * Bulk & rescue totals from AllProductPackageDestinations + AllPackagesByItem (zero-pound delivery days/buckets excluded).
+ * Bulk & rescue: joined destination pipeline plus orphan distribution-only inventory rows (no double count).
  * Just Eats from JustEatsBoxes (25 lb/box).
  */
 export async function GET(request: NextRequest) {
@@ -137,11 +278,10 @@ export async function GET(request: NextRequest) {
         if (scopeErr) return scopeErr;
 
         const range = parseDateRange(searchParams) ?? getDefaultRange();
-        const partnerHouseholdId18 = scopeToPartnerHouseholdId18(scope);
 
         const [bulkRescue, justEats] = await Promise.all([
-            queryBulkAndRescueStats(range, partnerHouseholdId18),
-            queryJustEatsStats(range, partnerHouseholdId18),
+            queryBulkAndRescueStats(range, scope),
+            queryJustEatsStats(range, scope),
         ]);
 
         return NextResponse.json({

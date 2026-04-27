@@ -71,7 +71,7 @@ const AdminConsolePage: React.FC = () => {
     };
 
     //Handle creating new organization
-    const handleAddPartner = async (data: { name: string; householdId18: string }) => {
+    const handleAddPartner = async (data: { name: string; householdId18?: string }) => {
         try {
             const response = await fetch('/api/admin/organizations', {
                 method: 'POST',
