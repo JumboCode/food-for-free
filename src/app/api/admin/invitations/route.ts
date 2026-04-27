@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export async function POST(req: NextRequest) {
     try {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
         const org = await client.organizations.getOrganization({
             organizationId: targetOrganizationId!,
         });
+        const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
         const metadataHouseholdId18 =
             typeof org.publicMetadata?.householdId18 === 'string'
                 ? org.publicMetadata.householdId18.trim()
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
             organizationId: targetOrganizationId!,
             emailAddress: email,
             inviterUserId: userId,
-            role: 'org:member',
+            role: inviteRole,
             publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
             redirectUrl: invitationRedirectUrl,
         });
