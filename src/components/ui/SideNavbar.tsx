@@ -64,7 +64,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
         <aside className="fixed left-0 bg-white h-screen top-0 w-16 lg:w-56 flex flex-col border-r border-gray-100">
             <Link href="/overview" className="flex items-center gap-3 px-4 lg:px-5 pt-6 pb-4">
                 <Image
-                    src="/food-for-free-logo.png"
+                    src="/images/food-for-free-logo.png"
                     alt="Food For Free"
                     width={36}
                     height={36}

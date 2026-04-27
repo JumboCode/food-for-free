@@ -7,14 +7,6 @@ const nextConfig: NextConfig = {
         // disable ESLint during builds
         ignoreDuringBuilds: true,
     },
-    images: {
-        remotePatterns: [
-            {
-                protocol: 'https',
-                hostname: 'i.imgur.com',
-            },
-        ],
-    },
 };
 
 export default nextConfig;

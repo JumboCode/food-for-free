@@ -99,7 +99,7 @@ export default function HomeClient() {
                         transition={{ duration: 4, ease: 'easeInOut', repeat: Infinity }}
                     >
                         <Image
-                            src="https://i.imgur.com/lE2cImv.png"
+                            src="/images/food-for-free-circle.png"
                             alt="Food for Free Logo with Donut Chart"
                             width={500}
                             height={500}
