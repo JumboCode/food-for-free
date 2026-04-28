@@ -283,6 +283,14 @@ const OverviewPageContent: React.FC = () => {
                                     View all organizations
                                 </button>
                             </p>
+                        ) : !isAdmin && selectedPartner?.name ? (
+                            <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                Welcome! Here&apos;s your dashboard for{' '}
+                                <span className="font-medium text-gray-900">
+                                    {selectedPartner.name}
+                                </span>
+                                .
+                            </p>
                         ) : null}
                     </div>
                     {isAdmin ? (
