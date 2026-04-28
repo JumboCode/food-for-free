@@ -90,7 +90,10 @@ export async function queryDistributionDeliveries(
         SELECT * FROM (
             SELECT
                 d."date" AS "date",
-                COALESCE(pt."organizationName", d."householdName") AS "organizationName",
+                COALESCE(
+                    NULLIF(BTRIM(d."householdName"), ''),
+                    NULLIF(BTRIM(pt."organizationName"), '')
+                ) AS "organizationName",
                 d."householdId18" AS "householdId18",
                 p."pantryProductName" AS "productName",
                 COALESCE(p."distributionAmount", 1) AS "distributionAmount",
@@ -133,6 +136,7 @@ export async function queryDistributionDeliveries(
               AND t."date" <= ${params.end}
               AND ${distributionInventoryTypeCondition}
               AND ${orphanInventoryCondition}
+              AND TRIM(COALESCE(t."destination", '')) <> ''
               ${orphanOrg}
               ${orphanSearchClause}
         ) AS combined_bulk
@@ -176,12 +180,15 @@ export async function queryJustEatsDistributionDeliveries(
     const rows = await db.$queryRaw<JustEatsRowDb[]>`
         SELECT
             j."pantryVisitDateTime" AS "date",
-            COALESCE(pt."organizationName", j."householdName") AS "organizationName",
+            COALESCE(
+                NULLIF(BTRIM(j."householdName"), ''),
+                NULLIF(BTRIM(pt."organizationName"), '')
+            ) AS "organizationName",
             j."householdId" AS "householdId18",
             NULLIF(BTRIM(j."productPackageName"), '') AS "productName",
-            1 AS "distributionAmount",
+            COALESCE(j."numberDistributed", 1) AS "distributionAmount",
             25::double precision AS "unitWeightLbs",
-            25::double precision AS "weightLbs",
+            (COALESCE(j."numberDistributed", 1) * 25)::double precision AS "weightLbs",
             'Just Eats' AS "inventoryType",
             NULL::text AS "productType",
             NULL::boolean AS "minimallyProcessedFood",
@@ -195,6 +202,23 @@ export async function queryJustEatsDistributionDeliveries(
           AND j."pantryVisitDateTime" <= ${params.end}
           ${destClause}
           ${searchClause}
+          AND NULLIF(BTRIM(j."householdName"), '') IS NOT NULL
+          AND EXISTS (
+              SELECT 1
+              FROM (
+                  SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                  FROM "AllProductPackageDestinations" d2
+                  WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
+
+                  UNION
+
+                  SELECT LOWER(TRIM(t2."destination")) AS org_name
+                  FROM "AllInventoryTransactions" t2
+                  WHERE TRIM(COALESCE(t2."destination", '')) <> ''
+                    AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+              ) valid_orgs
+              WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
+          )
         ORDER BY j."pantryVisitDateTime" DESC
     `;
     return rows.map(r => ({ ...r, program: 'just_eats' as const }));

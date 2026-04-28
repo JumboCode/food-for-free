@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
                     LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                     WHERE d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
-                      AND LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${orgNameOnly}))
+                      AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
                     GROUP BY DATE_TRUNC('day', d."date")
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 `,
@@ -133,9 +133,26 @@ export async function GET(request: NextRequest) {
                         TO_CHAR(DATE_TRUNC('day', j."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                         COUNT(*) * 25 AS "totalPounds"
                     FROM "JustEatsBoxes" j
+                    LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
                     WHERE j."pantryVisitDateTime" >= ${range.start}
                       AND j."pantryVisitDateTime" <= ${range.end}
                       AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
+                      AND EXISTS (
+                          SELECT 1
+                          FROM (
+                              SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                              FROM "AllProductPackageDestinations" d2
+                              WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
+
+                              UNION
+
+                              SELECT LOWER(TRIM(t2."destination")) AS org_name
+                              FROM "AllInventoryTransactions" t2
+                              WHERE TRIM(COALESCE(t2."destination", '')) <> ''
+                                AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+                          ) valid_orgs
+                          WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
+                      )
                     GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
                     HAVING COUNT(*) * 25 > 0
                 `,
@@ -232,9 +249,26 @@ export async function GET(request: NextRequest) {
                         TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                         COUNT(*) * 25 AS "totalPounds"
                     FROM "JustEatsBoxes" t
+                    LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
                     WHERE t."householdId" = ${hh}
                       AND t."pantryVisitDateTime" >= ${range.start}
                       AND t."pantryVisitDateTime" <= ${range.end}
+                      AND EXISTS (
+                          SELECT 1
+                          FROM (
+                              SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                              FROM "AllProductPackageDestinations" d2
+                              WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
+
+                              UNION
+
+                              SELECT LOWER(TRIM(t2."destination")) AS org_name
+                              FROM "AllInventoryTransactions" t2
+                              WHERE TRIM(COALESCE(t2."destination", '')) <> ''
+                                AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+                          ) valid_orgs
+                          WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
+                      )
                     GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime")
                     HAVING COUNT(*) * 25 > 0
                 `,
@@ -365,6 +399,23 @@ export async function GET(request: NextRequest) {
                 LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
                 WHERE t."pantryVisitDateTime" >= ${range.start}
                   AND t."pantryVisitDateTime" <= ${range.end}
+                  AND TRIM(COALESCE(t."householdName", '')) <> ''
+                  AND EXISTS (
+                      SELECT 1
+                      FROM (
+                          SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                          FROM "AllProductPackageDestinations" d2
+                          WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
+
+                          UNION
+
+                          SELECT LOWER(TRIM(t2."destination")) AS org_name
+                          FROM "AllInventoryTransactions" t2
+                          WHERE TRIM(COALESCE(t2."destination", '')) <> ''
+                            AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+                      ) valid_orgs
+                      WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
+                  )
                 GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime"), t."householdId", COALESCE(pt."organizationName", t."householdName"), 'just_eats'::text
                 HAVING COUNT(*) * 25 > 0
             `,

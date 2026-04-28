@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '~/lib/prisma';
 import { normalizeDestinationName } from '~/lib/destinationNameFilter';
 import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAccess';
+import {
+    distributionInventoryTypeCondition,
+    inventoryTxPoundsSql,
+    orphanInventoryCondition,
+} from '~/lib/inventoryDistributionSql';
 import type { PartnerOrgCard } from '@/types/partner';
 
 /**
@@ -36,31 +41,60 @@ export async function GET() {
                 orderBy: { organizationName: 'asc' },
             }),
             prisma.$queryRaw<{ name: string | null }[]>`
-                SELECT DISTINCT TRIM(x.n) AS "name"
-                FROM (
-                    SELECT TRIM(d."householdName") AS n
-                    FROM "AllProductPackageDestinations" d
+                WITH valid_joined AS (
+                    SELECT
+                        TRIM(COALESCE(d."householdName", '')) AS name,
+                        SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS lbs
+                    FROM "AllInventoryTransactions" t
+                    INNER JOIN "AllPackagesByItem" p
+                        ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                    INNER JOIN "AllProductPackageDestinations" d
+                        ON d."productPackageId18" = p."productPackageId18"
                     WHERE TRIM(COALESCE(d."householdName", '')) <> ''
-
-                    UNION
-
-                    SELECT TRIM(j."householdName") AS n
-                    FROM "JustEatsBoxes" j
-                    WHERE TRIM(COALESCE(j."householdName", '')) <> ''
-
-                    UNION
-
-                    SELECT TRIM(t."destination") AS n
+                    GROUP BY TRIM(COALESCE(d."householdName", ''))
+                    HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
+                ),
+                valid_orphan AS (
+                    SELECT
+                        TRIM(t."destination") AS name,
+                        SUM(${inventoryTxPoundsSql()}) AS lbs
                     FROM "AllInventoryTransactions" t
                     WHERE TRIM(COALESCE(t."destination", '')) <> ''
-                      AND LOWER(TRIM(COALESCE(t."inventoryType", ''))) = 'distribution'
-                ) x
-                WHERE TRIM(COALESCE(x.n, '')) <> ''
+                      AND ${distributionInventoryTypeCondition}
+                      AND ${orphanInventoryCondition}
+                    GROUP BY TRIM(t."destination")
+                    HAVING SUM(${inventoryTxPoundsSql()}) > 0
+                ),
+                valid_just_eats AS (
+                    SELECT
+                        TRIM(COALESCE(pt."organizationName", j."householdName")) AS name,
+                        SUM(COALESCE(j."numberDistributed", 1)) AS boxes
+                    FROM "JustEatsBoxes" j
+                    LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
+                    WHERE TRIM(COALESCE(j."householdName", '')) <> ''
+                    GROUP BY TRIM(COALESCE(pt."organizationName", j."householdName"))
+                    HAVING SUM(COALESCE(j."numberDistributed", 1)) > 0
+                )
+                SELECT DISTINCT TRIM(name) AS "name"
+                FROM (
+                    SELECT name FROM valid_joined
+                    UNION
+                    SELECT name FROM valid_orphan
+                    UNION
+                    SELECT name FROM valid_just_eats
+                ) v
+                WHERE TRIM(COALESCE(name, '')) <> ''
                 ORDER BY 1 ASC
             `,
         ]);
 
         const byNormalized = new Map<string, PartnerOrgCard>();
+        const validNormalizedNames = new Set(
+            destinationNameRows
+                .map(row => row.name?.trim() ?? '')
+                .filter(Boolean)
+                .map(name => normalizeDestinationName(name))
+        );
 
         for (const partner of partnerRows) {
             const name = partner.organizationName?.trim() ?? '';
