@@ -86,7 +86,10 @@ export function partnerUsesDestinationNameOnly(scope: OverviewScope): boolean {
         return scope.partnerHouseholdId18.startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX);
     }
     if (scope.kind === 'admin') {
-        return Boolean(scope.destination && !scope.destinationHouseholdId18);
+        const householdId = scope.destinationHouseholdId18?.trim();
+        if (!scope.destination) return false;
+        if (!householdId) return true;
+        return householdId.startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX);
     }
     return false;
 }

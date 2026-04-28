@@ -204,22 +204,6 @@ async function fetchJustEatsDaily(
             WHERE j."pantryVisitDateTime" >= ${range.start}
               AND j."pantryVisitDateTime" <= ${range.end}
               AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
-              AND EXISTS (
-                  SELECT 1
-                  FROM (
-                      SELECT LOWER(TRIM(d2."householdName")) AS org_name
-                      FROM "AllProductPackageDestinations" d2
-                      WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                      UNION
-
-                      SELECT LOWER(TRIM(t2."destination")) AS org_name
-                      FROM "AllInventoryTransactions" t2
-                      WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                        AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-                  ) valid_orgs
-                  WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
-              )
             GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
             ORDER BY DATE_TRUNC('day', j."pantryVisitDateTime") ASC
         `;
@@ -243,22 +227,6 @@ async function fetchJustEatsDaily(
             WHERE d."householdId" = ${hh}
               AND d."pantryVisitDateTime" >= ${range.start}
               AND d."pantryVisitDateTime" <= ${range.end}
-              AND EXISTS (
-                  SELECT 1
-                  FROM (
-                      SELECT LOWER(TRIM(d2."householdName")) AS org_name
-                      FROM "AllProductPackageDestinations" d2
-                      WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                      UNION
-
-                      SELECT LOWER(TRIM(t2."destination")) AS org_name
-                      FROM "AllInventoryTransactions" t2
-                      WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                        AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-                  ) valid_orgs
-                  WHERE valid_orgs.org_name = LOWER(TRIM(d."householdName"))
-              )
             GROUP BY DATE_TRUNC('day', d."pantryVisitDateTime")
             ORDER BY DATE_TRUNC('day', d."pantryVisitDateTime") ASC
         `;

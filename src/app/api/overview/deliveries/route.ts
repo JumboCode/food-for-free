@@ -144,22 +144,6 @@ export async function GET(request: NextRequest) {
                     WHERE j."pantryVisitDateTime" >= ${range.start}
                       AND j."pantryVisitDateTime" <= ${range.end}
                       AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
-                      AND EXISTS (
-                          SELECT 1
-                          FROM (
-                              SELECT LOWER(TRIM(d2."householdName")) AS org_name
-                              FROM "AllProductPackageDestinations" d2
-                              WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                              UNION
-
-                              SELECT LOWER(TRIM(t2."destination")) AS org_name
-                              FROM "AllInventoryTransactions" t2
-                              WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                                AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-                          ) valid_orgs
-                          WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
-                      )
                     GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
                     HAVING (
                         SUM(
@@ -274,22 +258,6 @@ export async function GET(request: NextRequest) {
                     WHERE t."householdId" = ${hh}
                       AND t."pantryVisitDateTime" >= ${range.start}
                       AND t."pantryVisitDateTime" <= ${range.end}
-                      AND EXISTS (
-                          SELECT 1
-                          FROM (
-                              SELECT LOWER(TRIM(d2."householdName")) AS org_name
-                              FROM "AllProductPackageDestinations" d2
-                              WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                              UNION
-
-                              SELECT LOWER(TRIM(t2."destination")) AS org_name
-                              FROM "AllInventoryTransactions" t2
-                              WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                                AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-                          ) valid_orgs
-                          WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
-                      )
                     GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime")
                     HAVING (
                         SUM(
