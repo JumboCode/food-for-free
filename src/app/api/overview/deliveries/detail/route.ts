@@ -8,6 +8,7 @@ import {
     scopeOrganizationNameFilter,
 } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -142,6 +143,7 @@ export async function GET(request: NextRequest) {
                 INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE DATE_TRUNC('day', d."date") = DATE_TRUNC('day', ${date})
+                  AND ${destinationStatusIncludedCondition}
                   AND ${joinedPartnerPredicate}
                 GROUP BY p."pantryProductName"
             `,
@@ -179,6 +181,7 @@ export async function GET(request: NextRequest) {
                 INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE DATE_TRUNC('day', d."date") = DATE_TRUNC('day', ${date})
+                  AND ${destinationStatusIncludedCondition}
                   AND ${joinedPartnerPredicate}
             `,
             prisma.$queryRaw<TagRow[]>`

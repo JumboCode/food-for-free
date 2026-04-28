@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import type { OverviewScope } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -113,6 +114,7 @@ export async function queryDistributionDeliveries(
                 ON pt."householdId18" = d."householdId18"
             WHERE d."date" >= ${params.start}
               AND d."date" <= ${params.end}
+              AND ${destinationStatusIncludedCondition}
               ${destClause}
               ${searchClause}
 

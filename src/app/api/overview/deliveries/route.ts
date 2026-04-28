@@ -9,6 +9,7 @@ import {
     scopeOrganizationNameFilter,
 } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
                     LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                     WHERE d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
+                      AND ${destinationStatusIncludedCondition}
                       AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
                     GROUP BY DATE_TRUNC('day', d."date")
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
@@ -239,6 +241,7 @@ export async function GET(request: NextRequest) {
                     WHERE d."householdId18" = ${hh}
                       AND d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
+                      AND ${destinationStatusIncludedCondition}
                     GROUP BY DATE_TRUNC('day', d."date")
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 `,
@@ -365,6 +368,7 @@ export async function GET(request: NextRequest) {
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
+                  AND ${destinationStatusIncludedCondition}
                 GROUP BY DATE_TRUNC('day', d."date"), d."householdId18", COALESCE(pt."organizationName", d."householdName"), 'bulk_rescue'::text
                 HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
             `,

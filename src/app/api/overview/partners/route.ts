@@ -3,6 +3,7 @@ import prisma from '~/lib/prisma';
 import { normalizeDestinationName } from '~/lib/destinationNameFilter';
 import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -51,6 +52,7 @@ export async function GET() {
                     INNER JOIN "AllProductPackageDestinations" d
                         ON d."productPackageId18" = p."productPackageId18"
                     WHERE TRIM(COALESCE(d."householdName", '')) <> ''
+                      AND ${destinationStatusIncludedCondition}
                     GROUP BY TRIM(COALESCE(d."householdName", ''))
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ),

@@ -8,6 +8,7 @@ import {
     scopeOrganizationNameFilter,
 } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -79,6 +80,7 @@ async function queryBulkAndRescueStats(
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
+                  AND ${destinationStatusIncludedCondition}
                   AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
                 GROUP BY DATE_TRUNC('day', d."date")
             ),
@@ -130,6 +132,7 @@ async function queryBulkAndRescueStats(
                         WHERE d."householdId18" = ${hh}
                           AND d."date" >= ${range.start}
                           AND d."date" <= ${range.end}
+                          AND ${destinationStatusIncludedCondition}
                         GROUP BY DATE_TRUNC('day', d."date")
                     ),
                     orphan AS (
@@ -170,6 +173,7 @@ async function queryBulkAndRescueStats(
                         WHERE d."householdId18" = ${hh}
                           AND d."date" >= ${range.start}
                           AND d."date" <= ${range.end}
+                          AND ${destinationStatusIncludedCondition}
                         GROUP BY DATE_TRUNC('day', d."date")
                     )
                     SELECT
@@ -191,6 +195,7 @@ async function queryBulkAndRescueStats(
                 ON p."productPackageId18" = d."productPackageId18"
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
+              AND ${destinationStatusIncludedCondition}
             GROUP BY DATE_TRUNC('day', d."date"), d."householdId18"
         ),
         orphan AS (

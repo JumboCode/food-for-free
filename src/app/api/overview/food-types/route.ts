@@ -15,6 +15,7 @@ import {
     type FoodTypeCompositionEntry,
 } from '~/lib/chartCompositionColors';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -109,6 +110,7 @@ export async function GET(request: NextRequest) {
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
+                  AND ${destinationStatusIncludedCondition}
                   ${joinedPartnerClause}
                   ${joinedNameClause}
                 GROUP BY t."productType"
@@ -143,6 +145,7 @@ export async function GET(request: NextRequest) {
                 LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
+                  AND ${destinationStatusIncludedCondition}
                   ${joinedPartnerClause}
                   ${joinedNameClause}
                 GROUP BY t."minimallyProcessedFood"

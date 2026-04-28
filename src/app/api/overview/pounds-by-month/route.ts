@@ -8,6 +8,7 @@ import {
     scopeOrganizationNameFilter,
 } from '~/lib/overviewAccess';
 import {
+    destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
     orphanInventoryCondition,
@@ -84,6 +85,7 @@ async function fetchBulkDaily(
             LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
             WHERE d."date" >= ${range.start}
               AND d."date" <= ${range.end}
+              AND ${destinationStatusIncludedCondition}
               AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
             GROUP BY DATE_TRUNC('day', d."date")
             HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
@@ -102,6 +104,7 @@ async function fetchBulkDaily(
             WHERE d."householdId18" = ${hh}
               AND d."date" >= ${range.start}
               AND d."date" <= ${range.end}
+              AND ${destinationStatusIncludedCondition}
             GROUP BY DATE_TRUNC('day', d."date")
             HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
             ORDER BY DATE_TRUNC('day', d."date") ASC
@@ -116,6 +119,7 @@ async function fetchBulkDaily(
         LEFT JOIN "AllPackagesByItem" p ON p."productPackageId18" = d."productPackageId18"
         WHERE d."date" >= ${range.start}
           AND d."date" <= ${range.end}
+          AND ${destinationStatusIncludedCondition}
         GROUP BY DATE_TRUNC('day', d."date")
         HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
         ORDER BY DATE_TRUNC('day', d."date") ASC
