@@ -159,7 +159,14 @@ export async function GET(request: NextRequest) {
             prisma.$queryRaw<FoodRow[]>`
                 SELECT
                     COALESCE(t."productPackageName", 'Unknown') AS "productName",
-                    COUNT(*) * 25 AS "totalWeightLbs"
+                    (
+                        SUM(
+                            GREATEST(
+                                COALESCE(t."numberPickedUp", 1),
+                                COALESCE(t."numberDistributed", 1)
+                            )
+                        ) * 25
+                    ) AS "totalWeightLbs"
                 FROM "JustEatsBoxes" t
                 WHERE DATE_TRUNC('day', t."pantryVisitDateTime") = DATE_TRUNC('day', ${date})
                   AND ${justEatsHouseholdPredicate}

@@ -14,7 +14,9 @@ export interface DateRange {
     start: Date;
     end: Date;
 }
-const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
+// Earliest selectable date for quick filters / manual ranges.
+// Keep this broad so "All Time" is always the widest possible range.
+const MIN_FILTER_DATE = new Date(2000, 0, 1); // 01/01/2000 (local)
 
 interface FilterContextValue {
     activeFilter: QuickFilter | null;
@@ -77,33 +79,37 @@ export function FilterProvider({ children }: { children: ReactNode }) {
             case 'last30days': {
                 const thirtyDaysAgo = new Date(today);
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-                setDateRange({ start: thirtyDaysAgo, end: today });
+                setDateRange(clampRangeToToday({ start: thirtyDaysAgo, end: today }));
                 break;
             }
             case 'thisMonth':
-                setDateRange({
-                    start: new Date(currentYear, currentMonth, 1),
-                    end: today,
-                });
+                setDateRange(
+                    clampRangeToToday({
+                        start: new Date(currentYear, currentMonth, 1),
+                        end: today,
+                    })
+                );
                 break;
             case 'thisYear':
-                setDateRange({
-                    start: new Date(currentYear, 0, 1),
-                    end: today,
-                });
+                setDateRange(
+                    clampRangeToToday({
+                        start: new Date(currentYear, 0, 1),
+                        end: today,
+                    })
+                );
                 break;
             case 'fiscalYearToDate':
-                setDateRange(getFiscalYearToDateRange(now));
+                setDateRange(clampRangeToToday(getFiscalYearToDateRange(now)));
                 break;
             case 'past12months': {
                 const start = new Date(today);
                 start.setMonth(start.getMonth() - 12);
                 start.setDate(start.getDate() + 1);
-                setDateRange({ start, end: today });
+                setDateRange(clampRangeToToday({ start, end: today }));
                 break;
             }
             case 'allTime':
-                setDateRange({ start: new Date(2025, 6, 1), end: today });
+                setDateRange(clampRangeToToday({ start: new Date(MIN_FILTER_DATE), end: today }));
                 break;
         }
     };

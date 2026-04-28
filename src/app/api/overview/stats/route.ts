@@ -227,7 +227,17 @@ async function queryJustEatsStats(
     if (orgNameOnly) {
         const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
             SELECT
-                (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
+                (
+                    COALESCE(
+                        SUM(
+                            GREATEST(
+                                COALESCE(j."numberPickedUp", 1),
+                                COALESCE(j."numberDistributed", 1)
+                            )
+                        ),
+                        0
+                    ) * 25
+                )::float AS "justEatsPoundsDelivered",
                 COUNT(*)::int AS "justEatsTotalDeliveries"
             FROM "JustEatsBoxes" j
             LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
@@ -258,7 +268,17 @@ async function queryJustEatsStats(
     if (hh) {
         const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
             SELECT
-                (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
+                (
+                    COALESCE(
+                        SUM(
+                            GREATEST(
+                                COALESCE(j."numberPickedUp", 1),
+                                COALESCE(j."numberDistributed", 1)
+                            )
+                        ),
+                        0
+                    ) * 25
+                )::float AS "justEatsPoundsDelivered",
                 COUNT(*)::int AS "justEatsTotalDeliveries"
             FROM "JustEatsBoxes" j
             LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
@@ -287,7 +307,17 @@ async function queryJustEatsStats(
 
     const rows = await prisma.$queryRaw<JustEatsStatsRow[]>`
         SELECT
-            (COALESCE(SUM(COALESCE(j."numberDistributed", 1)), 0) * 25)::float AS "justEatsPoundsDelivered",
+            (
+                COALESCE(
+                    SUM(
+                        GREATEST(
+                            COALESCE(j."numberPickedUp", 1),
+                            COALESCE(j."numberDistributed", 1)
+                        )
+                    ),
+                    0
+                ) * 25
+            )::float AS "justEatsPoundsDelivered",
             COUNT(*)::int AS "justEatsTotalDeliveries"
         FROM "JustEatsBoxes" j
         LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"

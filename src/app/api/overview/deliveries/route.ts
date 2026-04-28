@@ -131,7 +131,14 @@ export async function GET(request: NextRequest) {
                 prisma.$queryRaw<PartnerJustEatsRow[]>`
                     SELECT
                         TO_CHAR(DATE_TRUNC('day', j."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
-                        COUNT(*) * 25 AS "totalPounds"
+                        (
+                            SUM(
+                                GREATEST(
+                                    COALESCE(j."numberPickedUp", 1),
+                                    COALESCE(j."numberDistributed", 1)
+                                )
+                            ) * 25
+                        ) AS "totalPounds"
                     FROM "JustEatsBoxes" j
                     LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
                     WHERE j."pantryVisitDateTime" >= ${range.start}
@@ -154,7 +161,14 @@ export async function GET(request: NextRequest) {
                           WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
                       )
                     GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
-                    HAVING COUNT(*) * 25 > 0
+                    HAVING (
+                        SUM(
+                            GREATEST(
+                                COALESCE(j."numberPickedUp", 1),
+                                COALESCE(j."numberDistributed", 1)
+                            )
+                        ) * 25
+                    ) > 0
                 `,
                 prisma.$queryRaw<OrphanDayRow[]>`
                     SELECT
@@ -247,7 +261,14 @@ export async function GET(request: NextRequest) {
                 prisma.$queryRaw<PartnerJustEatsRow[]>`
                     SELECT
                         TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
-                        COUNT(*) * 25 AS "totalPounds"
+                        (
+                            SUM(
+                                GREATEST(
+                                    COALESCE(t."numberPickedUp", 1),
+                                    COALESCE(t."numberDistributed", 1)
+                                )
+                            ) * 25
+                        ) AS "totalPounds"
                     FROM "JustEatsBoxes" t
                     LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
                     WHERE t."householdId" = ${hh}
@@ -270,7 +291,14 @@ export async function GET(request: NextRequest) {
                           WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
                       )
                     GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime")
-                    HAVING COUNT(*) * 25 > 0
+                    HAVING (
+                        SUM(
+                            GREATEST(
+                                COALESCE(t."numberPickedUp", 1),
+                                COALESCE(t."numberDistributed", 1)
+                            )
+                        ) * 25
+                    ) > 0
                 `,
                 destLabel.length > 0
                     ? prisma.$queryRaw<OrphanDayRow[]>`
@@ -393,7 +421,14 @@ export async function GET(request: NextRequest) {
                     TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                     COALESCE(pt."organizationName", t."householdName") AS "destination",
                     t."householdId" AS "householdId18",
-                    COUNT(*) * 25 as "totalPounds",
+                    (
+                        SUM(
+                            GREATEST(
+                                COALESCE(t."numberPickedUp", 1),
+                                COALESCE(t."numberDistributed", 1)
+                            )
+                        ) * 25
+                    ) as "totalPounds",
                     'just_eats'::text AS "program"
                 FROM "JustEatsBoxes" t
                 LEFT JOIN "Partner" pt ON pt."householdId18" = t."householdId"
@@ -417,7 +452,14 @@ export async function GET(request: NextRequest) {
                       WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
                   )
                 GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime"), t."householdId", COALESCE(pt."organizationName", t."householdName"), 'just_eats'::text
-                HAVING COUNT(*) * 25 > 0
+                HAVING (
+                    SUM(
+                        GREATEST(
+                            COALESCE(t."numberPickedUp", 1),
+                            COALESCE(t."numberDistributed", 1)
+                        )
+                    ) * 25
+                ) > 0
             `,
         ]);
 
