@@ -15,8 +15,8 @@ export interface DateRange {
     end: Date;
 }
 // Earliest selectable date for quick filters / manual ranges.
-// Keep this broad so "All Time" is always the widest possible range.
-const MIN_FILTER_DATE = new Date(2000, 0, 1); // 01/01/2000 (local)
+// Current reporting baseline starts at the FY window beginning July 1, 2025.
+const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
 
 interface FilterContextValue {
     activeFilter: QuickFilter | null;
