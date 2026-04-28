@@ -22,7 +22,7 @@ import {
 } from '~/lib/chartCompositionColors';
 
 interface DeliveryRecord {
-    householdId18: string;
+    householdId18: string | null;
     date: string;
     organizationName: string;
     productName: string | null;
@@ -131,8 +131,11 @@ function DistributionContent() {
     // Read org from URL on mount (for deep-linking)
     useEffect(() => {
         const householdId18 = searchParams.get('householdId18')?.trim();
+        const destination = searchParams.get('destination')?.trim();
         if (householdId18) {
             setSelectedOrg({ name: 'Selected organization', householdId18 });
+        } else if (destination) {
+            setSelectedOrg({ name: destination, householdId18: null });
         }
     }, [searchParams, setSelectedOrg]);
 
@@ -156,24 +159,40 @@ function DistributionContent() {
 
     // Resolve org name from partner list once loaded
     useEffect(() => {
-        if (
-            !selectedOrg ||
-            selectedOrg.name !== 'Selected organization' ||
-            partnerOrganizations.length === 0
-        )
+        if (!selectedOrg || partnerOrganizations.length === 0) return;
+        if (selectedOrg.name === 'Selected organization' && selectedOrg.householdId18) {
+            const match = partnerOrganizations.find(
+                p => p.householdId18 === selectedOrg.householdId18
+            );
+            if (match) setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
             return;
-        const match = partnerOrganizations.find(p => p.householdId18 === selectedOrg.householdId18);
-        if (match) setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
+        }
+        if (
+            selectedOrg.name &&
+            selectedOrg.name !== 'Selected organization' &&
+            !selectedOrg.householdId18
+        ) {
+            const match = partnerOrganizations.find(
+                p =>
+                    p.name.toLowerCase() === selectedOrg.name.toLowerCase() &&
+                    Boolean(p.householdId18)
+            );
+            if (match?.householdId18) {
+                setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
+            }
+        }
     }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
 
     // Sync selected org into URL
     const handleSelectOrg = (org: { name: string; householdId18?: string | null }) => {
         setSelectedOrg(org);
         const params = new URLSearchParams(searchParams.toString());
+        params.delete('householdId18');
+        params.delete('destination');
         if (org.householdId18) {
             params.set('householdId18', org.householdId18);
-        } else {
-            params.delete('householdId18');
+        } else if (org.name?.trim()) {
+            params.set('destination', org.name.trim());
         }
         router.push(`?${params.toString()}`);
     };
@@ -182,6 +201,7 @@ function DistributionContent() {
         clearSelectedOrg();
         const params = new URLSearchParams(searchParams.toString());
         params.delete('householdId18');
+        params.delete('destination');
         router.push(`?${params.toString()}`);
     };
 
@@ -231,7 +251,15 @@ function DistributionContent() {
         const ac = new AbortController();
         async function fetchFilterOptions() {
             try {
-                const res = await fetch('/api/distribution/filter-options', { signal: ac.signal });
+                const optParams = new URLSearchParams();
+                if (selectedOrg?.householdId18)
+                    optParams.set('householdId18', selectedOrg.householdId18);
+                else if (selectedOrg?.name?.trim())
+                    optParams.set('destination', selectedOrg.name.trim());
+                const q = optParams.toString();
+                const res = await fetch(`/api/distribution/filter-options${q ? `?${q}` : ''}`, {
+                    signal: ac.signal,
+                });
                 if (!res.ok) return;
                 const payload = (await res.json()) as { productTypes?: string[] };
                 if (ac.signal.aborted) return;
@@ -245,7 +273,7 @@ function DistributionContent() {
         }
         void fetchFilterOptions();
         return () => ac.abort();
-    }, []);
+    }, [selectedOrg]);
 
     const availableProductTypesSorted = useMemo(() => {
         const byKey = new Map<string, string>();
@@ -491,6 +519,8 @@ thead th{background:#f3f4f6;font-weight:600;}
                 });
                 if (selectedOrg?.householdId18)
                     deliveriesParams.set('householdId18', selectedOrg.householdId18);
+                else if (selectedOrg?.name?.trim())
+                    deliveriesParams.set('destination', selectedOrg.name.trim());
                 const res = await fetch(
                     `/api/distribution/deliveries?${deliveriesParams.toString()}`,
                     {
@@ -979,7 +1009,7 @@ thead th{background:#f3f4f6;font-weight:600;}
                                                       : undefined;
                                             const rowKey = d.lineId
                                                 ? `je-${d.lineId}`
-                                                : `br-${d.householdId18}-${String(d.date)}-${d.productName ?? ''}-${amt}-${startIdx + index}`;
+                                                : `br-${d.householdId18 ?? 'nodest'}-${d.organizationName}-${String(d.date)}-${d.productName ?? ''}-${amt}-${startIdx + index}`;
                                             return (
                                                 <tr
                                                     key={rowKey}

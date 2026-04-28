@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 export type PartnerCardProps = {
-    id: number;
+    id: number | string;
     name: string;
     householdId18?: string | null;
     location: string;

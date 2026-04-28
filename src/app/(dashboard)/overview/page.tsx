@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StatCard } from '@/components/ui/StatCard';
 import { FoodTypesDonutChart } from '@/components/ui/FoodTypesDonutChart';
 import { PoundsByMonthChart } from '@/components/ui/PoundsByMonthChart';
@@ -38,7 +38,19 @@ const formatDateParam = (d: Date) => {
 };
 
 const OverviewPageContent: React.FC = () => {
+    const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
+
+    const replaceSearchParams = useCallback(
+        (mutate: (p: URLSearchParams) => void) => {
+            const p = new URLSearchParams(searchParams.toString());
+            mutate(p);
+            const qs = p.toString();
+            router.replace(qs ? `${pathname}?${qs}` : pathname);
+        },
+        [pathname, router, searchParams]
+    );
     const { isAdmin, partnerOrganizationName, partnerHouseholdId18 } = useViewerContext();
 
     const { dateRange } = useFilterContext();
@@ -58,13 +70,40 @@ const OverviewPageContent: React.FC = () => {
     useEffect(() => {
         if (!isAdmin) return;
         const householdId18 = searchParams.get('householdId18')?.trim();
+        const destination = searchParams.get('destination')?.trim();
         if (householdId18) {
-            // Set scope immediately from URL, then hydrate display name once partners load.
-            setSelectedOrg(current =>
-                current?.householdId18 === householdId18 ? current : { name: '', householdId18 }
-            );
+            setSelectedOrg(current => {
+                if (current?.householdId18 === householdId18) return current;
+                const fromList = partnerOrganizations.find(
+                    org => org.householdId18 === householdId18
+                );
+                if (fromList) {
+                    return { name: fromList.name, householdId18 };
+                }
+                if (current?.name?.trim()) {
+                    return { name: current.name, householdId18 };
+                }
+                return { name: '', householdId18 };
+            });
+        } else if (destination) {
+            setSelectedOrg(current => {
+                if (current?.householdId18) {
+                    const match = partnerOrganizations.find(
+                        org => org.householdId18 === current.householdId18
+                    );
+                    if (
+                        match &&
+                        match.name.trim().toLowerCase() === destination.trim().toLowerCase()
+                    ) {
+                        return current;
+                    }
+                }
+                return current?.name === destination && current?.householdId18 == null
+                    ? current
+                    : { name: destination, householdId18: null };
+            });
         }
-    }, [isAdmin, searchParams, setSelectedOrg]);
+    }, [isAdmin, searchParams, setSelectedOrg, partnerOrganizations]);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -137,6 +176,8 @@ const OverviewPageContent: React.FC = () => {
         const params = new URLSearchParams({ start, end });
         if (selectedPartner?.householdId18)
             params.set('householdId18', selectedPartner.householdId18);
+        else if (selectedPartner?.name?.trim())
+            params.set('destination', selectedPartner.name.trim());
         const q = params.toString();
 
         setLoading(true);
@@ -230,7 +271,13 @@ const OverviewPageContent: React.FC = () => {
                                 <span className="mx-2 text-gray-300">·</span>
                                 <button
                                     type="button"
-                                    onClick={clearSelectedOrg}
+                                    onClick={() => {
+                                        clearSelectedOrg();
+                                        replaceSearchParams(p => {
+                                            p.delete('householdId18');
+                                            p.delete('destination');
+                                        });
+                                    }}
                                     className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
                                 >
                                     View all organizations
@@ -242,9 +289,25 @@ const OverviewPageContent: React.FC = () => {
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
-                                onSelectPartner={partner => setSelectedOrg(partner)}
+                                onSelectPartner={partner => {
+                                    setSelectedOrg(partner);
+                                    replaceSearchParams(p => {
+                                        p.delete('householdId18');
+                                        p.delete('destination');
+                                        if (partner.householdId18)
+                                            p.set('householdId18', partner.householdId18);
+                                        else if (partner.name?.trim())
+                                            p.set('destination', partner.name.trim());
+                                    });
+                                }}
                                 selectedPartner={selectedPartner}
-                                onClearPartner={clearSelectedOrg}
+                                onClearPartner={() => {
+                                    clearSelectedOrg();
+                                    replaceSearchParams(p => {
+                                        p.delete('householdId18');
+                                        p.delete('destination');
+                                    });
+                                }}
                             />
                         </div>
                     ) : null}
@@ -386,7 +449,9 @@ const OverviewPageContent: React.FC = () => {
                                             href={
                                                 selectedPartner?.householdId18
                                                     ? `/distribution?householdId18=${encodeURIComponent(selectedPartner.householdId18)}`
-                                                    : '/distribution'
+                                                    : selectedPartner?.name?.trim()
+                                                      ? `/distribution?destination=${encodeURIComponent(selectedPartner.name.trim())}`
+                                                      : '/distribution'
                                             }
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
                                             style={{ backgroundColor: 'var(--fff-orange)' }}

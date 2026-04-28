@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
@@ -74,28 +75,30 @@ export async function POST(req: NextRequest) {
         await requireAdmin();
 
         const body = await req.json();
-        const { name, householdId18 } = body;
+        const { name, householdId18 } = body as {
+            name?: string;
+            householdId18?: string | null;
+        };
 
         if (!name) {
             return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
         }
-        if (!householdId18 || !householdId18.trim()) {
-            return NextResponse.json({ error: 'Household Id 18 is required' }, { status: 400 });
-        }
+
+        const trimmedId =
+            typeof householdId18 === 'string' && householdId18.trim() ? householdId18.trim() : null;
+        const syntheticHouseholdId18 = trimmedId ?? `pending-${randomUUID().replace(/-/g, '')}`;
 
         const client = await clerkClient();
 
-        // Create organization in Clerk
         const organization = await client.organizations.createOrganization({
             name,
             createdBy: userId,
-            publicMetadata: { householdId18: householdId18.trim() },
+            publicMetadata: trimmedId ? { householdId18: trimmedId } : {},
         });
 
-        // Create matching Partner in Neon so webhook can associate users with this org
         await prisma.partner.create({
             data: {
-                householdId18: householdId18.trim(),
+                householdId18: syntheticHouseholdId18,
                 organizationName: name,
                 clerkOrganizationId: organization.id,
             },
