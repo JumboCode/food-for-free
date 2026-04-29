@@ -8,8 +8,26 @@ import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
  * - In other server contexts, call without args to let Clerk's `auth()` resolve it.
  */
 export async function isAdmin(userIdOverride?: string | null): Promise<boolean> {
-    const userId = userIdOverride ?? (await auth()).userId;
+    const authState = await auth();
+    const userId = userIdOverride ?? authState.userId;
+    const activeOrgId = authState.orgId;
     if (!userId) return false;
+
+    // When an active org is selected, admin is scoped to that org only.
+    if (activeOrgId) {
+        const activePartner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: activeOrgId },
+            select: { organizationName: true },
+        });
+        const activeOrgIsAdmin = isDistributorPartnerOrgName(activePartner?.organizationName);
+        if (activeOrgIsAdmin) {
+            await prisma.user.updateMany({
+                where: { clerkId: userId },
+                data: { role: 'ADMIN' },
+            });
+        }
+        return activeOrgIsAdmin;
+    }
 
     const dbUser = await prisma.user.findUnique({
         where: { clerkId: userId },

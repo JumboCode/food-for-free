@@ -36,7 +36,7 @@ export async function getOverviewScope(
     });
     if (!user) return { kind: 'no_db_user' };
 
-    const admin = await resolveIsAdmin(userId);
+    const admin = await resolveIsAdmin();
     if (admin) {
         const d = requestedDestination?.trim();
         const requestedId = requestedHouseholdId18?.trim();
