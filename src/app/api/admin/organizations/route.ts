@@ -27,13 +27,13 @@ export async function GET() {
             where: { clerkOrganizationId: { in: clerkOrgIds } },
             include: {
                 _count: {
-                    select: { users: true },
+                    select: { userMemberships: true },
                 },
             },
         });
 
         const memberCountByOrgId = new Map(
-            partners.map(partner => [partner.clerkOrganizationId, partner._count.users])
+            partners.map(partner => [partner.clerkOrganizationId, partner._count.userMemberships])
         );
         const householdIdByOrgId = new Map(
             partners.map(partner => [partner.clerkOrganizationId, partner.householdId18])
