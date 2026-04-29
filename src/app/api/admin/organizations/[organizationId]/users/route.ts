@@ -19,20 +19,45 @@ export async function GET(
         const { organizationId } = await params;
         const client = await clerkClient();
 
-        const users = await prisma.user.findMany({
-            where: {
-                partnerMemberships: {
-                    some: {
-                        partner: {
-                            clerkOrganizationId: organizationId,
-                        },
-                    },
-                },
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
+        type OrganizationUserRow = {
+            id: string;
+            clerkId: string;
+            role: 'ADMIN' | 'PARTNER';
+            name: string | null;
+            email: string;
+            createdAt: Date;
+        };
+
+        let users = await prisma.$queryRaw<OrganizationUserRow[]>`
+            SELECT DISTINCT
+                u."id",
+                u."clerkId",
+                u."role"::text as "role",
+                u."name",
+                u."email",
+                u."createdAt"
+            FROM "User" u
+            INNER JOIN "UserPartnerMembership" upm ON upm."userId" = u."id"
+            INNER JOIN "Partner" p ON p."householdId18" = upm."partnerId"
+            WHERE p."clerkOrganizationId" = ${organizationId}
+            ORDER BY u."createdAt" DESC
+        `;
+
+        if (users.length === 0) {
+            users = await prisma.$queryRaw<OrganizationUserRow[]>`
+                SELECT
+                    u."id",
+                    u."clerkId",
+                    u."role"::text as "role",
+                    u."name",
+                    u."email",
+                    u."createdAt"
+                FROM "User" u
+                INNER JOIN "Partner" p ON p."householdId18" = u."partnerId"
+                WHERE p."clerkOrganizationId" = ${organizationId}
+                ORDER BY u."createdAt" DESC
+            `;
+        }
 
         const invitations = await client.organizations.getOrganizationInvitationList({
             organizationId,

@@ -1,9 +1,8 @@
 import { FilterProvider } from '@/contexts/FilterContext';
 import { OrgScopeProvider } from '@/contexts/OrgScopeContext';
 import { ViewerProvider } from '@/contexts/ViewerContext';
-import { getCurrentUser, isAdmin } from '@/lib/admin';
+import { getCurrentUser, getUserPartnerContexts, isAdmin } from '@/lib/admin';
 import { auth } from '@clerk/nextjs/server';
-import prisma from '~/lib/prisma';
 import { DashboardFrame } from './DashboardFrame';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,16 +18,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         partnerHouseholdId18 = user?.partner?.householdId18 ?? null;
 
         if (userId && !admin && !orgId) {
-            const userMemberships = await prisma.user.findUnique({
-                where: { clerkId: userId },
-                select: {
-                    partnerMemberships: {
-                        select: { partnerId: true },
-                        take: 2,
-                    },
-                },
-            });
-            if ((userMemberships?.partnerMemberships.length ?? 0) > 1) {
+            const userMemberships = await getUserPartnerContexts(userId);
+            if (userMemberships.length > 1) {
                 shouldShowOrgChooser = true;
             }
         }

@@ -2,6 +2,51 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/../lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
+export type UserPartnerContext = {
+    householdId18: string;
+    organizationName: string;
+    clerkOrganizationId: string;
+};
+
+/**
+ * Load partner memberships for a user in a schema-compatible way.
+ * Supports both current membership join table and legacy User.partner relation.
+ */
+export async function getUserPartnerContexts(clerkId: string): Promise<UserPartnerContext[]> {
+    try {
+        const memberships = await prisma.$queryRaw<UserPartnerContext[]>`
+            SELECT
+                p."householdId18",
+                p."organizationName",
+                p."clerkOrganizationId"
+            FROM "User" u
+            INNER JOIN "UserPartnerMembership" upm ON upm."userId" = u."id"
+            INNER JOIN "Partner" p ON p."householdId18" = upm."partnerId"
+            WHERE u."clerkId" = ${clerkId}
+            ORDER BY upm."createdAt" ASC
+        `;
+        if (memberships.length > 0) return memberships;
+    } catch {
+        // Ignore and fall back to legacy single-partner shape.
+    }
+
+    try {
+        const legacy = await prisma.$queryRaw<UserPartnerContext[]>`
+            SELECT
+                p."householdId18",
+                p."organizationName",
+                p."clerkOrganizationId"
+            FROM "User" u
+            INNER JOIN "Partner" p ON p."householdId18" = u."partnerId"
+            WHERE u."clerkId" = ${clerkId}
+            LIMIT 1
+        `;
+        return legacy;
+    } catch {
+        return [];
+    }
+}
+
 /**
  * Check if the current user is an admin.
  * - In middleware, pass the userId from the `auth` argument.
@@ -13,7 +58,9 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
     const activeOrgId = authState.orgId;
     if (!userId) return false;
 
-    // When an active org is selected, admin is scoped to that org only.
+    // If the active org is the internal Food For Free org, promote immediately.
+    // Otherwise, do not early-return false: admins should remain admin even while
+    // viewing another organization.
     if (activeOrgId) {
         const activePartner = await prisma.partner.findUnique({
             where: { clerkOrganizationId: activeOrgId },
@@ -25,8 +72,8 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
                 where: { clerkId: userId },
                 data: { role: 'ADMIN' },
             });
+            return true;
         }
-        return activeOrgIsAdmin;
     }
 
     const dbUser = await prisma.user.findUnique({
@@ -35,7 +82,6 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
     });
 
     if (dbUser?.role === 'ADMIN') return true;
-    if (!dbUser) return false;
 
     // Webhooks can lag right after invitation acceptance. If Clerk already shows this
     // user in the Food For Free org, promote immediately and let future checks stay fast.
@@ -57,10 +103,12 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
         );
         if (!shouldBeAdmin) return false;
 
-        await prisma.user.update({
-            where: { clerkId: userId },
-            data: { role: 'ADMIN' },
-        });
+        if (dbUser) {
+            await prisma.user.update({
+                where: { clerkId: userId },
+                data: { role: 'ADMIN' },
+            });
+        }
         return true;
     } catch (error) {
         console.error('[isAdmin] fallback membership check failed', error);
@@ -77,23 +125,26 @@ export async function getCurrentUser() {
 
     const user = await prisma.user.findUnique({
         where: { clerkId: userId },
-        include: {
-            partnerMemberships: {
-                include: { partner: true },
-                orderBy: { createdAt: 'asc' },
-            },
+        select: {
+            id: true,
+            clerkId: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
         },
     });
     if (!user) return null;
 
-    const memberships = user.partnerMemberships ?? [];
+    const memberships = await getUserPartnerContexts(userId);
     const activeMembership = orgId
-        ? memberships.find(membership => membership.partner.clerkOrganizationId === orgId)
+        ? memberships.find(membership => membership.clerkOrganizationId === orgId)
         : memberships[0];
 
     return {
         ...user,
-        partner: activeMembership?.partner ?? null,
+        partner: activeMembership ?? null,
     };
 }
 

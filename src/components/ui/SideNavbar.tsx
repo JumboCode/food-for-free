@@ -104,7 +104,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
             </nav>
 
             <div className="px-2 lg:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
-                {orgsLoaded && canSwitchOrganizations ? (
+                {orgsLoaded && canSwitchOrganizations && isAdminResolved === false ? (
                     <>
                         <div className="lg:hidden mb-2 flex justify-center">
                             <button

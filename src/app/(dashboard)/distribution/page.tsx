@@ -582,7 +582,7 @@ function DistributionContent() {
                     fontStyle: 'bold',
                     valign: 'top',
                 },
-                didDrawPage: data => {
+                didDrawPage: (data: { pageNumber: number }) => {
                     const pageNumber = doc.getNumberOfPages();
                     doc.setFontSize(8);
                     doc.setTextColor(100, 116, 139);
