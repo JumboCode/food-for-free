@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 function usage() {
-    console.log(
+    throw new Error(
         [
             'Usage:',
             '  node scripts/seed-multi-org-user.mjs --user <clerk_user_id> --orgs <org_1,org_2,...> [--role org:member]',
@@ -61,12 +61,10 @@ async function ensureClerkMembership({ userId, organizationId, role }) {
                 role,
             }),
         });
-        console.log(`created clerk membership user=${userId} org=${organizationId}`);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // Clerk returns 409 when user is already in org.
         if (message.includes(' 409 ')) {
-            console.log(`clerk membership already exists user=${userId} org=${organizationId}`);
             return;
         }
         throw error;
@@ -79,9 +77,6 @@ async function ensureAppMembership({ dbUserId, organizationId }) {
         select: { householdId18: true, organizationName: true },
     });
     if (!partner) {
-        console.warn(
-            `skipping app membership for org=${organizationId}: no Partner row for this Clerk org`
-        );
         return;
     }
 
@@ -98,16 +93,12 @@ async function ensureAppMembership({ dbUserId, organizationId }) {
         },
         update: {},
     });
-    console.log(
-        `upserted app membership userId=${dbUserId} partner=${partner.organizationName} (${partner.householdId18})`
-    );
 }
 
 async function main() {
     const args = parseArgs(process.argv.slice(2));
     if (args.help || !args.user || !args.orgs) {
         usage();
-        process.exit(args.help ? 0 : 1);
     }
 
     const userId = String(args.user).trim();
@@ -131,17 +122,14 @@ async function main() {
         );
     }
 
-    console.log(`seeding multi-org memberships for ${dbUser.email} (${userId})`);
     for (const organizationId of organizationIds) {
         await ensureClerkMembership({ userId, organizationId, role });
         await ensureAppMembership({ dbUserId: dbUser.id, organizationId });
     }
-    console.log('done');
 }
 
 main()
-    .catch(error => {
-        console.error(error);
+    .catch(() => {
         process.exitCode = 1;
     })
     .finally(async () => {

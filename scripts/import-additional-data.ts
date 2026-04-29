@@ -68,13 +68,11 @@ function chunkArray<T>(items: T[], chunkSize: number): T[][] {
 }
 
 async function loadInventoryTransactions(filePath: string) {
-    const deleted = await prisma.allInventoryTransactions.deleteMany({
+    await prisma.allInventoryTransactions.deleteMany({
         where: { inventoryType: 'Intake' },
     });
-    console.log(`[inventory] deleted_existing_intake=${deleted.count}`);
 
     const rows = parseCsv(filePath);
-    let skippedIntakeRows = 0;
     const payload = rows
         .map(r => {
             const date = parseDate(r['Date']);
@@ -84,10 +82,7 @@ async function loadInventoryTransactions(filePath: string) {
             const inventoryType = r['Inventory Type']?.trim();
             const location = r['Location']?.trim();
 
-            if (inventoryType?.toLowerCase() === 'intake') {
-                skippedIntakeRows += 1;
-                return null;
-            }
+            if (inventoryType?.toLowerCase() === 'intake') return null;
 
             if (
                 !date ||
@@ -121,18 +116,12 @@ async function loadInventoryTransactions(filePath: string) {
         .filter((row): row is NonNullable<typeof row> => row !== null);
 
     const chunks = chunkArray(payload, 1000);
-    let inserted = 0;
     for (const chunk of chunks) {
-        const result = await prisma.allInventoryTransactions.createMany({
+        await prisma.allInventoryTransactions.createMany({
             data: chunk,
             skipDuplicates: true,
         });
-        inserted += result.count;
     }
-
-    console.log(
-        `[inventory] parsed=${rows.length} skipped_intake=${skippedIntakeRows} valid=${payload.length} inserted=${inserted}`
-    );
 }
 
 async function loadPackagesByItem(filePath: string) {
@@ -159,16 +148,12 @@ async function loadPackagesByItem(filePath: string) {
         .filter((row): row is NonNullable<typeof row> => row !== null);
 
     const chunks = chunkArray(payload, 1000);
-    let inserted = 0;
     for (const chunk of chunks) {
-        const result = await prisma.allPackagesByItem.createMany({
+        await prisma.allPackagesByItem.createMany({
             data: chunk,
             skipDuplicates: true,
         });
-        inserted += result.count;
     }
-
-    console.log(`[packages] parsed=${rows.length} valid=${payload.length} inserted=${inserted}`);
 }
 
 async function loadProductPackageDestinations(filePath: string) {
@@ -214,18 +199,12 @@ async function loadProductPackageDestinations(filePath: string) {
         .filter((row): row is NonNullable<typeof row> => row !== null);
 
     const chunks = chunkArray(payload, 1000);
-    let inserted = 0;
     for (const chunk of chunks) {
-        const result = await prisma.allProductPackageDestinations.createMany({
+        await prisma.allProductPackageDestinations.createMany({
             data: chunk,
             skipDuplicates: true,
         });
-        inserted += result.count;
     }
-
-    console.log(
-        `[destinations] parsed=${rows.length} valid=${payload.length} inserted=${inserted}`
-    );
 }
 
 async function main() {
@@ -241,8 +220,7 @@ async function main() {
 }
 
 main()
-    .catch(error => {
-        console.error('Import failed:', error);
+    .catch(() => {
         process.exitCode = 1;
     })
     .finally(async () => {

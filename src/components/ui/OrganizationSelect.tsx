@@ -105,7 +105,7 @@ export default function OrganizationSelect({
             />
             {open ? (
                 <div
-                    className={`absolute z-100 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg ${
+                    className={`absolute z-50 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg ${
                         openUpward ? 'bottom-11' : 'mt-1'
                     }`}
                 >

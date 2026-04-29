@@ -71,11 +71,8 @@ export async function POST(req: NextRequest) {
                 await client.organizations.updateOrganizationMetadata(org.id, {
                     publicMetadata: { ...org.publicMetadata, householdId18 },
                 });
-            } catch (metadataError) {
-                console.warn('Failed to backfill householdId18 metadata for organization:', {
-                    organizationId: org.id,
-                    metadataError,
-                });
+            } catch {
+                // Non-blocking metadata backfill; invitation can proceed without this update.
             }
         }
 

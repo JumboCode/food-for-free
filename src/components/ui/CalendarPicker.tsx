@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { format, parse, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { DayPicker, DateRange } from 'react-day-picker';
 import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,7 +58,6 @@ export function MyCalendar({
         : undefined;
 
     const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(initialRange);
-    const [inputValue, setInputValue] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     // Sync internal state when external range changes (e.g., from quick filters)
@@ -66,9 +65,6 @@ export function MyCalendar({
         if (externalRange) {
             const newRange: DateRange = { from: externalRange.start, to: externalRange.end };
             setSelectedRange(newRange);
-            setInputValue(
-                `${format(externalRange.start, 'MM/dd/yyyy')} - ${format(externalRange.end, 'MM/dd/yyyy')}`
-            );
             setLeftMonth(normalizeMonth(new Date(externalRange.start)));
             setRightMonth(normalizeMonth(new Date(externalRange.end)));
         }
@@ -101,11 +97,6 @@ export function MyCalendar({
             const from = date;
             const to = prev?.to && prev.to >= from ? prev.to : undefined;
             const next: DateRange = { from, to };
-            if (to) {
-                setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
-            } else {
-                setInputValue(format(from, 'MM/dd/yyyy'));
-            }
             return next;
         });
     };
@@ -117,7 +108,6 @@ export function MyCalendar({
             const to = date;
             const from = prev?.from && prev.from <= to ? prev.from : to;
             const next: DateRange = { from, to };
-            setInputValue(`${format(from, 'MM/dd/yyyy')} - ${format(to, 'MM/dd/yyyy')}`);
             return next;
         });
     };
@@ -128,37 +118,9 @@ export function MyCalendar({
         return t >= selectedRange.from.getTime() && t <= selectedRange.to.getTime();
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const str = e.target.value;
-        setInputValue(str); // Keep the input value in sync
-
-        const parts = str.split(' - ');
-        if (parts.length === 2) {
-            // Check for a full range
-            const from = parse(parts[0], 'MM/dd/yyyy', new Date());
-            const to = parse(parts[1], 'MM/dd/yyyy', new Date());
-            if (isValid(from) && isValid(to)) {
-                setSelectedRange({ from, to });
-                setLeftMonth(normalizeMonth(from));
-                setRightMonth(normalizeMonth(to));
-                return;
-            }
-        } else if (parts.length === 1) {
-            const from = parse(parts[0], 'MM/dd/yyyy', new Date());
-            if (isValid(from)) {
-                setSelectedRange({ from, to: undefined });
-                setLeftMonth(normalizeMonth(from));
-                return;
-            }
-        }
-
-        setSelectedRange(undefined);
-    };
-
     const handleClear = () => {
         const range = defaultRange ?? getPast12MonthsRange();
         setSelectedRange({ from: range.start, to: range.end });
-        setInputValue(`${format(range.start, 'MM/dd/yyyy')} - ${format(range.end, 'MM/dd/yyyy')}`);
         setLeftMonth(normalizeMonth(range.start));
         setRightMonth(normalizeMonth(range.end));
         onRangeChange?.(range);
@@ -259,16 +221,16 @@ export function MyCalendar({
                 onClick={e => {
                     if (e.target === e.currentTarget) toggleDialog();
                 }}
-                className="p-0 border-0 bg-transparent backdrop:bg-black/30 w-full max-w-[min(95vw,44rem)] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                className="fixed left-1/2 top-1/2 w-full max-w-[min(95vw,44rem)] -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent p-0 backdrop:bg-black/30"
             >
-                <div className="calendar-picker-compact rounded-xl bg-white p-3 shadow-2xl sm:p-4 border border-slate-100">
+                <div className="calendar-picker-compact max-h-[90vh] overflow-auto rounded-xl border border-slate-100 bg-white p-3 shadow-2xl sm:p-4">
                     <div className="mb-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Custom date range
                         </p>
                     </div>
 
-                    <div className="flex gap-4 justify-center">
+                    <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start">
                         <div>
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
                                 Period start

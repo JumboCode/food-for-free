@@ -73,8 +73,7 @@ async function userHasVerifiedEmail(userId: string, email: string): Promise<bool
 
 async function rollbackMembershipForEmailMismatch(
     userId: string,
-    organizationId: string,
-    invitedEmail: string
+    organizationId: string
 ): Promise<void> {
     const client = await clerkClient();
     try {
@@ -101,11 +100,6 @@ async function rollbackMembershipForEmailMismatch(
             });
         }
     }
-    console.warn('Rejected invitation acceptance due to email mismatch', {
-        userId,
-        organizationId,
-        invitedEmail,
-    });
 }
 
 /**
@@ -126,10 +120,7 @@ async function assignPartnerByClerkOrgId(
         where: { clerkOrganizationId: clerkOrganizationId },
     });
 
-    if (!partner) {
-        console.warn('Partner not found for Clerk organization:', clerkOrganizationId);
-        return;
-    }
+    if (!partner) return;
 
     await prisma.userPartnerMembership.upsert({
         where: {
@@ -144,7 +135,6 @@ async function assignPartnerByClerkOrgId(
         },
         update: {},
     });
-    console.log('User assigned to partner:', userId, '→', partner.organizationName);
 }
 
 export async function POST(req: Request) {
@@ -217,8 +207,6 @@ export async function POST(req: Request) {
             });
 
             await syncUserPartnerFromClerkOrgMemberships(id);
-
-            console.log(`${eventType}:`, id, 'Role:', nextRole);
         }
 
         if (eventType === 'user.deleted') {
@@ -230,7 +218,6 @@ export async function POST(req: Request) {
                 await prisma.user.deleteMany({
                     where: { clerkId: deletedClerkUserId },
                 });
-                console.log('user.deleted: removed local user row', deletedClerkUserId);
             }
         }
 
@@ -258,11 +245,7 @@ export async function POST(req: Request) {
                 } else {
                     const hasInviteEmail = await userHasVerifiedEmail(userId, invitedEmail);
                     if (!hasInviteEmail) {
-                        await rollbackMembershipForEmailMismatch(
-                            userId,
-                            organizationId,
-                            invitedEmail
-                        );
+                        await rollbackMembershipForEmailMismatch(userId, organizationId);
                         return new Response('Invitation email mismatch', { status: 200 });
                     }
                 }
@@ -322,11 +305,6 @@ export async function POST(req: Request) {
                                 partnerId: partner.householdId18,
                             },
                         });
-                        console.log(
-                            'User removed from partner organization:',
-                            userId,
-                            organization.name
-                        );
                     }
                 }
             }
@@ -349,14 +327,12 @@ export async function POST(req: Request) {
                     } else {
                         await syncUserPartnerFromClerkOrgMemberships(userId);
                     }
-                    console.log('session.created: backfilled Neon user', userId);
                 } else {
                     if (d.last_active_organization_id) {
                         await assignPartnerByClerkOrgId(userId, d.last_active_organization_id);
                     } else {
                         await syncUserPartnerFromClerkOrgMemberships(userId);
                     }
-                    console.log('session.created: repaired partner memberships', userId);
                 }
             }
         }
