@@ -15,8 +15,8 @@ export interface DateRange {
     end: Date;
 }
 // Earliest selectable date for quick filters / manual ranges.
-// Current reporting baseline starts at the FY window beginning July 1, 2025.
-const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
+// Fiscal year still starts July 1, but reporting should include records from Jan 1, 2025 onward.
+const MIN_FILTER_DATE = new Date(2025, 0, 1); // 01/01/2025 (local)
 
 interface FilterContextValue {
     activeFilter: QuickFilter | null;

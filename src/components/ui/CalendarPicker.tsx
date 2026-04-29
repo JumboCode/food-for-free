@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import 'react-day-picker/dist/style.css'; // make sure this is imported once globally
 
 export type CalendarTriggerVariant = 'pill' | 'panel' | 'responsive';
-const MIN_FILTER_DATE = new Date(2025, 6, 1); // 07/01/2025 (local)
+const MIN_FILTER_DATE = new Date(2025, 0, 1); // 01/01/2025 (local)
 
 interface MyCalendarProps {
     selectedRange?: { start: Date; end: Date };
