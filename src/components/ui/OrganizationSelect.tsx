@@ -2,7 +2,6 @@
 
 import { useAuth, useOrganizationList } from '@clerk/nextjs';
 import { Check, ChevronDown } from 'lucide-react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type OrganizationSelectProps = {
@@ -18,9 +17,6 @@ export default function OrganizationSelect({
     const { isLoaded, setActive, userMemberships } = useOrganizationList({
         userMemberships: { infinite: true },
     });
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [open, setOpen] = useState(false);
     const [isSwitching, setIsSwitching] = useState(false);
     const [openUpward, setOpenUpward] = useState(false);
@@ -147,13 +143,9 @@ export default function OrganizationSelect({
                                             await setActive({ organization: nextOrgId });
                                         }
                                         setOpen(false);
-                                        if (searchParams.get('chooseOrg') === '1') {
-                                            window.location.assign(redirectTo);
-                                        } else if (pathname !== redirectTo) {
-                                            router.replace(redirectTo);
-                                        } else {
-                                            router.refresh();
-                                        }
+                                        // Force a full navigation so server-derived org context
+                                        // is consistently refreshed across all dashboards.
+                                        window.location.assign(redirectTo);
                                     } finally {
                                         setIsSwitching(false);
                                     }
