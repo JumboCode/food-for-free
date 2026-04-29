@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Loader2, Download, ChevronDown, X } from 'lucide-react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import FilterBar from '@/components/ui/FilterBar';
 import SearchBarOverview from '@/components/ui/SearchBarOverview';
 import { useFilterContext } from '@/contexts/FilterContext';
@@ -77,13 +79,21 @@ function csvEscapeCell(v: string | number): string {
     return s;
 }
 
-function htmlEscapeCell(v: string | number): string {
-    return String(v)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise<string | null>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+                resolve(typeof reader.result === 'string' ? reader.result : null);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return null;
+    }
 }
 
 function toggleInList(list: string[], value: string): string[] {
@@ -110,6 +120,7 @@ function DistributionContent() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const { dateRange } = useFilterContext();
     const [exporting, setExporting] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'pdf' | null>(null);
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [foodTypeColorLookup, setFoodTypeColorLookup] = useState<Map<string, string>>(
@@ -341,29 +352,71 @@ function DistributionContent() {
         setFilterProcessing([]);
     };
 
+    const appliedFilterSummary = useMemo(() => {
+        const parts: string[] = [];
+        if (debouncedSearch) parts.push(`Search: ${debouncedSearch}`);
+        if (filterPrograms.length > 0) {
+            const labels = filterPrograms.map(key =>
+                key === 'just_eats' ? 'Just Eats' : 'Bulk & Recovery'
+            );
+            parts.push(`Program: ${labels.join(', ')}`);
+        }
+        if (filterProductTypes.length > 0) {
+            parts.push(`Food Type: ${filterProductTypes.join(', ')}`);
+        }
+        if (filterProcessing.length > 0) {
+            const labels = filterProcessing.map(key =>
+                key === 'minimal'
+                    ? 'Minimally Processed'
+                    : key === 'processed'
+                      ? 'Processed'
+                      : 'Not Specified'
+            );
+            parts.push(`Processing: ${labels.join(', ')}`);
+        }
+        return parts.length > 0 ? parts.join(' | ') : null;
+    }, [debouncedSearch, filterPrograms, filterProductTypes, filterProcessing]);
+
+    const filteredOrgNames = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    filteredData
+                        .map(row => row.organizationName?.trim())
+                        .filter((name): name is string => Boolean(name))
+                )
+            ),
+        [filteredData]
+    );
+
+    const selectedOrgName = selectedOrg?.name?.trim() ?? '';
+    const isScopedFromUi = Boolean(
+        selectedOrg?.householdId18 ||
+            (selectedOrgName.length > 0 && selectedOrgName !== 'Selected organization')
+    );
+    const isScopedByDataFallback = !isScopedFromUi && filteredOrgNames.length === 1;
+    const isScopedToOrg = isScopedFromUi || isScopedByDataFallback;
+    const includeOrganizationColumn = !isScopedToOrg;
+
     const exportHeaders = useMemo(
         () => [
             'Date',
-            'Program',
-            'Organization',
+            ...(includeOrganizationColumn ? ['Organization'] : []),
             'Food',
             'Amount',
-            'Unit weight (lbs)',
-            'Total weight (lbs)',
-            'Food type',
+            'Unit Weight (Lbs)',
+            'Total Weight (Lbs)',
+            'Food Type',
             'Processing',
-            'Inventory type',
-            'Source',
-            'Food recovery program',
+            'Food Recovery Program',
         ],
-        []
+        [includeOrganizationColumn]
     );
 
     const exportRows = useMemo(() => {
         return filteredData.map(d => [
             format(new Date(d.date), 'yyyy-MM-dd'),
-            programExportLabel(d),
-            d.organizationName,
+            ...(includeOrganizationColumn ? [d.organizationName] : []),
             d.productName?.trim() || '',
             Number(d.distributionAmount ?? 1),
             d.unitWeightLbs == null || Number.isNaN(Number(d.unitWeightLbs))
@@ -372,13 +425,28 @@ function DistributionContent() {
             Number(d.weightLbs ?? 0),
             foodTypeLabelForRow(d.productType),
             processingDisplayLabel(d.minimallyProcessedFood),
-            (d.inventoryType ?? '').trim(),
-            (d.source ?? '').trim(),
-            (d.foodRescueProgram ?? '').trim(),
+            programExportLabel(d),
         ]);
-    }, [filteredData]);
+    }, [filteredData, includeOrganizationColumn]);
 
     const exportFilenameBase = `distribution-${format(dateRange.start, 'yyyy-MM-dd')}_to_${format(dateRange.end, 'yyyy-MM-dd')}`;
+    const exportOrgLabel = useMemo(() => {
+        if (!isScopedToOrg) return 'All organizations';
+
+        const selectedName = selectedOrg?.name?.trim();
+        if (selectedName && selectedName !== 'Selected organization') return selectedName;
+
+        if (selectedOrg?.householdId18) {
+            const match = partnerOrganizations.find(
+                org => org.householdId18 === selectedOrg.householdId18
+            );
+            if (match?.name?.trim()) return match.name.trim();
+        }
+
+        if (filteredOrgNames.length === 1) return filteredOrgNames[0];
+
+        return 'Selected organization';
+    }, [isScopedToOrg, selectedOrg, partnerOrganizations, filteredOrgNames]);
 
     const triggerBlobDownload = (blob: Blob, fileName: string) => {
         const url = window.URL.createObjectURL(blob);
@@ -391,16 +459,33 @@ function DistributionContent() {
         window.URL.revokeObjectURL(url);
     };
 
-    const handleExport = (formatType: 'csv' | 'excel' | 'pdf') => {
+    const handleExport = async (formatType: 'csv' | 'excel' | 'pdf') => {
         if (filteredData.length === 0) {
             alert('No records to export for the current filters.');
             return;
         }
         setExporting(true);
+        setExportFormat(formatType);
         setExportMenuOpen(false);
         try {
+            const generatedAt = format(new Date(), 'MMM d, yyyy h:mm a');
+            const dateRangeLabel = `${format(dateRange.start, 'MMM d, yyyy')} to ${format(dateRange.end, 'MMM d, yyyy')}`;
+            const metadataRows: Array<[string, string]> = [
+                ['Report', 'Food For Free Distribution Report'],
+                ['Organization', exportOrgLabel],
+                ['Date Range', dateRangeLabel],
+            ];
+            if (appliedFilterSummary) {
+                metadataRows.push(['Applied Filters', appliedFilterSummary]);
+            }
+            metadataRows.push(['Generated', generatedAt]);
+
             if (formatType === 'csv') {
-                const lines = [exportHeaders.map(csvEscapeCell).join(',')];
+                const lines = metadataRows.map(([label, value]) =>
+                    [label, value].map(csvEscapeCell).join(',')
+                );
+                lines.push('');
+                lines.push(exportHeaders.map(csvEscapeCell).join(','));
                 for (const row of exportRows) {
                     lines.push(row.map(csvEscapeCell).join(','));
                 }
@@ -411,6 +496,8 @@ function DistributionContent() {
 
             if (formatType === 'excel') {
                 const workbookRows = [
+                    ...metadataRows.map(([label, value]) => [label, value]),
+                    [],
                     exportHeaders,
                     ...exportRows.map(row => row.map(cell => (cell == null ? '' : cell))),
                 ];
@@ -421,62 +508,104 @@ function DistributionContent() {
                 return;
             }
 
-            const tableRows = exportRows
-                .map(
-                    row =>
-                        `<tr>${row.map(cell => `<td>${htmlEscapeCell(cell)}</td>`).join('')}</tr>`
-                )
-                .join('');
-            const printableHtml = `<!doctype html><html><head><meta charset="utf-8" />
-<title>Distribution Export</title>
-<style>
-body{font-family:Inter,Arial,sans-serif;padding:18px;color:#111827;}
-h1{font-size:18px;margin:0 0 4px;}
-p{font-size:12px;color:#4b5563;margin:0 0 12px;}
-table{border-collapse:collapse;width:100%;}
-th,td{border:1px solid #d1d5db;padding:6px 8px;font-size:11px;text-align:left;vertical-align:top;}
-thead th{background:#f3f4f6;font-weight:600;}
-</style>
-</head><body>
-<h1>Distribution Export</h1>
-<p>${htmlEscapeCell(format(dateRange.start, 'MMM d, yyyy'))} to ${htmlEscapeCell(format(dateRange.end, 'MMM d, yyyy'))}</p>
-<table><thead><tr>${exportHeaders.map(h => `<th>${htmlEscapeCell(h)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table>
-</body></html>`;
-            const printFrame = document.createElement('iframe');
-            printFrame.style.position = 'fixed';
-            printFrame.style.right = '0';
-            printFrame.style.bottom = '0';
-            printFrame.style.width = '0';
-            printFrame.style.height = '0';
-            printFrame.style.border = '0';
-            printFrame.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(printFrame);
+            const scopeSummary = isScopedToOrg
+                ? 'This report summarizes food distributions delivered to the selected partner organization.'
+                : 'This report summarizes food distributions delivered to partner organizations.';
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'letter',
+            });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const left = 28;
+            const logoDataUrl = await loadImageAsDataUrl('/images/food-for-free-report-logo.png');
+            if (logoDataUrl) {
+                const logoWidth = 100;
+                const logoHeight = (logoWidth * 600) / 1000;
+                doc.addImage(
+                    logoDataUrl,
+                    'PNG',
+                    pageWidth - 28 - logoWidth,
+                    16,
+                    logoWidth,
+                    logoHeight
+                );
+            }
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(31, 41, 55);
+            doc.setFontSize(22);
+            doc.text('Food For Free Distribution Report', left, 42);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(75, 85, 99);
+            doc.setFontSize(11);
+            const headerMaxWidth = pageWidth - left - 120;
+            let cursorY = 60;
+            const orgDateLines = doc.splitTextToSize(
+                `Organization: ${exportOrgLabel}  |  Date Range: ${format(dateRange.start, 'MMM d, yyyy')} to ${format(dateRange.end, 'MMM d, yyyy')}`,
+                headerMaxWidth
+            );
+            doc.text(orgDateLines, left, cursorY);
+            cursorY += orgDateLines.length * 12 + 4;
+            doc.setTextColor(107, 114, 128);
+            if (appliedFilterSummary) {
+                const filterSummaryLines = doc.splitTextToSize(
+                    `Applied Filters: ${appliedFilterSummary}`,
+                    headerMaxWidth
+                );
+                doc.text(filterSummaryLines, left, cursorY);
+                cursorY += filterSummaryLines.length * 12 + 4;
+            }
+            const scopeSummaryLines = doc.splitTextToSize(scopeSummary, headerMaxWidth);
+            doc.text(scopeSummaryLines, left, cursorY);
+            cursorY += scopeSummaryLines.length * 12 + 2;
+            doc.text(`Generated: ${generatedAt}`, left, cursorY + 12);
 
-            const cleanup = () => {
-                window.setTimeout(() => {
-                    printFrame.remove();
-                }, 300);
-            };
-
-            printFrame.onload = () => {
-                const frameWindow = printFrame.contentWindow;
-                if (!frameWindow) {
-                    cleanup();
-                    alert('Unable to open print dialog. Please try again.');
-                    return;
-                }
-                frameWindow.focus();
-                frameWindow.print();
-                frameWindow.onafterprint = cleanup;
-                window.setTimeout(cleanup, 2000);
-            };
-
-            printFrame.srcdoc = printableHtml;
+            autoTable(doc, {
+                head: [exportHeaders],
+                body: exportRows.map(row => row.map(cell => String(cell ?? ''))),
+                startY: cursorY + 24,
+                theme: 'grid',
+                margin: { left, right: 28, bottom: 22 },
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 9,
+                    cellPadding: 5,
+                    lineColor: [209, 213, 219],
+                    lineWidth: 0.6,
+                    valign: 'top',
+                    halign: 'left',
+                    overflow: 'linebreak',
+                },
+                headStyles: {
+                    fillColor: [243, 244, 246],
+                    textColor: [17, 24, 39],
+                    fontStyle: 'bold',
+                    valign: 'top',
+                },
+                didDrawPage: data => {
+                    const pageNumber = doc.getNumberOfPages();
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(
+                        `Page ${pageNumber}`,
+                        pageWidth - 24,
+                        doc.internal.pageSize.getHeight() - 10,
+                        { align: 'right' }
+                    );
+                    if (data.pageNumber > 1) {
+                        doc.setFontSize(10);
+                        doc.setTextColor(75, 85, 99);
+                        doc.text('Distribution Report', left, 18);
+                    }
+                },
+            });
+            doc.save(`${exportFilenameBase}.pdf`);
         } catch (err: unknown) {
             console.error('Export error:', err);
             alert(err instanceof Error ? err.message : 'Export failed');
         } finally {
             setExporting(false);
+            setExportFormat(null);
         }
     };
 
@@ -907,7 +1036,13 @@ thead th{background:#f3f4f6;font-weight:600;}
                                         ) : (
                                             <Download className="w-4 h-4" />
                                         )}
-                                        Export
+                                        {exporting
+                                            ? exportFormat === 'csv'
+                                                ? 'Preparing CSV...'
+                                                : exportFormat === 'excel'
+                                                  ? 'Preparing Excel...'
+                                                  : 'Preparing PDF...'
+                                            : 'Export'}
                                         <ChevronDown className="w-4 h-4 text-gray-700" />
                                     </button>
                                     {exportMenuOpen ? (

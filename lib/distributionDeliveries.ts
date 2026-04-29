@@ -114,6 +114,7 @@ export async function queryDistributionDeliveries(
                 ON pt."householdId18" = d."householdId18"
             WHERE d."date" >= ${params.start}
               AND d."date" <= ${params.end}
+              AND ${distributionInventoryTypeCondition}
               AND ${destinationStatusIncludedCondition}
               ${destClause}
               ${searchClause}
