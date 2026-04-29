@@ -89,6 +89,24 @@ export async function POST(req: NextRequest) {
             },
         });
 
+        const existingInvitations = await client.organizations.getOrganizationInvitationList({
+            organizationId: targetOrganizationId!,
+            status: ['pending'],
+            limit: 100,
+        });
+        const normalizedEmail = email.trim().toLowerCase();
+        const duplicatePendingInvite = existingInvitations.data.some(
+            invitation => invitation.emailAddress.trim().toLowerCase() === normalizedEmail
+        );
+        if (duplicatePendingInvite) {
+            return NextResponse.json(
+                {
+                    error: 'A pending invitation already exists for this email in this organization.',
+                },
+                { status: 409 }
+            );
+        }
+
         // Create invitation
         const invitation = await client.organizations.createOrganizationInvitation({
             organizationId: targetOrganizationId!,

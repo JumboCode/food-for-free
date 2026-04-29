@@ -86,10 +86,21 @@ async function rollbackMembershipForEmailMismatch(
         const status = (clerkErr as { status?: number }).status;
         if (status !== 404) throw clerkErr;
     }
-    await prisma.user.updateMany({
+    const user = await prisma.user.findUnique({
         where: { clerkId: userId },
-        data: { partnerId: null },
+        select: { id: true },
     });
+    if (user) {
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: organizationId },
+            select: { householdId18: true },
+        });
+        if (partner) {
+            await prisma.userPartnerMembership.deleteMany({
+                where: { userId: user.id, partnerId: partner.householdId18 },
+            });
+        }
+    }
     console.warn('Rejected invitation acceptance due to email mismatch', {
         userId,
         organizationId,
@@ -105,6 +116,11 @@ async function assignPartnerByClerkOrgId(
     clerkOrganizationId: string
 ): Promise<void> {
     await upsertNeonUserFromClerk(userId);
+    const user = await prisma.user.findUnique({
+        where: { clerkId: userId },
+        select: { id: true },
+    });
+    if (!user) return;
 
     const partner = await prisma.partner.findUnique({
         where: { clerkOrganizationId: clerkOrganizationId },
@@ -115,9 +131,18 @@ async function assignPartnerByClerkOrgId(
         return;
     }
 
-    await prisma.user.update({
-        where: { clerkId: userId },
-        data: { partnerId: partner.householdId18 },
+    await prisma.userPartnerMembership.upsert({
+        where: {
+            userId_partnerId: {
+                userId: user.id,
+                partnerId: partner.householdId18,
+            },
+        },
+        create: {
+            userId: user.id,
+            partnerId: partner.householdId18,
+        },
+        update: {},
     });
     console.log('User assigned to partner:', userId, '→', partner.organizationName);
 }
@@ -282,21 +307,20 @@ export async function POST(req: Request) {
             if (userId) {
                 const user = await prisma.user.findUnique({
                     where: { clerkId: userId },
+                    select: { id: true },
                 });
 
-                if (user?.partnerId) {
+                if (user && organization?.id) {
                     const partner = await prisma.partner.findUnique({
-                        where: { householdId18: user.partnerId },
+                        where: { clerkOrganizationId: organization.id },
                     });
 
-                    if (
-                        partner &&
-                        organization?.id &&
-                        partner.clerkOrganizationId === organization.id
-                    ) {
-                        await prisma.user.update({
-                            where: { clerkId: userId },
-                            data: { partnerId: null },
+                    if (partner) {
+                        await prisma.userPartnerMembership.deleteMany({
+                            where: {
+                                userId: user.id,
+                                partnerId: partner.householdId18,
+                            },
                         });
                         console.log(
                             'User removed from partner organization:',
@@ -309,7 +333,7 @@ export async function POST(req: Request) {
         }
 
         // If user.* / invitation / membership webhooks were missed, first session still creates Neon row
-        // or repairs partnerId when the user exists but was never linked.
+        // or repairs partner memberships when the user exists but was never linked.
         if (eventType === 'session.created') {
             const d = evt.data as {
                 user_id?: string;
@@ -326,13 +350,13 @@ export async function POST(req: Request) {
                         await syncUserPartnerFromClerkOrgMemberships(userId);
                     }
                     console.log('session.created: backfilled Neon user', userId);
-                } else if (!existing.partnerId) {
+                } else {
                     if (d.last_active_organization_id) {
                         await assignPartnerByClerkOrgId(userId, d.last_active_organization_id);
                     } else {
                         await syncUserPartnerFromClerkOrgMemberships(userId);
                     }
-                    console.log('session.created: repaired partner link', userId);
+                    console.log('session.created: repaired partner memberships', userId);
                 }
             }
         }

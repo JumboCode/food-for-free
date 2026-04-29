@@ -54,13 +54,29 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
  * Get the current user's database record
  */
 export async function getCurrentUser() {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return null;
 
-    return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
         where: { clerkId: userId },
-        include: { partner: true },
+        include: {
+            partnerMemberships: {
+                include: { partner: true },
+                orderBy: { createdAt: 'asc' },
+            },
+        },
     });
+    if (!user) return null;
+
+    const memberships = user.partnerMemberships ?? [];
+    const activeMembership = orgId
+        ? memberships.find(membership => membership.partner.clerkOrganizationId === orgId)
+        : memberships[0];
+
+    return {
+        ...user,
+        partner: activeMembership?.partner ?? null,
+    };
 }
 
 /**

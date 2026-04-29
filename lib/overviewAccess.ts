@@ -22,12 +22,17 @@ export async function getOverviewScope(
     requestedDestination: string | null | undefined,
     requestedHouseholdId18?: string | null | undefined
 ): Promise<OverviewScope> {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) return { kind: 'unauthenticated' };
 
     const user = await prisma.user.findUnique({
         where: { clerkId: userId },
-        include: { partner: true },
+        include: {
+            partnerMemberships: {
+                include: { partner: true },
+                orderBy: { createdAt: 'asc' },
+            },
+        },
     });
     if (!user) return { kind: 'no_db_user' };
 
@@ -56,7 +61,12 @@ export async function getOverviewScope(
         };
     }
 
-    const partner = user.partner;
+    const activeMembership = orgId
+        ? user.partnerMemberships.find(
+              membership => membership.partner.clerkOrganizationId === orgId
+          )
+        : user.partnerMemberships[0];
+    const partner = activeMembership?.partner;
     const orgName = partner?.organizationName?.trim();
     if (!partner || !orgName) return { kind: 'partner_no_org' };
 

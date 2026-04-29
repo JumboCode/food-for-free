@@ -102,10 +102,7 @@ export async function DELETE(
 
             await tx.user.deleteMany({
                 where: {
-                    OR: [
-                        { partnerId: partner.householdId18, clerkId: { in: clerkUserIdsToDelete } },
-                        { clerkId: { in: clerkUserIdsToDelete } },
-                    ],
+                    clerkId: { in: clerkUserIdsToDelete },
                 },
             });
 

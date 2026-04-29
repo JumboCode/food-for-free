@@ -11,6 +11,7 @@
         "lint": "eslint",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
+        "seed:multi-org-user": "node scripts/seed-multi-org-user.mjs",
         "prepare": "husky"
     },
     "dependencies": {

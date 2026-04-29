@@ -8,6 +8,7 @@ const isProtectedRoute = createRouteMatcher([
     '/distribution(.*)',
     '/sticker-sheet(.*)',
     '/admin(.*)',
+    '/choose-organization(.*)',
     '/api/((?!webhooks/clerk).*)',
 ]);
 

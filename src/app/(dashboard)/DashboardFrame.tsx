@@ -12,7 +12,7 @@ export function DashboardFrame({
     return (
         <>
             <SideNavBar isAdmin={isAdmin} />
-            <div className="ml-16 w-[calc(100%-4rem)] min-h-screen min-w-0 bg-[#FAF9F5] lg:ml-56 lg:w-[calc(100%-14rem)]">
+            <div className="ml-16 w-[calc(100%-4rem)] min-h-screen min-w-0 bg-[#FAF9F5] lg:ml-64 lg:w-[calc(100%-16rem)]">
                 <main className="min-w-0 max-w-full">{children}</main>
             </div>
         </>

@@ -2,12 +2,12 @@ import { clerkClient } from '@clerk/nextjs/server';
 import prisma from './prisma';
 
 /**
- * Set user's partnerId from the first Clerk org membership that matches a Partner row.
+ * Ensure user->partner memberships exist for every Clerk org membership that maps to a Partner row.
  * Call after user.created or when fixing missed webhook ordering.
  */
 export async function syncUserPartnerFromClerkOrgMemberships(clerkUserId: string): Promise<void> {
     const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
-    if (!user || user.partnerId) return;
+    if (!user) return;
 
     const client = await clerkClient();
     const { data } = await client.users.getOrganizationMembershipList({
@@ -21,11 +21,19 @@ export async function syncUserPartnerFromClerkOrgMemberships(clerkUserId: string
             where: { clerkOrganizationId: orgId },
         });
         if (partner) {
-            await prisma.user.update({
-                where: { clerkId: clerkUserId },
-                data: { partnerId: partner.householdId18 },
+            await prisma.userPartnerMembership.upsert({
+                where: {
+                    userId_partnerId: {
+                        userId: user.id,
+                        partnerId: partner.householdId18,
+                    },
+                },
+                create: {
+                    userId: user.id,
+                    partnerId: partner.householdId18,
+                },
+                update: {},
             });
-            return;
         }
     }
 }
