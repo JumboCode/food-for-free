@@ -168,14 +168,24 @@ function DistributionContent() {
         };
     }, [isAdmin]);
 
-    // Resolve org name from partner list once loaded
+    // Resolve org name from partner list once loaded.
+    // This also fixes stale labels where selectedOrg.name is the raw household id.
     useEffect(() => {
         if (!selectedOrg || partnerOrganizations.length === 0) return;
-        if (selectedOrg.name === 'Selected organization' && selectedOrg.householdId18) {
+        if (selectedOrg.householdId18) {
             const match = partnerOrganizations.find(
                 p => p.householdId18 === selectedOrg.householdId18
             );
-            if (match) setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
+            if (!match) return;
+            const currentName = selectedOrg.name?.trim() ?? '';
+            const needsNameResolution =
+                !currentName ||
+                currentName === 'Selected organization' ||
+                currentName.toLowerCase() === selectedOrg.householdId18.toLowerCase() ||
+                currentName.toLowerCase() !== match.name.toLowerCase();
+            if (needsNameResolution) {
+                setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
+            }
             return;
         }
         if (

@@ -92,8 +92,8 @@ export async function queryDistributionDeliveries(
             SELECT
                 d."date" AS "date",
                 COALESCE(
-                    NULLIF(BTRIM(d."householdName"), ''),
-                    NULLIF(BTRIM(pt."organizationName"), '')
+                    NULLIF(BTRIM(pt."organizationName"), ''),
+                    NULLIF(BTRIM(d."householdName"), '')
                 ) AS "organizationName",
                 d."householdId18" AS "householdId18",
                 p."pantryProductName" AS "productName",
@@ -180,12 +180,38 @@ export async function queryJustEatsDistributionDeliveries(
               ? Prisma.sql` AND LOWER(TRIM(COALESCE(j."householdName", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `
               : Prisma.empty;
 
+    // Match overview/stats `orgNameOnly` + household-id scope: no EXISTS guard.
+    // EXISTS is only for the unscoped "all orgs" list so stray JE names do not appear.
+    const scopedToOrg =
+        (params.orgFilter != null && params.orgFilter.trim() !== '') ||
+        (params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== '');
+    const justEatsValidOrgClause = scopedToOrg
+        ? Prisma.empty
+        : Prisma.sql`
+          AND EXISTS (
+              SELECT 1
+              FROM (
+                  SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                  FROM "AllProductPackageDestinations" d2
+                  WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
+
+                  UNION
+
+                  SELECT LOWER(TRIM(t2."destination")) AS org_name
+                  FROM "AllInventoryTransactions" t2
+                  WHERE TRIM(COALESCE(t2."destination", '')) <> ''
+                    AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+              ) valid_orgs
+              WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
+          )
+        `;
+
     const rows = await db.$queryRaw<JustEatsRowDb[]>`
         SELECT
             j."pantryVisitDateTime" AS "date",
             COALESCE(
-                NULLIF(BTRIM(j."householdName"), ''),
-                NULLIF(BTRIM(pt."organizationName"), '')
+                NULLIF(BTRIM(pt."organizationName"), ''),
+                NULLIF(BTRIM(j."householdName"), '')
             ) AS "organizationName",
             j."householdId" AS "householdId18",
             NULLIF(BTRIM(j."productPackageName"), '') AS "productName",
@@ -214,22 +240,7 @@ export async function queryJustEatsDistributionDeliveries(
           ${destClause}
           ${searchClause}
           AND NULLIF(BTRIM(j."householdName"), '') IS NOT NULL
-          AND EXISTS (
-              SELECT 1
-              FROM (
-                  SELECT LOWER(TRIM(d2."householdName")) AS org_name
-                  FROM "AllProductPackageDestinations" d2
-                  WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                  UNION
-
-                  SELECT LOWER(TRIM(t2."destination")) AS org_name
-                  FROM "AllInventoryTransactions" t2
-                  WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                    AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-              ) valid_orgs
-              WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
-          )
+          ${justEatsValidOrgClause}
         ORDER BY j."pantryVisitDateTime" DESC
     `;
     return rows.map(r => ({ ...r, program: 'just_eats' as const }));

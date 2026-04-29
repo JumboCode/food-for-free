@@ -10,6 +10,12 @@ import {
 } from '~/lib/inventoryDistributionSql';
 import type { PartnerOrgCard } from '@/types/partner';
 
+function isLikelySalesforceId(value: string): boolean {
+    const trimmed = value.trim();
+    // Common Salesforce id shape (15 or 18 chars), usually starts with 001 for Account-like ids.
+    return /^001[a-zA-Z0-9]{12}(?:[a-zA-Z0-9]{3})?$/.test(trimmed);
+}
+
 /**
  * GET /api/overview/partners
  * Partner accounts: their org only. Admins: Clerk partners plus any distribution destinations
@@ -36,7 +42,7 @@ export async function GET() {
             });
         }
 
-        const [partnerRows, destinationNameRows] = await Promise.all([
+        const [partnerRows, destinationNameRows, observedHouseholdNames] = await Promise.all([
             prisma.partner.findMany({
                 select: { organizationName: true, householdId18: true },
                 orderBy: { organizationName: 'asc' },
@@ -88,19 +94,74 @@ export async function GET() {
                 WHERE TRIM(COALESCE(name, '')) <> ''
                 ORDER BY 1 ASC
             `,
+            prisma.$queryRaw<{ householdId18: string; name: string | null; lbs: number | null }[]>`
+                WITH joined_names AS (
+                    SELECT
+                        d."householdId18" AS "householdId18",
+                        TRIM(COALESCE(d."householdName", '')) AS "name",
+                        SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "lbs"
+                    FROM "AllInventoryTransactions" t
+                    INNER JOIN "AllPackagesByItem" p
+                        ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
+                    INNER JOIN "AllProductPackageDestinations" d
+                        ON d."productPackageId18" = p."productPackageId18"
+                    WHERE TRIM(COALESCE(d."householdName", '')) <> ''
+                      AND TRIM(COALESCE(d."householdId18", '')) <> ''
+                      AND ${destinationStatusIncludedCondition}
+                    GROUP BY d."householdId18", TRIM(COALESCE(d."householdName", ''))
+                    HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
+                ),
+                je_names AS (
+                    SELECT
+                        j."householdId" AS "householdId18",
+                        TRIM(COALESCE(j."householdName", '')) AS "name",
+                        (
+                            SUM(
+                                GREATEST(
+                                    COALESCE(j."numberPickedUp", 1),
+                                    COALESCE(j."numberDistributed", 1)
+                                )
+                            ) * 25
+                        ) AS "lbs"
+                    FROM "JustEatsBoxes" j
+                    WHERE TRIM(COALESCE(j."householdName", '')) <> ''
+                      AND TRIM(COALESCE(j."householdId", '')) <> ''
+                    GROUP BY j."householdId", TRIM(COALESCE(j."householdName", ''))
+                )
+                SELECT
+                    "householdId18",
+                    "name",
+                    SUM("lbs") AS "lbs"
+                FROM (
+                    SELECT "householdId18", "name", "lbs" FROM joined_names
+                    UNION ALL
+                    SELECT "householdId18", "name", "lbs" FROM je_names
+                ) names
+                GROUP BY "householdId18", "name"
+                ORDER BY "householdId18" ASC, SUM("lbs") DESC
+            `,
         ]);
 
         const byNormalized = new Map<string, PartnerOrgCard>();
-        const validNormalizedNames = new Set(
-            destinationNameRows
-                .map(row => row.name?.trim() ?? '')
-                .filter(Boolean)
-                .map(name => normalizeDestinationName(name))
-        );
+        const preferredNameByHouseholdId = new Map<string, string>();
+        for (const row of observedHouseholdNames) {
+            const householdId18 = row.householdId18?.trim();
+            const name = row.name?.trim() ?? '';
+            if (!householdId18 || !name || isLikelySalesforceId(name)) continue;
+            if (!preferredNameByHouseholdId.has(householdId18)) {
+                preferredNameByHouseholdId.set(householdId18, name);
+            }
+        }
 
         for (const partner of partnerRows) {
-            const name = partner.organizationName?.trim() ?? '';
+            const householdId18 = partner.householdId18?.trim();
+            const rawName = partner.organizationName?.trim() ?? '';
+            const replacementName =
+                (householdId18 ? preferredNameByHouseholdId.get(householdId18) : undefined) ??
+                rawName;
+            const name = replacementName.trim();
             if (!name) continue;
+            if (isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
             byNormalized.set(key, {
                 id: `p-${partner.householdId18}`,
@@ -114,6 +175,7 @@ export async function GET() {
         for (const row of destinationNameRows) {
             const name = row.name?.trim() ?? '';
             if (!name) continue;
+            if (isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
             if (byNormalized.has(key)) continue;
             byNormalized.set(key, {
