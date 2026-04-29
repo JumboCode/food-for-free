@@ -1,7 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { isAdmin as resolveIsAdmin } from '@/lib/admin';
+import { getUserPartnerContexts, isAdmin as resolveIsAdmin } from '@/lib/admin';
 import prisma from '~/lib/prisma';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export type OverviewScope =
     | { kind: 'unauthenticated' }
@@ -25,18 +26,42 @@ export async function getOverviewScope(
     const { userId, orgId } = await auth();
     if (!userId) return { kind: 'unauthenticated' };
 
+    const adminFromAuth = await resolveIsAdmin();
+    if (adminFromAuth) {
+        const d = requestedDestination?.trim();
+        const requestedId = requestedHouseholdId18?.trim();
+        if (requestedId) {
+            const partner = await prisma.partner.findFirst({
+                where: { householdId18: requestedId },
+                select: { organizationName: true, householdId18: true },
+            });
+            return {
+                kind: 'admin',
+                destination: partner?.organizationName?.trim() || d || undefined,
+                destinationHouseholdId18: partner?.householdId18 ?? requestedId,
+            };
+        }
+
+        // ID-only filtering: without a household id, admin scope is "all organizations".
+        const destination = d && d !== 'All Organizations' ? d : undefined;
+        return {
+            kind: 'admin',
+            destination,
+            destinationHouseholdId18: undefined,
+        };
+    }
+
     const user = await prisma.user.findUnique({
         where: { clerkId: userId },
-        include: {
-            partnerMemberships: {
-                include: { partner: true },
-                orderBy: { createdAt: 'asc' },
-            },
-        },
+        select: { id: true },
     });
     if (!user) return { kind: 'no_db_user' };
 
-    const admin = await resolveIsAdmin();
+    const memberships = await getUserPartnerContexts(userId);
+
+    const admin = memberships.some(membership =>
+        isDistributorPartnerOrgName(membership.organizationName)
+    );
     if (admin) {
         const d = requestedDestination?.trim();
         const requestedId = requestedHouseholdId18?.trim();
@@ -62,18 +87,15 @@ export async function getOverviewScope(
     }
 
     const activeMembership = orgId
-        ? user.partnerMemberships.find(
-              membership => membership.partner.clerkOrganizationId === orgId
-          )
-        : user.partnerMemberships[0];
-    const partner = activeMembership?.partner;
-    const orgName = partner?.organizationName?.trim();
-    if (!partner || !orgName) return { kind: 'partner_no_org' };
+        ? memberships.find(membership => membership.clerkOrganizationId === orgId)
+        : memberships[0];
+    const orgName = activeMembership?.organizationName?.trim();
+    if (!activeMembership || !orgName) return { kind: 'partner_no_org' };
 
     return {
         kind: 'partner',
         destination: orgName,
-        partnerHouseholdId18: partner.householdId18,
+        partnerHouseholdId18: activeMembership.householdId18,
     };
 }
 

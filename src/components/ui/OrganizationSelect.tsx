@@ -2,6 +2,7 @@
 
 import { useAuth, useOrganizationList } from '@clerk/nextjs';
 import { Check, ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type OrganizationSelectProps = {
@@ -13,6 +14,7 @@ export default function OrganizationSelect({
     className = '',
     redirectTo = '/overview',
 }: OrganizationSelectProps) {
+    const router = useRouter();
     const { orgId } = useAuth();
     const { isLoaded, setActive, userMemberships } = useOrganizationList({
         userMemberships: { infinite: true },
@@ -143,9 +145,10 @@ export default function OrganizationSelect({
                                             await setActive({ organization: nextOrgId });
                                         }
                                         setOpen(false);
-                                        // Force a full navigation so server-derived org context
-                                        // is consistently refreshed across all dashboards.
-                                        window.location.assign(redirectTo);
+                                        // Use app-router navigation to refresh server-derived org
+                                        // context without triggering full document reload bugs.
+                                        router.replace(redirectTo);
+                                        router.refresh();
                                     } finally {
                                         setIsSwitching(false);
                                     }
