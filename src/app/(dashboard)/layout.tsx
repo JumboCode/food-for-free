@@ -3,7 +3,6 @@ import { OrgScopeProvider } from '@/contexts/OrgScopeContext';
 import { ViewerProvider } from '@/contexts/ViewerContext';
 import { getCurrentUser, isAdmin } from '@/lib/admin';
 import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import prisma from '~/lib/prisma';
 import { DashboardFrame } from './DashboardFrame';
 
@@ -11,6 +10,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     let admin = false;
     let partnerOrganizationName: string | null = null;
     let partnerHouseholdId18: string | null = null;
+    let shouldShowOrgChooser = false;
     try {
         const { userId, orgId } = await auth();
         const [isAdminValue, user] = await Promise.all([isAdmin(), getCurrentUser()]);
@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 },
             });
             if ((userMemberships?.partnerMemberships.length ?? 0) > 1) {
-                redirect('/choose-organization');
+                shouldShowOrgChooser = true;
             }
         }
     } catch (err) {
@@ -41,7 +41,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 value={{ isAdmin: admin, partnerOrganizationName, partnerHouseholdId18 }}
             >
                 <OrgScopeProvider>
-                    <DashboardFrame isAdmin={admin}>{children}</DashboardFrame>
+                    <DashboardFrame isAdmin={admin} showOrgChooser={shouldShowOrgChooser}>
+                        {children}
+                    </DashboardFrame>
                 </OrgScopeProvider>
             </ViewerProvider>
         </FilterProvider>

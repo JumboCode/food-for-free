@@ -37,6 +37,18 @@ const formatDateParam = (d: Date) => {
     return `${y}-${m}-${day}`;
 };
 
+async function parseApiErrorMessage(response: Response, fallback: string): Promise<string> {
+    if (response.status === 403) {
+        try {
+            const body = (await response.json()) as { error?: string };
+            if (body?.error) return body.error;
+        } catch {
+            return fallback;
+        }
+    }
+    return fallback;
+}
+
 const OverviewPageContent: React.FC = () => {
     const router = useRouter();
     const pathname = usePathname();
@@ -190,10 +202,18 @@ const OverviewPageContent: React.FC = () => {
                 fetch(`/api/overview/food-types?${q}`),
             ]);
 
-            if (!chartRes.ok) throw new Error('Failed to load chart data');
-            if (!statsRes.ok) throw new Error('Failed to load stats');
-            if (!deliveriesRes.ok) throw new Error('Failed to load deliveries');
-            if (!compositionRes.ok) throw new Error('Failed to load food composition');
+            if (!chartRes.ok)
+                throw new Error(await parseApiErrorMessage(chartRes, 'Failed to load chart data'));
+            if (!statsRes.ok)
+                throw new Error(await parseApiErrorMessage(statsRes, 'Failed to load stats'));
+            if (!deliveriesRes.ok)
+                throw new Error(
+                    await parseApiErrorMessage(deliveriesRes, 'Failed to load deliveries')
+                );
+            if (!compositionRes.ok)
+                throw new Error(
+                    await parseApiErrorMessage(compositionRes, 'Failed to load food composition')
+                );
 
             const [chartData, stats, deliveriesPayload, compositionPayload] = await Promise.all([
                 chartRes.json(),
