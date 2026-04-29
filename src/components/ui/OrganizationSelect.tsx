@@ -63,6 +63,30 @@ export default function OrganizationSelect({
         setOpenUpward(spaceBelow < estimatedMenuHeight);
     }, [open, memberships.length]);
 
+    useEffect(() => {
+        if (!isLoaded) return;
+        let cancelled = false;
+        const fetchNext = userMemberships.fetchNext;
+
+        if (!fetchNext || !userMemberships.hasNextPage || userMemberships.isFetching) return;
+
+        const loadAllMemberships = async () => {
+            while (!cancelled && userMemberships.hasNextPage) {
+                await fetchNext();
+            }
+        };
+
+        void loadAllMemberships();
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        isLoaded,
+        userMemberships.fetchNext,
+        userMemberships.hasNextPage,
+        userMemberships.isFetching,
+    ]);
+
     if (!isLoaded) {
         return (
             <div
