@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, Suspense, useId } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Loader2, Download, ChevronDown, X } from 'lucide-react';
+import { Search, Loader2, Download, ChevronDown, X, ArrowUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -74,6 +74,7 @@ function formatLbsCell(value: number | null | undefined): string {
 }
 
 type ProcessingFilterKey = 'minimal' | 'processed' | 'unspecified';
+type DateSortKey = 'newest' | 'oldest';
 
 function processingKey(m: boolean | null): ProcessingFilterKey {
     if (m === true) return 'minimal';
@@ -147,6 +148,7 @@ function DistributionContent() {
     const [filterProductTypes, setFilterProductTypes] = useState<string[]>([]);
     const [filterProcessing, setFilterProcessing] = useState<ProcessingFilterKey[]>([]);
     const [filterPrograms, setFilterPrograms] = useState<ProgramFilterKey[]>([]);
+    const [dateSort, setDateSort] = useState<DateSortKey>('newest');
 
     // Read org from URL on mount (for deep-linking)
     useEffect(() => {
@@ -412,7 +414,7 @@ function DistributionContent() {
         const selectedProductTypeKeys = new Set(
             filterProductTypes.map(v => v.trim().toLowerCase())
         );
-        return data.filter(row => {
+        const filtered = data.filter(row => {
             const prog = rowProgram(row);
             if (filterPrograms.length > 0 && !filterPrograms.includes(prog)) return false;
             const ptKey = foodTypeLabelForRow(row.productType).trim().toLowerCase();
@@ -421,7 +423,13 @@ function DistributionContent() {
             if (filterProcessing.length > 0 && !filterProcessing.includes(pk)) return false;
             return true;
         });
-    }, [data, filterPrograms, filterProductTypes, filterProcessing]);
+        filtered.sort((a, b) => {
+            const at = new Date(a.date).getTime();
+            const bt = new Date(b.date).getTime();
+            return dateSort === 'newest' ? bt - at : at - bt;
+        });
+        return filtered;
+    }, [data, filterPrograms, filterProductTypes, filterProcessing, dateSort]);
 
     // Human-readable label for each dropdown button when filters are active
     const programLabel =
@@ -1216,8 +1224,24 @@ function DistributionContent() {
                             <table className="w-full border-collapse" style={{ minWidth: 920 }}>
                                 <thead>
                                     <tr className="bg-gray-50 border-b border-gray-200">
-                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[102px]">
-                                            Date
+                                        <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[130px]">
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1.5 hover:text-gray-700"
+                                                onClick={() =>
+                                                    setDateSort(prev =>
+                                                        prev === 'newest' ? 'oldest' : 'newest'
+                                                    )
+                                                }
+                                                title={
+                                                    dateSort === 'newest'
+                                                        ? 'Currently newest first. Click for oldest first.'
+                                                        : 'Currently oldest first. Click for newest first.'
+                                                }
+                                            >
+                                                <span>DATE</span>
+                                                <ArrowUpDown className="h-3.5 w-3.5" />
+                                            </button>
                                         </th>
                                         <th className="align-middle text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-40 max-w-xs">
                                             Food
