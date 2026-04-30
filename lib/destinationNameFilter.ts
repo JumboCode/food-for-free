@@ -1,5 +1,9 @@
 export function normalizeDestinationName(value: string): string {
-    return value.trim().replace(/\s+/g, ' ').toLowerCase();
+    return value
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/\s*-\s*/g, '-')
+        .toLowerCase();
 }
 
 export function uniqueNormalizedNames(values: string[]): string[] {

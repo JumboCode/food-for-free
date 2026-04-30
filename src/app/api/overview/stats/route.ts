@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
 import type { OverviewScope } from '~/lib/overviewAccess';
 import {
@@ -11,6 +12,8 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
+    normalizedOrgNameSql,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -81,7 +84,7 @@ async function queryBulkAndRescueStats(
                 WHERE d."date" >= ${range.start}
                   AND d."date" <= ${range.end}
                   AND ${destinationStatusIncludedCondition}
-                  AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
+                  AND ${orgNamesEqualSql(Prisma.sql`d."householdName"`, Prisma.sql`${orgNameOnly}`)}
                 GROUP BY DATE_TRUNC('day', d."date")
             ),
             orphan AS (
@@ -94,7 +97,7 @@ async function queryBulkAndRescueStats(
                   AND ${distributionInventoryTypeCondition}
                   AND ${orphanInventoryCondition}
                   AND TRIM(COALESCE(t."destination", '')) <> ''
-                  AND LOWER(TRIM(t."destination")) = LOWER(TRIM(${orgNameOnly}))
+                  AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${orgNameOnly}`)}
                 GROUP BY DATE_TRUNC('day', t."date")
             ),
             merged AS (
@@ -129,10 +132,18 @@ async function queryBulkAndRescueStats(
                         FROM "AllProductPackageDestinations" d
                         LEFT JOIN "AllPackagesByItem" p
                             ON p."productPackageId18" = d."productPackageId18"
-                        WHERE d."householdId18" = ${hh}
-                          AND d."date" >= ${range.start}
+                        LEFT JOIN "AllInventoryTransactions" t
+                            ON t."productInventoryRecordId18" = p."productInventoryRecordId18"
+                        WHERE d."date" >= ${range.start}
                           AND d."date" <= ${range.end}
                           AND ${destinationStatusIncludedCondition}
+                          AND (
+                              ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
+                              OR (
+                                  TRIM(COALESCE(t."destination", '')) = ''
+                                  AND d."householdId18" = ${hh}
+                              )
+                          )
                         GROUP BY DATE_TRUNC('day', d."date")
                     ),
                     orphan AS (
@@ -144,7 +155,7 @@ async function queryBulkAndRescueStats(
                           AND t."date" <= ${range.end}
                           AND ${distributionInventoryTypeCondition}
                           AND ${orphanInventoryCondition}
-                          AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))
+                          AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
                         GROUP BY DATE_TRUNC('day', t."date")
                     ),
                     merged AS (
@@ -245,7 +256,7 @@ async function queryJustEatsStats(
             LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
             WHERE j."pantryVisitDateTime" >= ${range.start}
               AND j."pantryVisitDateTime" <= ${range.end}
-              AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
+              AND ${orgNamesEqualSql(Prisma.sql`j."householdName"`, Prisma.sql`${orgNameOnly}`)}
         `;
         return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
     }
@@ -291,18 +302,18 @@ async function queryJustEatsStats(
           AND EXISTS (
               SELECT 1
               FROM (
-                  SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                  SELECT ${normalizedOrgNameSql(Prisma.sql`d2."householdName"`)} AS org_name
                   FROM "AllProductPackageDestinations" d2
                   WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
 
                   UNION
 
-                  SELECT LOWER(TRIM(t2."destination")) AS org_name
+                  SELECT ${normalizedOrgNameSql(Prisma.sql`t2."destination"`)} AS org_name
                   FROM "AllInventoryTransactions" t2
                   WHERE TRIM(COALESCE(t2."destination", '')) <> ''
                     AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
               ) valid_orgs
-              WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
+              WHERE valid_orgs.org_name = ${normalizedOrgNameSql(Prisma.sql`j."householdName"`)}
           )
     `;
     return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };

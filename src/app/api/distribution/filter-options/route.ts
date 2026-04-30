@@ -10,6 +10,7 @@ import {
 import { foodTypeLabelForRow } from '~/lib/chartCompositionColors';
 import {
     distributionInventoryTypeCondition,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -37,16 +38,26 @@ export async function GET(req: NextRequest) {
                 : '';
 
         const joinedClause = hh
-            ? Prisma.sql`WHERE d."householdId18" = ${hh}`
+            ? destLabel.length > 0
+                ? Prisma.sql`
+                      WHERE (
+                          ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
+                          OR (
+                              TRIM(COALESCE(t."destination", '')) = ''
+                              AND d."householdId18" = ${hh}
+                          )
+                      )
+                  `
+                : Prisma.sql`WHERE d."householdId18" = ${hh}`
             : orgNameOnly
-              ? Prisma.sql`WHERE LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${orgNameOnly}))`
+              ? Prisma.sql`WHERE ${orgNamesEqualSql(Prisma.sql`COALESCE(pt."organizationName", d."householdName")`, Prisma.sql`${orgNameOnly}`)}`
               : Prisma.sql``;
 
         const orphanClause =
             orgNameOnly != null
-                ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${orgNameOnly}))`
+                ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${orgNameOnly}`)}`
                 : hh && destLabel.length > 0
-                  ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))`
+                  ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}`
                   : hh
                     ? Prisma.sql`AND FALSE`
                     : Prisma.sql``;

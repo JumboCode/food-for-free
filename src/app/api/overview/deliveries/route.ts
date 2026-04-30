@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
 import { normalizeDestinationName } from '~/lib/destinationNameFilter';
 import type { OverviewScope } from '~/lib/overviewAccess';
@@ -12,6 +13,8 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
+    normalizedOrgNameSql,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -126,7 +129,7 @@ export async function GET(request: NextRequest) {
                     WHERE d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
                       AND ${destinationStatusIncludedCondition}
-                      AND LOWER(TRIM(d."householdName")) = LOWER(TRIM(${orgNameOnly}))
+                      AND ${orgNamesEqualSql(Prisma.sql`d."householdName"`, Prisma.sql`${orgNameOnly}`)}
                     GROUP BY DATE_TRUNC('day', d."date")
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 `,
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
                     LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
                     WHERE j."pantryVisitDateTime" >= ${range.start}
                       AND j."pantryVisitDateTime" <= ${range.end}
-                      AND LOWER(TRIM(j."householdName")) = LOWER(TRIM(${orgNameOnly}))
+                      AND ${orgNamesEqualSql(Prisma.sql`j."householdName"`, Prisma.sql`${orgNameOnly}`)}
                     GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
                     HAVING (
                         SUM(
@@ -159,7 +162,7 @@ export async function GET(request: NextRequest) {
                       AND t."date" <= ${range.end}
                       AND ${distributionInventoryTypeCondition}
                       AND ${orphanInventoryCondition}
-                      AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${orgNameOnly}))
+                      AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${orgNameOnly}`)}
                     GROUP BY DATE_TRUNC('day', t."date")
                     HAVING SUM(${inventoryTxPoundsSql()}) > 0
                 `,
@@ -222,6 +225,18 @@ export async function GET(request: NextRequest) {
 
         if (hh) {
             const destLabel = destinationLabel(scope);
+            const joinedScopedPredicate =
+                destLabel.length > 0
+                    ? Prisma.sql`
+                          AND (
+                              ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
+                              OR (
+                                  TRIM(COALESCE(t."destination", '')) = ''
+                                  AND d."householdId18" = ${hh}
+                              )
+                          )
+                      `
+                    : Prisma.sql` AND d."householdId18" = ${hh} `;
             const [brRows, jeRows, orRows] = await Promise.all([
                 prisma.$queryRaw<PartnerDeliveryRow[]>`
                     SELECT
@@ -232,10 +247,10 @@ export async function GET(request: NextRequest) {
                     INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
                     INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
                     LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId18"
-                    WHERE d."householdId18" = ${hh}
-                      AND d."date" >= ${range.start}
+                    WHERE d."date" >= ${range.start}
                       AND d."date" <= ${range.end}
                       AND ${destinationStatusIncludedCondition}
+                      ${joinedScopedPredicate}
                     GROUP BY DATE_TRUNC('day', d."date")
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 `,
@@ -269,7 +284,7 @@ export async function GET(request: NextRequest) {
                           AND t."date" <= ${range.end}
                           AND ${distributionInventoryTypeCondition}
                           AND ${orphanInventoryCondition}
-                          AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))
+                          AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
                         GROUP BY DATE_TRUNC('day', t."date")
                         HAVING SUM(${inventoryTxPoundsSql()}) > 0
                     `
@@ -395,18 +410,18 @@ export async function GET(request: NextRequest) {
                   AND EXISTS (
                       SELECT 1
                       FROM (
-                          SELECT LOWER(TRIM(d2."householdName")) AS org_name
+                          SELECT ${normalizedOrgNameSql(Prisma.sql`d2."householdName"`)} AS org_name
                           FROM "AllProductPackageDestinations" d2
                           WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
 
                           UNION
 
-                          SELECT LOWER(TRIM(t2."destination")) AS org_name
+                          SELECT ${normalizedOrgNameSql(Prisma.sql`t2."destination"`)} AS org_name
                           FROM "AllInventoryTransactions" t2
                           WHERE TRIM(COALESCE(t2."destination", '')) <> ''
                             AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
                       ) valid_orgs
-                      WHERE valid_orgs.org_name = LOWER(TRIM(t."householdName"))
+                      WHERE valid_orgs.org_name = ${normalizedOrgNameSql(Prisma.sql`t."householdName"`)}
                   )
                 GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime"), t."householdId", COALESCE(pt."organizationName", t."householdName"), 'just_eats'::text
                 HAVING (

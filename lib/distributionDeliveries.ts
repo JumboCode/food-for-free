@@ -5,6 +5,7 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -44,10 +45,10 @@ function orphanOrgClause(params: {
 }): Prisma.Sql {
     const label = params.destinationLabel?.trim();
     if (params.partnerHouseholdId18 && label) {
-        return Prisma.sql` AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${label})) `;
+        return Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${label}`)} `;
     }
     if (params.orgFilter?.trim()) {
-        return Prisma.sql` AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `;
+        return Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${params.orgFilter.trim()}`)} `;
     }
     return Prisma.empty;
 }
@@ -70,11 +71,22 @@ export async function queryDistributionDeliveries(
         ? Prisma.sql`AND COALESCE(p."pantryProductName", '') ILIKE ${searchFilter}`
         : Prisma.empty;
 
+    const scopedName = (params.destinationLabel ?? params.orgFilter ?? '').trim();
     const destClause =
         params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
-            ? Prisma.sql` AND d."householdId18" = ${params.partnerHouseholdId18} `
+            ? scopedName.length > 0
+                ? Prisma.sql`
+                      AND (
+                          ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${scopedName}`)}
+                          OR (
+                              TRIM(COALESCE(t."destination", '')) = ''
+                              AND d."householdId18" = ${params.partnerHouseholdId18}
+                          )
+                      )
+                  `
+                : Prisma.sql` AND d."householdId18" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND LOWER(TRIM(COALESCE(d."householdName", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `
+              ? Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`d."householdName"`, Prisma.sql`${params.orgFilter.trim()}`)} `
               : Prisma.empty;
 
     const orphanSearchClause = search
@@ -177,7 +189,7 @@ export async function queryJustEatsDistributionDeliveries(
         params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
             ? Prisma.sql` AND j."householdId" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND LOWER(TRIM(COALESCE(j."householdName", ''))) = LOWER(TRIM(${params.orgFilter.trim()})) `
+              ? Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`j."householdName"`, Prisma.sql`${params.orgFilter.trim()}`)} `
               : Prisma.empty;
 
     // Match overview/stats `orgNameOnly` + household-id scope: no EXISTS guard.

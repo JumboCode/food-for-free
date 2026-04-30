@@ -50,7 +50,13 @@ export async function GET() {
             prisma.$queryRaw<{ name: string | null }[]>`
                 WITH valid_joined AS (
                     SELECT
-                        TRIM(COALESCE(d."householdName", '')) AS name,
+                        TRIM(
+                            COALESCE(
+                                NULLIF(TRIM(t."destination"), ''),
+                                NULLIF(TRIM(d."householdName"), ''),
+                                ''
+                            )
+                        ) AS name,
                         SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS lbs
                     FROM "AllInventoryTransactions" t
                     INNER JOIN "AllPackagesByItem" p
@@ -98,7 +104,13 @@ export async function GET() {
                 WITH joined_names AS (
                     SELECT
                         d."householdId18" AS "householdId18",
-                        TRIM(COALESCE(d."householdName", '')) AS "name",
+                        TRIM(
+                            COALESCE(
+                                NULLIF(TRIM(t."destination"), ''),
+                                NULLIF(TRIM(d."householdName"), ''),
+                                ''
+                            )
+                        ) AS "name",
                         SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "lbs"
                     FROM "AllInventoryTransactions" t
                     INNER JOIN "AllPackagesByItem" p

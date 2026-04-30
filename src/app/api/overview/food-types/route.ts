@@ -18,6 +18,7 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -80,20 +81,30 @@ export async function GET(request: NextRequest) {
         const destLabel = destinationLabel(scope);
 
         const joinedPartnerClause = partnerHouseholdId18
-            ? Prisma.sql`AND d."householdId18" = ${partnerHouseholdId18}`
+            ? destLabel.length > 0
+                ? Prisma.sql`
+                      AND (
+                          ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
+                          OR (
+                              TRIM(COALESCE(t."destination", '')) = ''
+                              AND d."householdId18" = ${partnerHouseholdId18}
+                          )
+                      )
+                  `
+                : Prisma.sql`AND d."householdId18" = ${partnerHouseholdId18}`
             : Prisma.empty;
 
         const joinedNameClause = orgNameOnly
-            ? Prisma.sql`AND LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${orgNameOnly}))`
+            ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`COALESCE(pt."organizationName", d."householdName")`, Prisma.sql`${orgNameOnly}`)}`
             : Prisma.empty;
 
         const orphanDisabled = Boolean(partnerHouseholdId18) && destLabel.length === 0;
         const orphanScopeClause = orphanDisabled
             ? Prisma.sql`AND FALSE`
             : orgNameOnly != null
-              ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${orgNameOnly}))`
+              ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${orgNameOnly}`)}`
               : partnerHouseholdId18 && destLabel.length > 0
-                ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))`
+                ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}`
                 : Prisma.empty;
 
         type ProductTypeRow = { productType: string | null; pounds: number | null };

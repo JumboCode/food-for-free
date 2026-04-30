@@ -24,10 +24,29 @@ export const distributionInventoryTypeCondition = Prisma.sql`
  */
 export const destinationStatusIncludedCondition = Prisma.sql`
   COALESCE(NULLIF(LOWER(TRIM(COALESCE(d."distributionStatus", ''))), ''), 'unknown')
-    NOT IN ('no show', 'canceled', 'cancelled')
+    NOT IN ('no show', 'canceled')
 `;
 
 /** Pounds for an inventory transaction line (prefers Weight when present). */
 export function inventoryTxPoundsSql(): Prisma.Sql {
     return Prisma.sql`COALESCE(NULLIF(t."weightLbs", 0), NULLIF(t."amount"::double precision, 0), 0)`;
+}
+
+/** Canonical org-name normalization used for name-based matching in SQL filters. */
+export function normalizedOrgNameSql(value: Prisma.Sql): Prisma.Sql {
+    return Prisma.sql`
+        LOWER(
+            REGEXP_REPLACE(
+                REGEXP_REPLACE(TRIM(COALESCE(${value}, '')), '\s+', ' ', 'g'),
+                '\s*-\s*',
+                '-',
+                'g'
+            )
+        )
+    `;
+}
+
+/** Case/whitespace/hyphen-spacing-insensitive org-name equality predicate. */
+export function orgNamesEqualSql(left: Prisma.Sql, right: Prisma.Sql): Prisma.Sql {
+    return Prisma.sql`${normalizedOrgNameSql(left)} = ${normalizedOrgNameSql(right)}`;
 }

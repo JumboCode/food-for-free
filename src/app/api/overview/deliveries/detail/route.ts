@@ -11,6 +11,7 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
+    orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
@@ -108,20 +109,30 @@ export async function GET(request: NextRequest) {
         const destLabel = (destinationParam || org).trim();
 
         const joinedPartnerPredicate = hh
-            ? Prisma.sql`d."householdId18" = ${hh}`
+            ? destLabel.length > 0
+                ? Prisma.sql`
+                      (
+                          ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}
+                          OR (
+                              TRIM(COALESCE(t."destination", '')) = ''
+                              AND d."householdId18" = ${hh}
+                          )
+                      )
+                  `
+                : Prisma.sql`d."householdId18" = ${hh}`
             : orgNameOnly
-              ? Prisma.sql`LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${orgNameOnly}))`
+              ? Prisma.sql`${orgNamesEqualSql(Prisma.sql`COALESCE(pt."organizationName", d."householdName")`, Prisma.sql`${orgNameOnly}`)}`
               : destLabel.length > 0
-                ? Prisma.sql`LOWER(TRIM(COALESCE(pt."organizationName", d."householdName"))) = LOWER(TRIM(${destLabel}))`
+                ? Prisma.sql`${orgNamesEqualSql(Prisma.sql`COALESCE(pt."organizationName", d."householdName")`, Prisma.sql`${destLabel}`)}`
                 : Prisma.sql`FALSE`;
 
         const orphanPredicate =
             orgNameOnly != null
-                ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${orgNameOnly}))`
+                ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${orgNameOnly}`)}`
                 : hh && destLabel.length > 0
-                  ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))`
+                  ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}`
                   : destLabel.length > 0
-                    ? Prisma.sql`AND LOWER(TRIM(COALESCE(t."destination", ''))) = LOWER(TRIM(${destLabel}))`
+                    ? Prisma.sql`AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${destLabel}`)}`
                     : Prisma.sql`AND FALSE`;
 
         const justEatsHouseholdPredicate =
@@ -130,7 +141,7 @@ export async function GET(request: NextRequest) {
                 : householdId18Param
                   ? Prisma.sql`t."householdId" = ${householdId18Param}`
                   : destLabel.length > 0
-                    ? Prisma.sql`LOWER(TRIM(t."householdName")) = LOWER(TRIM(${destLabel}))`
+                    ? Prisma.sql`${orgNamesEqualSql(Prisma.sql`t."householdName"`, Prisma.sql`${destLabel}`)}`
                     : Prisma.sql`FALSE`;
 
         const [joinedFood, orphanFood, jeFood, tagJoined, tagOrphan] = await Promise.all([
