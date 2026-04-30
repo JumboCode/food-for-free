@@ -65,7 +65,13 @@ export async function GET() {
                         ON d."productPackageId18" = p."productPackageId18"
                     WHERE TRIM(COALESCE(d."householdName", '')) <> ''
                       AND ${destinationStatusIncludedCondition}
-                    GROUP BY TRIM(COALESCE(d."householdName", ''))
+                    GROUP BY TRIM(
+                        COALESCE(
+                            NULLIF(TRIM(t."destination"), ''),
+                            NULLIF(TRIM(d."householdName"), ''),
+                            ''
+                        )
+                    )
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ),
                 valid_orphan AS (
@@ -120,7 +126,15 @@ export async function GET() {
                     WHERE TRIM(COALESCE(d."householdName", '')) <> ''
                       AND TRIM(COALESCE(d."householdId18", '')) <> ''
                       AND ${destinationStatusIncludedCondition}
-                    GROUP BY d."householdId18", TRIM(COALESCE(d."householdName", ''))
+                    GROUP BY
+                        d."householdId18",
+                        TRIM(
+                            COALESCE(
+                                NULLIF(TRIM(t."destination"), ''),
+                                NULLIF(TRIM(d."householdName"), ''),
+                                ''
+                            )
+                        )
                     HAVING SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) > 0
                 ),
                 je_names AS (
@@ -148,6 +162,11 @@ export async function GET() {
         ]);
 
         const byNormalized = new Map<string, PartnerOrgCard>();
+        const partnerByHouseholdId = new Map(
+            partnerRows
+                .map(partner => [partner.householdId18?.trim() ?? '', partner] as const)
+                .filter(([householdId18]) => householdId18.length > 0)
+        );
         const preferredNameByHouseholdId = new Map<string, string>();
         for (const row of observedHouseholdNames) {
             const householdId18 = row.householdId18?.trim();
@@ -158,22 +177,22 @@ export async function GET() {
             }
         }
 
-        for (const partner of partnerRows) {
-            const householdId18 = partner.householdId18?.trim();
-            const rawName = partner.organizationName?.trim() ?? '';
-            const replacementName =
-                (householdId18 ? preferredNameByHouseholdId.get(householdId18) : undefined) ??
-                rawName;
-            const name = replacementName.trim();
-            if (!name) continue;
-            if (isLikelySalesforceId(name)) continue;
+        for (const row of observedHouseholdNames) {
+            const householdId18 = row.householdId18?.trim();
+            const observedName = row.name?.trim() ?? '';
+            if (!householdId18 || !observedName || isLikelySalesforceId(observedName)) continue;
+            const partner = partnerByHouseholdId.get(householdId18);
+            const partnerName = partner?.organizationName?.trim() ?? '';
+            const name = (preferredNameByHouseholdId.get(householdId18) ?? observedName).trim();
+            if (!name || isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
+            if (byNormalized.has(key)) continue;
             byNormalized.set(key, {
-                id: `p-${partner.householdId18}`,
+                id: partner ? `p-${partner.householdId18}` : `d-${key}`,
                 name,
-                householdId18: partner.householdId18,
+                householdId18: partner?.householdId18 ?? null,
                 location: '',
-                type: 'Partner',
+                type: partner || partnerName ? 'Partner' : 'Destination',
             });
         }
 
