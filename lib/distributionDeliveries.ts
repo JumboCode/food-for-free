@@ -215,17 +215,9 @@ export async function queryJustEatsDistributionDeliveries(
             ) AS "organizationName",
             j."householdId" AS "householdId18",
             NULLIF(BTRIM(j."productPackageName"), '') AS "productName",
-            GREATEST(
-                COALESCE(j."numberPickedUp", 1),
-                COALESCE(j."numberDistributed", 1)
-            ) AS "distributionAmount",
+            COALESCE(j."numberPickedUp", 1) AS "distributionAmount",
             25::double precision AS "unitWeightLbs",
-            (
-                GREATEST(
-                    COALESCE(j."numberPickedUp", 1),
-                    COALESCE(j."numberDistributed", 1)
-                ) * 25
-            )::double precision AS "weightLbs",
+            (COALESCE(j."numberPickedUp", 1) * 25)::double precision AS "weightLbs",
             'Just Eats' AS "inventoryType",
             NULL::text AS "productType",
             NULL::boolean AS "minimallyProcessedFood",

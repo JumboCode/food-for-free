@@ -76,12 +76,12 @@ export async function GET() {
                 valid_just_eats AS (
                     SELECT
                         TRIM(COALESCE(pt."organizationName", j."householdName")) AS name,
-                        SUM(COALESCE(j."numberDistributed", 1)) AS boxes
+                        SUM(COALESCE(j."numberPickedUp", 1)) AS boxes
                     FROM "JustEatsBoxes" j
                     LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
                     WHERE TRIM(COALESCE(j."householdName", '')) <> ''
                     GROUP BY TRIM(COALESCE(pt."organizationName", j."householdName"))
-                    HAVING SUM(COALESCE(j."numberDistributed", 1)) > 0
+                    HAVING SUM(COALESCE(j."numberPickedUp", 1)) > 0
                 )
                 SELECT DISTINCT TRIM(name) AS "name"
                 FROM (
@@ -115,14 +115,7 @@ export async function GET() {
                     SELECT
                         j."householdId" AS "householdId18",
                         TRIM(COALESCE(j."householdName", '')) AS "name",
-                        (
-                            SUM(
-                                GREATEST(
-                                    COALESCE(j."numberPickedUp", 1),
-                                    COALESCE(j."numberDistributed", 1)
-                                )
-                            ) * 25
-                        ) AS "lbs"
+                        (SUM(COALESCE(j."numberPickedUp", 1)) * 25) AS "lbs"
                     FROM "JustEatsBoxes" j
                     WHERE TRIM(COALESCE(j."householdName", '')) <> ''
                       AND TRIM(COALESCE(j."householdId", '')) <> ''

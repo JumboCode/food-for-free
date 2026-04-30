@@ -195,14 +195,7 @@ async function fetchJustEatsDaily(
         return prisma.$queryRaw<DailyRow[]>`
             SELECT
                 TO_CHAR(DATE_TRUNC('day', j."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
-                (
-                    SUM(
-                        GREATEST(
-                            COALESCE(j."numberPickedUp", 1),
-                            COALESCE(j."numberDistributed", 1)
-                        )
-                    ) * 25
-                ) AS "pounds"
+                (SUM(COALESCE(j."numberPickedUp", 1)) * 25) AS "pounds"
             FROM "JustEatsBoxes" j
             LEFT JOIN "Partner" pt ON pt."householdId18" = j."householdId"
             WHERE j."pantryVisitDateTime" >= ${range.start}
@@ -218,14 +211,7 @@ async function fetchJustEatsDaily(
         return prisma.$queryRaw<DailyRow[]>`
             SELECT
                 TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
-                (
-                    SUM(
-                        GREATEST(
-                            COALESCE(d."numberPickedUp", 1),
-                            COALESCE(d."numberDistributed", 1)
-                        )
-                    ) * 25
-                ) AS "pounds"
+                (SUM(COALESCE(d."numberPickedUp", 1)) * 25) AS "pounds"
             FROM "JustEatsBoxes" d
             LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId"
             WHERE d."householdId" = ${hh}
@@ -239,14 +225,7 @@ async function fetchJustEatsDaily(
     return prisma.$queryRaw<DailyRow[]>`
         SELECT
             TO_CHAR(DATE_TRUNC('day', d."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
-            (
-                SUM(
-                    GREATEST(
-                        COALESCE(d."numberPickedUp", 1),
-                        COALESCE(d."numberDistributed", 1)
-                    )
-                ) * 25
-            ) AS "pounds"
+            (SUM(COALESCE(d."numberPickedUp", 1)) * 25) AS "pounds"
         FROM "JustEatsBoxes" d
         LEFT JOIN "Partner" pt ON pt."householdId18" = d."householdId"
         WHERE d."pantryVisitDateTime" >= ${range.start}

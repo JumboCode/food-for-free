@@ -135,10 +135,7 @@ export async function GET(request: NextRequest) {
                         TO_CHAR(DATE_TRUNC('day', j."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                         (
                             SUM(
-                                GREATEST(
-                                    COALESCE(j."numberPickedUp", 1),
-                                    COALESCE(j."numberDistributed", 1)
-                                )
+                                COALESCE(j."numberPickedUp", 1)
                             ) * 25
                         ) AS "totalPounds"
                     FROM "JustEatsBoxes" j
@@ -149,10 +146,7 @@ export async function GET(request: NextRequest) {
                     GROUP BY DATE_TRUNC('day', j."pantryVisitDateTime")
                     HAVING (
                         SUM(
-                            GREATEST(
-                                COALESCE(j."numberPickedUp", 1),
-                                COALESCE(j."numberDistributed", 1)
-                            )
+                            COALESCE(j."numberPickedUp", 1)
                         ) * 25
                     ) > 0
                 `,
@@ -250,10 +244,7 @@ export async function GET(request: NextRequest) {
                         TO_CHAR(DATE_TRUNC('day', t."pantryVisitDateTime"), 'YYYY-MM-DD') AS "day",
                         (
                             SUM(
-                                GREATEST(
-                                    COALESCE(t."numberPickedUp", 1),
-                                    COALESCE(t."numberDistributed", 1)
-                                )
+                                COALESCE(t."numberPickedUp", 1)
                             ) * 25
                         ) AS "totalPounds"
                     FROM "JustEatsBoxes" t
@@ -264,10 +255,7 @@ export async function GET(request: NextRequest) {
                     GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime")
                     HAVING (
                         SUM(
-                            GREATEST(
-                                COALESCE(t."numberPickedUp", 1),
-                                COALESCE(t."numberDistributed", 1)
-                            )
+                            COALESCE(t."numberPickedUp", 1)
                         ) * 25
                     ) > 0
                 `,
@@ -395,10 +383,7 @@ export async function GET(request: NextRequest) {
                     t."householdId" AS "householdId18",
                     (
                         SUM(
-                            GREATEST(
-                                COALESCE(t."numberPickedUp", 1),
-                                COALESCE(t."numberDistributed", 1)
-                            )
+                            COALESCE(t."numberPickedUp", 1)
                         ) * 25
                     ) as "totalPounds",
                     'just_eats'::text AS "program"
@@ -426,10 +411,7 @@ export async function GET(request: NextRequest) {
                 GROUP BY DATE_TRUNC('day', t."pantryVisitDateTime"), t."householdId", COALESCE(pt."organizationName", t."householdName"), 'just_eats'::text
                 HAVING (
                     SUM(
-                        GREATEST(
-                            COALESCE(t."numberPickedUp", 1),
-                            COALESCE(t."numberDistributed", 1)
-                        )
+                        COALESCE(t."numberPickedUp", 1)
                     ) * 25
                 ) > 0
             `,

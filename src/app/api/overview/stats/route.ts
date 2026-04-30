@@ -235,10 +235,7 @@ async function queryJustEatsStats(
                 (
                     COALESCE(
                         SUM(
-                            GREATEST(
-                                COALESCE(j."numberPickedUp", 1),
-                                COALESCE(j."numberDistributed", 1)
-                            )
+                            COALESCE(j."numberPickedUp", 1)
                         ),
                         0
                     ) * 25
@@ -260,10 +257,7 @@ async function queryJustEatsStats(
                 (
                     COALESCE(
                         SUM(
-                            GREATEST(
-                                COALESCE(j."numberPickedUp", 1),
-                                COALESCE(j."numberDistributed", 1)
-                            )
+                            COALESCE(j."numberPickedUp", 1)
                         ),
                         0
                     ) * 25
@@ -283,10 +277,7 @@ async function queryJustEatsStats(
             (
                 COALESCE(
                     SUM(
-                        GREATEST(
-                            COALESCE(j."numberPickedUp", 1),
-                            COALESCE(j."numberDistributed", 1)
-                        )
+                        COALESCE(j."numberPickedUp", 1)
                     ),
                     0
                 ) * 25
