@@ -37,6 +37,12 @@ const formatDateParam = (d: Date) => {
     return `${y}-${m}-${day}`;
 };
 
+function selectedPartnerKey(p: SelectedPartner): string {
+    return p.householdId18?.trim()
+        ? `id:${p.householdId18.trim()}`
+        : `name:${p.name.trim().toLowerCase()}`;
+}
+
 async function parseApiErrorMessage(response: Response, fallback: string): Promise<string> {
     if (response.status === 403) {
         try {
@@ -77,48 +83,36 @@ const OverviewPageContent: React.FC = () => {
     const [foodTypesData, setFoodTypesData] = useState<FoodTypeEntry[]>([]);
     const [processingData, setProcessingData] = useState<FoodTypeEntry[]>([]);
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
-    const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
+    const { selectedOrgs, setSelectedOrgs, toggleSelectedOrg, clearSelectedOrgs } =
+        useOrgScopeContext();
 
     useEffect(() => {
         if (!isAdmin) return;
-        const householdId18 = searchParams.get('householdId18')?.trim();
-        const destination = searchParams.get('destination')?.trim();
-        if (householdId18) {
-            setSelectedOrg(current => {
-                if (current?.householdId18 === householdId18) return current;
-                const fromList = partnerOrganizations.find(
-                    org => org.householdId18 === householdId18
-                );
-                if (fromList) {
-                    return { name: fromList.name, householdId18 };
-                }
-                if (current?.name?.trim()) {
-                    return { name: current.name, householdId18 };
-                }
-                return { name: '', householdId18 };
-            });
-        } else if (destination) {
-            setSelectedOrg(current => {
-                if (current?.householdId18) {
-                    const match = partnerOrganizations.find(
-                        org => org.householdId18 === current.householdId18
-                    );
-                    if (
-                        match &&
-                        match.name.trim().toLowerCase() === destination.trim().toLowerCase()
-                    ) {
-                        return current;
-                    }
-                }
-                return current?.name === destination && current?.householdId18 == null
-                    ? current
-                    : { name: destination, householdId18: null };
+        const ids = searchParams
+            .getAll('householdId18')
+            .map(v => v.trim())
+            .filter(Boolean);
+        const names = [
+            ...searchParams.getAll('destination').map(v => v.trim()),
+            ...searchParams.getAll('destinationName').map(v => v.trim()),
+        ].filter(Boolean);
+        const next: SelectedPartner[] = [];
+        for (const householdId18 of ids) {
+            const fromList = partnerOrganizations.find(org => org.householdId18 === householdId18);
+            next.push({
+                name: fromList?.name ?? householdId18,
+                householdId18,
             });
         }
-    }, [isAdmin, searchParams, setSelectedOrg, partnerOrganizations]);
+        for (const name of names) {
+            next.push({ name, householdId18: null });
+        }
+        if (next.length > 0) {
+            setSelectedOrgs(next);
+        }
+    }, [isAdmin, searchParams, setSelectedOrgs, partnerOrganizations]);
 
     useEffect(() => {
-        if (!isAdmin) return;
         let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject(new Error('Partners failed'))))
@@ -132,127 +126,182 @@ const OverviewPageContent: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAdmin]);
+    }, []);
 
     useEffect(() => {
-        if (!selectedOrg || partnerOrganizations.length === 0) return;
-
-        // Deep links use householdId18; resolve the display name once partner metadata is loaded.
-        if (selectedOrg.householdId18) {
-            const byHousehold = partnerOrganizations.find(
-                partner => partner.householdId18 === selectedOrg.householdId18
-            );
-            if (byHousehold && byHousehold.name !== selectedOrg.name) {
-                setSelectedOrg(current =>
-                    current && current.householdId18 === byHousehold.householdId18
-                        ? { ...current, name: byHousehold.name }
-                        : current
+        if (selectedOrgs.length === 0 || partnerOrganizations.length === 0) return;
+        setSelectedOrgs(current =>
+            current.map(org => {
+                if (org.householdId18) {
+                    const byHousehold = partnerOrganizations.find(
+                        partner => partner.householdId18 === org.householdId18
+                    );
+                    if (byHousehold && byHousehold.name !== org.name) {
+                        return { ...org, name: byHousehold.name };
+                    }
+                    return org;
+                }
+                const byName = partnerOrganizations.find(
+                    partner => partner.name.toLowerCase() === org.name.toLowerCase()
                 );
-            }
-            return;
-        }
+                return byName?.householdId18
+                    ? { ...org, householdId18: byName.householdId18, name: byName.name }
+                    : org;
+            })
+        );
+    }, [partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
 
-        const byName = selectedOrg.name
-            ? partnerOrganizations.find(
-                  partner => partner.name.toLowerCase() === selectedOrg.name.toLowerCase()
-              )
-            : null;
-        if (byName?.householdId18) {
-            setSelectedOrg(current =>
-                current && !current.householdId18
-                    ? { ...current, householdId18: byName.householdId18, name: byName.name }
-                    : current
-            );
-        }
-    }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
+    useEffect(() => {
+        if (isAdmin) return;
+        if (selectedOrgs.length > 0) return;
+        if (partnerOrganizations.length <= 1) return;
+        setSelectedOrgs(
+            partnerOrganizations.map(org => ({
+                name: org.name,
+                householdId18: org.householdId18 ?? null,
+            }))
+        );
+    }, [isAdmin, partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
 
     const isPartnerDashboard = !isAdmin && Boolean(partnerOrganizationName);
-    const selectedPartner: SelectedPartner | null = useMemo(
+    const selectedPartners: SelectedPartner[] = useMemo(
         () =>
             isPartnerDashboard
                 ? partnerOrganizationName
-                    ? {
-                          name: partnerOrganizationName,
-                          householdId18: partnerHouseholdId18,
-                      }
-                    : null
-                : selectedOrg,
-        [isPartnerDashboard, selectedOrg, partnerHouseholdId18, partnerOrganizationName]
+                    ? [
+                          {
+                              name: partnerOrganizationName,
+                              householdId18: partnerHouseholdId18,
+                          },
+                      ]
+                    : []
+                : selectedOrgs,
+        [isPartnerDashboard, selectedOrgs, partnerHouseholdId18, partnerOrganizationName]
     );
 
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
+    const selectedPartner = selectedPartners[0] ?? null;
+    const multipleSelected = selectedPartners.length > 1;
 
     const fetchOverviewData = useCallback(async () => {
         const start = formatDateParam(dateRange.start);
         const end = formatDateParam(dateRange.end);
-        const params = new URLSearchParams({ start, end });
-        if (selectedPartner?.householdId18)
-            params.set('householdId18', selectedPartner.householdId18);
-        else if (selectedPartner?.name?.trim())
-            params.set('destination', selectedPartner.name.trim());
-        const q = params.toString();
+        const scopes = selectedPartners.length > 0 ? selectedPartners : [null];
 
         setLoading(true);
         setError(null);
         try {
-            const [chartRes, statsRes, deliveriesRes, compositionRes] = await Promise.all([
-                fetch(`/api/overview/pounds-by-month?${q}`),
-                fetch(`/api/overview/stats?${q}`),
-                fetch(`/api/overview/deliveries?${q}`),
-                fetch(`/api/overview/food-types?${q}`),
-            ]);
-
-            if (!chartRes.ok)
-                throw new Error(await parseApiErrorMessage(chartRes, 'Failed to load chart data'));
-            if (!statsRes.ok)
-                throw new Error(await parseApiErrorMessage(statsRes, 'Failed to load stats'));
-            if (!deliveriesRes.ok)
-                throw new Error(
-                    await parseApiErrorMessage(deliveriesRes, 'Failed to load deliveries')
-                );
-            if (!compositionRes.ok)
-                throw new Error(
-                    await parseApiErrorMessage(compositionRes, 'Failed to load food composition')
-                );
-
-            const [chartData, stats, deliveriesPayload, compositionPayload] = await Promise.all([
-                chartRes.json(),
-                statsRes.json(),
-                deliveriesRes.json(),
-                compositionRes.json(),
-            ]);
-
-            setPoundsByMonthData(Array.isArray(chartData) ? chartData : []);
-            setTotalPoundsDelivered(Number(stats.totalPoundsDelivered) ?? 0);
-            setDeliveriesCompleted(Number(stats.deliveriesCompleted) ?? 0);
-            setJustEatsPoundsDelivered(Number(stats.justEatsPoundsDelivered) ?? 0);
-            setJustEatsTotalDeliveries(Number(stats.justEatsTotalDeliveries) ?? 0);
-            setFoodTypesData(
-                Array.isArray(compositionPayload.foodTypes) ? compositionPayload.foodTypes : []
+            const responses = await Promise.all(
+                scopes.map(async scope => {
+                    const params = new URLSearchParams({ start, end });
+                    if (scope?.householdId18) params.set('householdId18', scope.householdId18);
+                    else if (scope?.name?.trim()) params.set('destination', scope.name.trim());
+                    const q = params.toString();
+                    const [chartRes, statsRes, deliveriesRes, compositionRes] = await Promise.all([
+                        fetch(`/api/overview/pounds-by-month?${q}`),
+                        fetch(`/api/overview/stats?${q}`),
+                        fetch(`/api/overview/deliveries?${q}`),
+                        fetch(`/api/overview/food-types?${q}`),
+                    ]);
+                    if (!chartRes.ok)
+                        throw new Error(
+                            await parseApiErrorMessage(chartRes, 'Failed to load chart data')
+                        );
+                    if (!statsRes.ok)
+                        throw new Error(
+                            await parseApiErrorMessage(statsRes, 'Failed to load stats')
+                        );
+                    if (!deliveriesRes.ok)
+                        throw new Error(
+                            await parseApiErrorMessage(deliveriesRes, 'Failed to load deliveries')
+                        );
+                    if (!compositionRes.ok)
+                        throw new Error(
+                            await parseApiErrorMessage(
+                                compositionRes,
+                                'Failed to load food composition'
+                            )
+                        );
+                    const [chartData, stats, deliveriesPayload, compositionPayload] =
+                        await Promise.all([
+                            chartRes.json(),
+                            statsRes.json(),
+                            deliveriesRes.json(),
+                            compositionRes.json(),
+                        ]);
+                    return { chartData, stats, deliveriesPayload, compositionPayload };
+                })
             );
-            setProcessingData(
-                Array.isArray(compositionPayload.processing) ? compositionPayload.processing : []
-            );
 
-            const list = deliveriesPayload.deliveries ?? [];
-            setDeliverySummaryData(
-                list.map(
-                    (d: {
-                        id: string;
-                        date: string;
-                        totalPounds: number;
-                        destination?: string | null;
-                        householdId18?: string | null;
-                        program?: 'bulk_rescue' | 'just_eats' | null;
-                    }) => ({
+            const chartMap = new Map<string, number>();
+            let totalBulk = 0;
+            let totalBulkDeliveries = 0;
+            let totalJe = 0;
+            let totalJeDeliveries = 0;
+            const foodMap = new Map<string, FoodTypeEntry>();
+            const processingMap = new Map<string, FoodTypeEntry>();
+            const deliveriesById = new Map<string, DeliverySummaryItem>();
+
+            for (const r of responses) {
+                const chartData = Array.isArray(r.chartData) ? r.chartData : [];
+                for (const point of chartData as PoundsData[]) {
+                    chartMap.set(
+                        point.month,
+                        (chartMap.get(point.month) ?? 0) + Number(point.pounds)
+                    );
+                }
+                totalBulk += Number(r.stats.totalPoundsDelivered ?? 0);
+                totalBulkDeliveries += Number(r.stats.deliveriesCompleted ?? 0);
+                totalJe += Number(r.stats.justEatsPoundsDelivered ?? 0);
+                totalJeDeliveries += Number(r.stats.justEatsTotalDeliveries ?? 0);
+                for (const e of (Array.isArray(r.compositionPayload.foodTypes)
+                    ? r.compositionPayload.foodTypes
+                    : []) as FoodTypeEntry[]) {
+                    const key = e.label.trim().toLowerCase();
+                    const prev = foodMap.get(key);
+                    foodMap.set(key, { ...e, value: (prev?.value ?? 0) + Number(e.value ?? 0) });
+                }
+                for (const e of (Array.isArray(r.compositionPayload.processing)
+                    ? r.compositionPayload.processing
+                    : []) as FoodTypeEntry[]) {
+                    const key = e.label.trim().toLowerCase();
+                    const prev = processingMap.get(key);
+                    processingMap.set(key, {
+                        ...e,
+                        value: (prev?.value ?? 0) + Number(e.value ?? 0),
+                    });
+                }
+                const list = r.deliveriesPayload.deliveries ?? [];
+                for (const d of list) {
+                    const item: DeliverySummaryItem = {
                         id: d.id,
                         date: new Date(d.date),
                         totalPounds: d.totalPounds,
                         destination: d.destination ?? null,
                         householdId18: d.householdId18 ?? null,
                         program: d.program ?? null,
-                    })
-                )
+                    };
+                    const key = `${item.date.toISOString()}|${item.program ?? ''}|${item.householdId18 ?? ''}|${(item.destination ?? '').toLowerCase()}`;
+                    const prev = deliveriesById.get(key);
+                    if (prev) prev.totalPounds += item.totalPounds;
+                    else deliveriesById.set(key, item);
+                }
+            }
+
+            setPoundsByMonthData(
+                [...chartMap.entries()].map(([month, pounds]) => ({
+                    month,
+                    pounds: Math.round(pounds),
+                }))
+            );
+            setTotalPoundsDelivered(Math.round(totalBulk));
+            setDeliveriesCompleted(totalBulkDeliveries);
+            setJustEatsPoundsDelivered(Math.round(totalJe));
+            setJustEatsTotalDeliveries(totalJeDeliveries);
+            setFoodTypesData([...foodMap.values()].sort((a, b) => b.value - a.value));
+            setProcessingData([...processingMap.values()].sort((a, b) => b.value - a.value));
+            setDeliverySummaryData(
+                [...deliveriesById.values()].sort((a, b) => b.date.getTime() - a.date.getTime())
             );
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -267,7 +316,7 @@ const OverviewPageContent: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange, selectedPartner]);
+    }, [dateRange, selectedPartners]);
 
     useEffect(() => {
         void fetchOverviewData();
@@ -282,27 +331,96 @@ const OverviewPageContent: React.FC = () => {
                         <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900 sm:mb-2">
                             Statistics Overview
                         </h1>
-                        {isAdmin && selectedPartner?.name ? (
-                            <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
-                                Partner view:{' '}
-                                <span className="font-medium text-gray-900">
-                                    {selectedPartner.name}
-                                </span>
-                                <span className="mx-2 text-gray-300">·</span>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        clearSelectedOrg();
-                                        replaceSearchParams(p => {
-                                            p.delete('householdId18');
-                                            p.delete('destination');
-                                        });
-                                    }}
-                                    className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
-                                >
-                                    View all organizations
-                                </button>
-                            </p>
+                        {isAdmin && selectedPartners.length > 0 ? (
+                            <div className="mt-2 mb-2">
+                                <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                    Partner view:{' '}
+                                    <span className="font-medium text-gray-900">
+                                        {multipleSelected
+                                            ? `${selectedPartners.length} organizations selected`
+                                            : selectedPartner?.name}
+                                    </span>
+                                    <span className="mx-2 text-gray-300">·</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            clearSelectedOrgs();
+                                            replaceSearchParams(p => {
+                                                p.delete('householdId18');
+                                                p.delete('destination');
+                                                p.delete('destinationName');
+                                            });
+                                        }}
+                                        className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                    >
+                                        View all organizations
+                                    </button>
+                                    {multipleSelected ? (
+                                        <>
+                                            <span className="mx-2 text-gray-300">·</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    clearSelectedOrgs();
+                                                    replaceSearchParams(p => {
+                                                        p.delete('householdId18');
+                                                        p.delete('destination');
+                                                        p.delete('destinationName');
+                                                    });
+                                                }}
+                                                className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                            >
+                                                Clear all
+                                            </button>
+                                        </>
+                                    ) : null}
+                                </p>
+                                {multipleSelected ? (
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {selectedPartners.map(p => {
+                                            const key = selectedPartnerKey(p);
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    className="inline-flex items-center gap-1 rounded-full bg-[#e8f4eb] px-2 py-1 text-xs text-[#1C5E2C]"
+                                                    onClick={() => {
+                                                        toggleSelectedOrg(p);
+                                                        const next = selectedPartners.filter(
+                                                            s =>
+                                                                selectedPartnerKey(s) !==
+                                                                selectedPartnerKey(p)
+                                                        );
+                                                        replaceSearchParams(params => {
+                                                            params.delete('householdId18');
+                                                            params.delete('destination');
+                                                            params.delete('destinationName');
+                                                            for (const s of next) {
+                                                                if (s.householdId18?.trim()) {
+                                                                    params.append(
+                                                                        'householdId18',
+                                                                        s.householdId18.trim()
+                                                                    );
+                                                                } else if (s.name?.trim()) {
+                                                                    params.append(
+                                                                        'destinationName',
+                                                                        s.name.trim()
+                                                                    );
+                                                                }
+                                                            }
+                                                        });
+                                                    }}
+                                                >
+                                                    <span className="max-w-44 truncate">
+                                                        {p.name}
+                                                    </span>
+                                                    <span aria-hidden="true">x</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : null}
+                            </div>
                         ) : !isAdmin && selectedPartner?.name ? (
                             <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
                                 Welcome! Here&apos;s your dashboard for{' '}
@@ -313,27 +431,44 @@ const OverviewPageContent: React.FC = () => {
                             </p>
                         ) : null}
                     </div>
-                    {isAdmin ? (
+                    {partnerOrganizations.length > 1 ? (
                         <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                             <SearchBarOverview
                                 organizations={partnerOrganizations}
-                                onSelectPartner={partner => {
-                                    setSelectedOrg(partner);
+                                selectedPartners={selectedPartners}
+                                showSelectedChips={false}
+                                onTogglePartner={partner => {
+                                    toggleSelectedOrg(partner);
+                                    const next = (() => {
+                                        const key = selectedPartnerKey(partner);
+                                        const exists = selectedPartners.some(
+                                            p => selectedPartnerKey(p) === key
+                                        );
+                                        return exists
+                                            ? selectedPartners.filter(
+                                                  p => selectedPartnerKey(p) !== key
+                                              )
+                                            : [...selectedPartners, partner];
+                                    })();
                                     replaceSearchParams(p => {
                                         p.delete('householdId18');
                                         p.delete('destination');
-                                        if (partner.householdId18)
-                                            p.set('householdId18', partner.householdId18);
-                                        else if (partner.name?.trim())
-                                            p.set('destination', partner.name.trim());
+                                        p.delete('destinationName');
+                                        for (const s of next) {
+                                            if (s.householdId18?.trim()) {
+                                                p.append('householdId18', s.householdId18.trim());
+                                            } else if (s.name?.trim()) {
+                                                p.append('destinationName', s.name.trim());
+                                            }
+                                        }
                                     });
                                 }}
-                                selectedPartner={selectedPartner}
-                                onClearPartner={() => {
-                                    clearSelectedOrg();
+                                onClearAllPartners={() => {
+                                    clearSelectedOrgs();
                                     replaceSearchParams(p => {
                                         p.delete('householdId18');
                                         p.delete('destination');
+                                        p.delete('destinationName');
                                     });
                                 }}
                             />
@@ -475,11 +610,24 @@ const OverviewPageContent: React.FC = () => {
                                     <div className="flex justify-end border-t border-gray-100 px-3 py-3 sm:px-4">
                                         <Link
                                             href={
-                                                selectedPartner?.householdId18
-                                                    ? `/distribution?householdId18=${encodeURIComponent(selectedPartner.householdId18)}`
-                                                    : selectedPartner?.name?.trim()
-                                                      ? `/distribution?destination=${encodeURIComponent(selectedPartner.name.trim())}`
-                                                      : '/distribution'
+                                                selectedPartners.length > 0
+                                                    ? `/distribution?${(() => {
+                                                          const p = new URLSearchParams();
+                                                          for (const s of selectedPartners) {
+                                                              if (s.householdId18?.trim())
+                                                                  p.append(
+                                                                      'householdId18',
+                                                                      s.householdId18.trim()
+                                                                  );
+                                                              else if (s.name?.trim())
+                                                                  p.append(
+                                                                      'destinationName',
+                                                                      s.name.trim()
+                                                                  );
+                                                          }
+                                                          return p.toString();
+                                                      })()}`
+                                                    : '/distribution'
                                             }
                                             className="inline-flex items-center justify-center rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-black shadow-sm transition-colors hover:opacity-90"
                                             style={{ backgroundColor: 'var(--fff-orange)' }}

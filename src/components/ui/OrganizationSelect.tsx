@@ -201,8 +201,8 @@ export default function OrganizationSelect({
             ) : null}
 
             {leaveTarget ? (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-2xl border border-[#B7D7BD] bg-white shadow-xl">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]">
+                    <div className="relative z-[1001] w-full max-w-md rounded-2xl border border-[#B7D7BD] bg-white shadow-2xl">
                         <CautionDialogBody
                             title="Leave organization"
                             actions={

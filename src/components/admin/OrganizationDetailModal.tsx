@@ -81,6 +81,8 @@ export function OrganizationDetailModal({
     const [resendEmail, setResendEmail] = useState<string | null>(null);
     const [isEditingOrgName, setIsEditingOrgName] = useState(false);
     const [organizationNameDraft, setOrganizationNameDraft] = useState(organization.name);
+    const [isEditingHouseholdId, setIsEditingHouseholdId] = useState(false);
+    const [householdIdDraft, setHouseholdIdDraft] = useState(organization.householdId18 ?? '');
     const menuTriggerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -144,6 +146,10 @@ export function OrganizationDetailModal({
     useEffect(() => {
         setOrganizationNameDraft(organization.name);
     }, [organization.name]);
+
+    useEffect(() => {
+        setHouseholdIdDraft(organization.householdId18 ?? '');
+    }, [organization.householdId18]);
 
     const handleResendInvitation = async (invId: string, email: string) => {
         setResendEmail(email);
@@ -235,6 +241,34 @@ export function OrganizationDetailModal({
             setIsEditingOrgName(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to update organization name');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const saveHouseholdId = async () => {
+        const nextHouseholdId18 = householdIdDraft.trim();
+        if (!nextHouseholdId18) {
+            setError('Household ID 18 is required');
+            return;
+        }
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`/api/admin/organizations/${organization.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ householdId18: nextHouseholdId18 }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(
+                    (data as { error?: string }).error ?? 'Failed to update householdId18'
+                );
+            }
+            await onUpdate();
+            setIsEditingHouseholdId(false);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update householdId18');
         } finally {
             setIsSubmitting(false);
         }
@@ -337,6 +371,63 @@ export function OrganizationDetailModal({
                         <p className="mt-1 text-xs text-gray-500">
                             {isDistributorOrg ? 'Admin organization' : 'Partner organization'}
                         </p>
+                        {!isDistributorOrg ? (
+                            <div className="mt-2">
+                                {isEditingHouseholdId ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={householdIdDraft}
+                                            onChange={e => setHouseholdIdDraft(e.target.value)}
+                                            className="h-8 w-full max-w-[320px] rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD]"
+                                            disabled={isSubmitting}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={saveHouseholdId}
+                                            className="h-8 rounded-lg border border-[#9fc5a9] bg-[#B7D7BD] px-3 text-xs font-medium text-gray-800 hover:bg-[#a7c7ad]"
+                                            disabled={isSubmitting}
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setHouseholdIdDraft(
+                                                    organization.householdId18 ?? ''
+                                                );
+                                                setIsEditingHouseholdId(false);
+                                            }}
+                                            className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                            disabled={isSubmitting}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                        <span>
+                                            Household ID 18:{' '}
+                                            <span className="font-medium text-gray-800">
+                                                {organization.householdId18 ?? '—'}
+                                            </span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setHouseholdIdDraft(
+                                                    organization.householdId18 ?? ''
+                                                );
+                                                setIsEditingHouseholdId(true);
+                                            }}
+                                            className="rounded-lg border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Edit
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : null}
                     </div>
                     <button
                         onClick={onClose}

@@ -17,21 +17,46 @@ export async function PATCH(
         await requireAdmin();
 
         const { organizationId } = await params;
-        const body = (await req.json()) as { name?: string };
+        const body = (await req.json()) as { name?: string; householdId18?: string };
         const nextName = body.name?.trim();
+        const nextHouseholdId18 = body.householdId18?.trim();
 
-        if (!nextName) {
-            return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
+        if (!nextName && !nextHouseholdId18) {
+            return NextResponse.json(
+                { error: 'Organization name or householdId18 is required' },
+                { status: 400 }
+            );
         }
 
         const client = await clerkClient();
-        await client.organizations.updateOrganization(organizationId, {
-            name: nextName,
-        });
-
-        await prisma.partner.updateMany({
+        const existingPartner = await prisma.partner.findUnique({
             where: { clerkOrganizationId: organizationId },
-            data: { organizationName: nextName },
+            select: { householdId18: true },
+        });
+        if (!existingPartner) {
+            return NextResponse.json(
+                { error: 'Organization partner record not found' },
+                { status: 404 }
+            );
+        }
+
+        if (nextName) {
+            await client.organizations.updateOrganization(organizationId, {
+                name: nextName,
+            });
+        }
+        if (nextHouseholdId18) {
+            await client.organizations.updateOrganizationMetadata(organizationId, {
+                publicMetadata: { householdId18: nextHouseholdId18 },
+            });
+        }
+
+        await prisma.partner.update({
+            where: { householdId18: existingPartner.householdId18 },
+            data: {
+                ...(nextName ? { organizationName: nextName } : {}),
+                ...(nextHouseholdId18 ? { householdId18: nextHouseholdId18 } : {}),
+            },
         });
 
         return NextResponse.json({ success: true });

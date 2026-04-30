@@ -8,6 +8,10 @@ type SearchBarProps = {
     organizations: PartnerOrgCard[];
     onSelectPartner?: (partner: { name: string; householdId18?: string | null }) => void;
     selectedPartner?: { name: string; householdId18?: string | null } | null;
+    selectedPartners?: { name: string; householdId18?: string | null }[];
+    onTogglePartner?: (partner: { name: string; householdId18?: string | null }) => void;
+    onClearAllPartners?: () => void;
+    showSelectedChips?: boolean;
     onClearPartner?: () => void;
     wrapperClassName?: string;
     /** Visible label above the field (helps distinguish from other search boxes). */
@@ -19,10 +23,14 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
     organizations,
     onSelectPartner,
     selectedPartner,
+    selectedPartners,
+    onTogglePartner,
+    onClearAllPartners,
     onClearPartner,
     wrapperClassName,
     label,
     placeholder = 'Search organizations',
+    showSelectedChips = true,
 }) => {
     const inputId = useId();
     const [searchInput, setSearchInput] = useState<string>('');
@@ -31,12 +39,26 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchInput(event.target.value);
     };
-    const displayValue = searchInput || selectedPartner?.name || '';
+    const selectedKeys = useMemo(() => {
+        const selectedList = selectedPartners ?? (selectedPartner ? [selectedPartner] : []);
+        return new Set(
+            selectedList.map(p =>
+                p.householdId18?.trim()
+                    ? `id:${p.householdId18.trim()}`
+                    : `name:${p.name.trim().toLowerCase()}`
+            )
+        );
+    }, [selectedPartner, selectedPartners]);
+    const displayValue = searchInput || (selectedPartners ? '' : selectedPartner?.name || '');
 
     const handlePartnerSelect = (partner: { name: string; householdId18?: string | null }) => {
-        onSelectPartner?.(partner);
-        setIsDropdownOpen(false);
-        setSearchInput('');
+        if (onTogglePartner) {
+            onTogglePartner(partner);
+        } else {
+            onSelectPartner?.(partner);
+            setIsDropdownOpen(false);
+            setSearchInput('');
+        }
     };
 
     const handleInputClick = () => {
@@ -93,7 +115,23 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
                         title={selectedPartner?.name ?? undefined}
                         autoComplete="off"
                     />
-                    {selectedPartner ? (
+                    {selectedPartners ? (
+                        selectedPartners.length > 0 ? (
+                            <button
+                                type="button"
+                                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                                aria-label="Clear organization filters"
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    setSearchInput('');
+                                    onClearAllPartners?.();
+                                    setIsDropdownOpen(false);
+                                }}
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        ) : null
+                    ) : selectedPartner ? (
                         <button
                             type="button"
                             className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -115,22 +153,82 @@ const SearchBarOverview: React.FC<SearchBarProps> = ({
                         role="listbox"
                         aria-label="Organization results"
                     >
-                        {filteredResults.map(org => (
-                            <PartnerCard
-                                key={org.id}
-                                compact
-                                surface="neutral"
-                                id={org.id}
-                                name={org.name}
-                                householdId18={org.householdId18}
-                                location={org.location}
-                                type={org.type}
-                                disableClick={true}
-                                onSelect={handlePartnerSelect}
-                            />
-                        ))}
+                        {filteredResults.map(org => {
+                            const k = org.householdId18?.trim()
+                                ? `id:${org.householdId18.trim()}`
+                                : `name:${org.name.trim().toLowerCase()}`;
+                            const checked = selectedKeys.has(k);
+                            if (selectedPartners) {
+                                return (
+                                    <button
+                                        key={org.id}
+                                        type="button"
+                                        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#F3F0EA]"
+                                        onClick={() =>
+                                            handlePartnerSelect({
+                                                name: org.name,
+                                                householdId18: org.householdId18,
+                                            })
+                                        }
+                                    >
+                                        <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">
+                                            {org.name}
+                                        </span>
+                                        <span
+                                            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] ${
+                                                checked
+                                                    ? 'border-[#1C5E2C] bg-[#e8f4eb] text-[#1C5E2C]'
+                                                    : 'border-gray-300 text-transparent'
+                                            }`}
+                                            aria-hidden="true"
+                                        >
+                                            ✓
+                                        </span>
+                                    </button>
+                                );
+                            }
+                            return (
+                                <div
+                                    key={org.id}
+                                    className="flex items-center justify-between gap-2 px-2"
+                                >
+                                    <PartnerCard
+                                        compact
+                                        surface="neutral"
+                                        id={org.id}
+                                        name={org.name}
+                                        householdId18={org.householdId18}
+                                        location={org.location}
+                                        type={org.type}
+                                        disableClick={true}
+                                        onSelect={handlePartnerSelect}
+                                    />
+                                    {null}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
+                {showSelectedChips && selectedPartners && selectedPartners.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {selectedPartners.map(p => {
+                            const key = p.householdId18?.trim()
+                                ? `id:${p.householdId18.trim()}`
+                                : `name:${p.name.trim().toLowerCase()}`;
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className="inline-flex items-center gap-1 rounded-full bg-[#e8f4eb] px-2 py-1 text-xs text-[#1C5E2C]"
+                                    onClick={() => onTogglePartner?.(p)}
+                                >
+                                    <span className="max-w-44 truncate">{p.name}</span>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : null}
             </div>
         </div>
     );

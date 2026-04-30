@@ -40,6 +40,14 @@ interface DeliveryRecord {
     lineId?: string | null;
 }
 
+type SelectedPartner = { name: string; householdId18?: string | null };
+
+function selectedPartnerKey(p: SelectedPartner): string {
+    return p.householdId18?.trim()
+        ? `id:${p.householdId18.trim()}`
+        : `name:${p.name.trim().toLowerCase()}`;
+}
+
 function rowProgram(row: DeliveryRecord): 'bulk_rescue' | 'just_eats' {
     return row.program ?? 'bulk_rescue';
 }
@@ -114,7 +122,8 @@ function DistributionContent() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrgCard[]>([]);
-    const { selectedOrg, setSelectedOrg, clearSelectedOrg } = useOrgScopeContext();
+    const { selectedOrgs, setSelectedOrgs, toggleSelectedOrg, clearSelectedOrgs } =
+        useOrgScopeContext();
 
     const [data, setData] = useState<DeliveryRecord[]>([]);
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -141,18 +150,33 @@ function DistributionContent() {
 
     // Read org from URL on mount (for deep-linking)
     useEffect(() => {
-        const householdId18 = searchParams.get('householdId18')?.trim();
-        const destination = searchParams.get('destination')?.trim();
-        if (householdId18) {
-            setSelectedOrg({ name: 'Selected organization', householdId18 });
-        } else if (destination) {
-            setSelectedOrg({ name: destination, householdId18: null });
-        }
-    }, [searchParams, setSelectedOrg]);
+        const ids = searchParams
+            .getAll('householdId18')
+            .map(v => v.trim())
+            .filter(Boolean);
+        const names = [
+            ...searchParams.getAll('destination').map(v => v.trim()),
+            ...searchParams.getAll('destinationName').map(v => v.trim()),
+        ].filter(Boolean);
+        if (ids.length === 0 && names.length === 0) return;
+        setSelectedOrgs(prev => {
+            const byId = new Map(
+                prev
+                    .filter(p => p.householdId18?.trim())
+                    .map(p => [p.householdId18!.trim(), p.name])
+            );
+            return [
+                ...ids.map(householdId18 => ({
+                    name: byId.get(householdId18) ?? householdId18,
+                    householdId18,
+                })),
+                ...names.map(name => ({ name, householdId18: null })),
+            ];
+        });
+    }, [searchParams, setSelectedOrgs]);
 
     // Fetch partner org list for admin org selector
     useEffect(() => {
-        if (!isAdmin) return;
         let cancelled = false;
         fetch('/api/overview/partners')
             .then(res => (res.ok ? res.json() : Promise.reject()))
@@ -166,63 +190,88 @@ function DistributionContent() {
         return () => {
             cancelled = true;
         };
-    }, [isAdmin]);
+    }, []);
 
     // Resolve org name from partner list once loaded.
     // This also fixes stale labels where selectedOrg.name is the raw household id.
     useEffect(() => {
-        if (!selectedOrg || partnerOrganizations.length === 0) return;
-        if (selectedOrg.householdId18) {
-            const match = partnerOrganizations.find(
-                p => p.householdId18 === selectedOrg.householdId18
-            );
-            if (!match) return;
-            const currentName = selectedOrg.name?.trim() ?? '';
-            const needsNameResolution =
-                !currentName ||
-                currentName === 'Selected organization' ||
-                currentName.toLowerCase() === selectedOrg.householdId18.toLowerCase() ||
-                currentName.toLowerCase() !== match.name.toLowerCase();
-            if (needsNameResolution) {
-                setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
-            }
-            return;
-        }
-        if (
-            selectedOrg.name &&
-            selectedOrg.name !== 'Selected organization' &&
-            !selectedOrg.householdId18
-        ) {
-            const match = partnerOrganizations.find(
-                p =>
-                    p.name.toLowerCase() === selectedOrg.name.toLowerCase() &&
-                    Boolean(p.householdId18)
-            );
-            if (match?.householdId18) {
-                setSelectedOrg({ name: match.name, householdId18: match.householdId18 });
-            }
-        }
-    }, [partnerOrganizations, selectedOrg, setSelectedOrg]);
+        if (selectedOrgs.length === 0 || partnerOrganizations.length === 0) return;
+        setSelectedOrgs(current =>
+            current.map(selectedOrg => {
+                if (selectedOrg.householdId18) {
+                    const match = partnerOrganizations.find(
+                        p => p.householdId18 === selectedOrg.householdId18
+                    );
+                    if (!match) return selectedOrg;
+                    const currentName = selectedOrg.name?.trim() ?? '';
+                    const needsNameResolution =
+                        !currentName ||
+                        currentName === 'Selected organization' ||
+                        currentName.toLowerCase() === selectedOrg.householdId18.toLowerCase() ||
+                        currentName.toLowerCase() !== match.name.toLowerCase();
+                    if (needsNameResolution) {
+                        return { name: match.name, householdId18: match.householdId18 };
+                    }
+                    return selectedOrg;
+                }
+                if (
+                    selectedOrg.name &&
+                    selectedOrg.name !== 'Selected organization' &&
+                    !selectedOrg.householdId18
+                ) {
+                    const match = partnerOrganizations.find(
+                        p =>
+                            p.name.toLowerCase() === selectedOrg.name.toLowerCase() &&
+                            Boolean(p.householdId18)
+                    );
+                    if (match?.householdId18) {
+                        return { name: match.name, householdId18: match.householdId18 };
+                    }
+                }
+                return selectedOrg;
+            })
+        );
+    }, [partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
+
+    useEffect(() => {
+        if (isAdmin) return;
+        if (selectedOrgs.length > 0) return;
+        if (partnerOrganizations.length <= 1) return;
+        setSelectedOrgs(
+            partnerOrganizations.map(org => ({
+                name: org.name,
+                householdId18: org.householdId18 ?? null,
+            }))
+        );
+    }, [isAdmin, partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
 
     // Sync selected org into URL
     const handleSelectOrg = (org: { name: string; householdId18?: string | null }) => {
-        setSelectedOrg(org);
+        toggleSelectedOrg(org);
+        const key = selectedPartnerKey(org);
+        const next = selectedOrgs.some(p => selectedPartnerKey(p) === key)
+            ? selectedOrgs.filter(p => selectedPartnerKey(p) !== key)
+            : [...selectedOrgs, org];
         const params = new URLSearchParams(searchParams.toString());
         params.delete('householdId18');
         params.delete('destination');
-        if (org.householdId18) {
-            params.set('householdId18', org.householdId18);
-        } else if (org.name?.trim()) {
-            params.set('destination', org.name.trim());
+        params.delete('destinationName');
+        for (const s of next) {
+            if (s.householdId18?.trim()) {
+                params.append('householdId18', s.householdId18.trim());
+            } else if (s.name?.trim()) {
+                params.append('destinationName', s.name.trim());
+            }
         }
         router.push(`?${params.toString()}`);
     };
 
     const handleClearOrg = () => {
-        clearSelectedOrg();
+        clearSelectedOrgs();
         const params = new URLSearchParams(searchParams.toString());
         params.delete('householdId18');
         params.delete('destination');
+        params.delete('destinationName');
         router.push(`?${params.toString()}`);
     };
 
@@ -238,7 +287,7 @@ function DistributionContent() {
         dateRange.start,
         dateRange.end,
         filterPrograms,
-        selectedOrg,
+        selectedOrgs,
         filterProductTypes,
         filterProcessing,
     ]);
@@ -272,21 +321,26 @@ function DistributionContent() {
         const ac = new AbortController();
         async function fetchFilterOptions() {
             try {
-                const optParams = new URLSearchParams();
-                if (selectedOrg?.householdId18)
-                    optParams.set('householdId18', selectedOrg.householdId18);
-                else if (selectedOrg?.name?.trim())
-                    optParams.set('destination', selectedOrg.name.trim());
-                const q = optParams.toString();
-                const res = await fetch(`/api/distribution/filter-options${q ? `?${q}` : ''}`, {
-                    signal: ac.signal,
-                });
-                if (!res.ok) return;
-                const payload = (await res.json()) as { productTypes?: string[] };
+                const scopes = selectedOrgs.length > 0 ? selectedOrgs : [null];
+                const all = new Set<string>();
+                for (const s of scopes) {
+                    const optParams = new URLSearchParams();
+                    if (s?.householdId18?.trim()) optParams.set('householdId18', s.householdId18);
+                    else if (s?.name?.trim()) optParams.set('destination', s.name.trim());
+                    const q = optParams.toString();
+                    const res = await fetch(`/api/distribution/filter-options${q ? `?${q}` : ''}`, {
+                        signal: ac.signal,
+                    });
+                    if (!res.ok) continue;
+                    const payload = (await res.json()) as { productTypes?: string[] };
+                    for (const pt of Array.isArray(payload.productTypes)
+                        ? payload.productTypes
+                        : []) {
+                        all.add(pt);
+                    }
+                }
                 if (ac.signal.aborted) return;
-                setAvailableProductTypes(
-                    Array.isArray(payload.productTypes) ? payload.productTypes : []
-                );
+                setAvailableProductTypes([...all]);
             } catch (err) {
                 if (err instanceof Error && err.name === 'AbortError') return;
                 console.error(err);
@@ -294,7 +348,53 @@ function DistributionContent() {
         }
         void fetchFilterOptions();
         return () => ac.abort();
-    }, [selectedOrg]);
+    }, [selectedOrgs]);
+
+    useEffect(() => {
+        const ac = new AbortController();
+        async function fetchDeliveries() {
+            setLoading(true);
+            try {
+                const scopes = selectedOrgs.length > 0 ? selectedOrgs : [null];
+                const combined: DeliveryRecord[] = [];
+                for (const s of scopes) {
+                    const deliveriesParams = new URLSearchParams({
+                        start: dateRange.start.toISOString(),
+                        end: dateRange.end.toISOString(),
+                        search: debouncedSearch,
+                    });
+                    if (s?.householdId18?.trim())
+                        deliveriesParams.set('householdId18', s.householdId18);
+                    else if (s?.name?.trim()) deliveriesParams.set('destination', s.name.trim());
+                    const res = await fetch(
+                        `/api/distribution/deliveries?${deliveriesParams.toString()}`,
+                        {
+                            signal: ac.signal,
+                        }
+                    );
+                    if (!res.ok) throw new Error('Failed to fetch data.');
+                    const json = await res.json();
+                    if (ac.signal.aborted) return;
+                    combined.push(...(Array.isArray(json) ? json : []));
+                }
+                const deduped = new Map<string, DeliveryRecord>();
+                for (const row of combined) {
+                    const key = row.lineId
+                        ? `je:${row.lineId}`
+                        : `br:${row.householdId18 ?? ''}|${row.organizationName}|${row.date}|${row.productName ?? ''}|${row.distributionAmount}|${row.weightLbs}`;
+                    if (!deduped.has(key)) deduped.set(key, row);
+                }
+                setData([...deduped.values()]);
+            } catch (err) {
+                if (err instanceof Error && err.name === 'AbortError') return;
+                console.error(err);
+            } finally {
+                if (!ac.signal.aborted) setLoading(false);
+            }
+        }
+        void fetchDeliveries();
+        return () => ac.abort();
+    }, [dateRange.start, dateRange.end, debouncedSearch, selectedOrgs]);
 
     const availableProductTypesSorted = useMemo(() => {
         const byKey = new Map<string, string>();
@@ -398,15 +498,16 @@ function DistributionContent() {
             ),
         [filteredData]
     );
+    const primarySelectedOrg = selectedOrgs[0] ?? null;
 
-    const selectedOrgName = selectedOrg?.name?.trim() ?? '';
+    const selectedOrgName = primarySelectedOrg?.name?.trim() ?? '';
     const isScopedFromUi = Boolean(
-        selectedOrg?.householdId18 ||
+        selectedOrgs.length > 0 ||
             (selectedOrgName.length > 0 && selectedOrgName !== 'Selected organization')
     );
     const isScopedByDataFallback = !isScopedFromUi && filteredOrgNames.length === 1;
     const isScopedToOrg = isScopedFromUi || isScopedByDataFallback;
-    const includeOrganizationColumn = !isScopedToOrg;
+    const includeOrganizationColumn = !isScopedToOrg || selectedOrgs.length > 1;
 
     const exportHeaders = useMemo(
         () => [
@@ -440,15 +541,29 @@ function DistributionContent() {
     }, [filteredData, includeOrganizationColumn]);
 
     const exportFilenameBase = `distribution-${format(dateRange.start, 'yyyy-MM-dd')}_to_${format(dateRange.end, 'yyyy-MM-dd')}`;
+    const selectedOrgDisplayNames = useMemo(
+        () =>
+            selectedOrgs
+                .map(org => org.name?.trim())
+                .filter((name): name is string =>
+                    Boolean(name && name !== 'Selected organization')
+                ),
+        [selectedOrgs]
+    );
+    const multiOrgExportSummary = useMemo(() => {
+        if (selectedOrgDisplayNames.length <= 1) return null;
+        return `${selectedOrgDisplayNames.length} organizations selected (${selectedOrgDisplayNames.join(', ')})`;
+    }, [selectedOrgDisplayNames]);
     const exportOrgLabel = useMemo(() => {
         if (!isScopedToOrg) return 'All organizations';
+        if (multiOrgExportSummary) return multiOrgExportSummary;
 
-        const selectedName = selectedOrg?.name?.trim();
+        const selectedName = primarySelectedOrg?.name?.trim();
         if (selectedName && selectedName !== 'Selected organization') return selectedName;
 
-        if (selectedOrg?.householdId18) {
+        if (primarySelectedOrg?.householdId18) {
             const match = partnerOrganizations.find(
-                org => org.householdId18 === selectedOrg.householdId18
+                org => org.householdId18 === primarySelectedOrg.householdId18
             );
             if (match?.name?.trim()) return match.name.trim();
         }
@@ -456,7 +571,13 @@ function DistributionContent() {
         if (filteredOrgNames.length === 1) return filteredOrgNames[0];
 
         return 'Selected organization';
-    }, [isScopedToOrg, selectedOrg, partnerOrganizations, filteredOrgNames]);
+    }, [
+        isScopedToOrg,
+        multiOrgExportSummary,
+        primarySelectedOrg,
+        partnerOrganizations,
+        filteredOrgNames,
+    ]);
 
     const triggerBlobDownload = (blob: Blob, fileName: string) => {
         const url = window.URL.createObjectURL(blob);
@@ -518,9 +639,11 @@ function DistributionContent() {
                 return;
             }
 
-            const scopeSummary = isScopedToOrg
-                ? 'This report summarizes food distributions delivered to the selected partner organization.'
-                : 'This report summarizes food distributions delivered to partner organizations.';
+            const scopeSummary = multiOrgExportSummary
+                ? `This report summarizes food distributions delivered to the selected organizations: ${selectedOrgDisplayNames.join(', ')}.`
+                : isScopedToOrg
+                  ? 'This report summarizes food distributions delivered to the selected partner organization.'
+                  : 'This report summarizes food distributions delivered to partner organizations.';
             const doc = new jsPDF({
                 orientation: 'landscape',
                 unit: 'pt',
@@ -646,41 +769,6 @@ function DistributionContent() {
         return () => ac.abort();
     }, [dateRange.start, dateRange.end]);
 
-    useEffect(() => {
-        const ac = new AbortController();
-        async function fetchDeliveries() {
-            setLoading(true);
-            try {
-                const deliveriesParams = new URLSearchParams({
-                    start: dateRange.start.toISOString(),
-                    end: dateRange.end.toISOString(),
-                    search: debouncedSearch,
-                });
-                if (selectedOrg?.householdId18)
-                    deliveriesParams.set('householdId18', selectedOrg.householdId18);
-                else if (selectedOrg?.name?.trim())
-                    deliveriesParams.set('destination', selectedOrg.name.trim());
-                const res = await fetch(
-                    `/api/distribution/deliveries?${deliveriesParams.toString()}`,
-                    {
-                        signal: ac.signal,
-                    }
-                );
-                if (!res.ok) throw new Error('Failed to fetch data.');
-                const json = await res.json();
-                if (ac.signal.aborted) return;
-                setData(json);
-            } catch (err) {
-                if (err instanceof Error && err.name === 'AbortError') return;
-                console.error(err);
-            } finally {
-                if (!ac.signal.aborted) setLoading(false);
-            }
-        }
-        void fetchDeliveries();
-        return () => ac.abort();
-    }, [dateRange.start, dateRange.end, debouncedSearch, selectedOrg]);
-
     const totalPages = Math.max(1, Math.ceil(filteredData.length / ROWS_PER_PAGE));
     const currentPageSafe = Math.min(currentPage, totalPages);
     const startIdx = (currentPageSafe - 1) * ROWS_PER_PAGE;
@@ -712,34 +800,68 @@ function DistributionContent() {
                             <h1 className="text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight text-gray-900">
                                 Distribution
                             </h1>
-                            {isAdmin && selectedOrg ? (
-                                <p className="mt-1 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
-                                    Showing deliveries for:{' '}
-                                    <span className="font-medium text-gray-900">
-                                        {selectedOrg.name}
-                                    </span>
-                                    <span className="mx-2 text-gray-300">·</span>
-                                    <button
-                                        type="button"
-                                        onClick={handleClearOrg}
-                                        className="text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
-                                    >
-                                        View all organizations
-                                    </button>
-                                </p>
+                            {isAdmin && selectedOrgs.length > 0 ? (
+                                <div className="mt-1">
+                                    <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                        Showing deliveries for:{' '}
+                                        <span className="font-medium text-gray-900">
+                                            {selectedOrgs.length > 1
+                                                ? `${selectedOrgs.length} organizations selected`
+                                                : selectedOrgs[0]?.name}
+                                        </span>
+                                        <span className="mx-2 text-gray-300">·</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearOrg}
+                                            className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                        >
+                                            View all organizations
+                                        </button>
+                                        {selectedOrgs.length > 1 ? (
+                                            <>
+                                                <span className="mx-2 text-gray-300">·</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleClearOrg}
+                                                    className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                                >
+                                                    Clear all
+                                                </button>
+                                            </>
+                                        ) : null}
+                                    </p>
+                                    {selectedOrgs.length > 0 ? (
+                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                            {selectedOrgs.map(p => (
+                                                <button
+                                                    key={selectedPartnerKey(p)}
+                                                    type="button"
+                                                    className="inline-flex items-center gap-1 rounded-full bg-[#e8f4eb] px-2 py-1 text-xs text-[#1C5E2C]"
+                                                    onClick={() => handleSelectOrg(p)}
+                                                >
+                                                    <span className="max-w-44 truncate">
+                                                        {p.name}
+                                                    </span>
+                                                    <span aria-hidden="true">x</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : null}
+                                </div>
                             ) : (
                                 <p className="mt-1 text-sm text-gray-500">
                                     Food delivery records across all programs.
                                 </p>
                             )}
                         </div>
-                        {isAdmin ? (
+                        {partnerOrganizations.length > 1 ? (
                             <div className="w-full max-w-[17.5rem] shrink-0 self-start sm:max-w-sm lg:w-auto lg:pt-1">
                                 <SearchBarOverview
                                     organizations={partnerOrganizations}
-                                    onSelectPartner={handleSelectOrg}
-                                    selectedPartner={selectedOrg}
-                                    onClearPartner={handleClearOrg}
+                                    onTogglePartner={handleSelectOrg}
+                                    selectedPartners={selectedOrgs}
+                                    showSelectedChips={false}
+                                    onClearAllPartners={handleClearOrg}
                                     placeholder="Search organizations"
                                 />
                             </div>

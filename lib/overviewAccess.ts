@@ -86,16 +86,31 @@ export async function getOverviewScope(
         };
     }
 
+    const requestedId = requestedHouseholdId18?.trim();
+    const requestedName = requestedDestination?.trim().toLowerCase();
+
+    const requestedMembershipById = requestedId
+        ? memberships.find(membership => membership.householdId18 === requestedId)
+        : undefined;
+    const requestedMembershipByName = requestedName
+        ? memberships.find(
+              membership => membership.organizationName?.trim().toLowerCase() === requestedName
+          )
+        : undefined;
+
     const activeMembership = orgId
         ? memberships.find(membership => membership.clerkOrganizationId === orgId)
         : memberships[0];
-    const orgName = activeMembership?.organizationName?.trim();
-    if (!activeMembership || !orgName) return { kind: 'partner_no_org' };
+
+    const resolvedMembership =
+        requestedMembershipById ?? requestedMembershipByName ?? activeMembership;
+    const orgName = resolvedMembership?.organizationName?.trim();
+    if (!resolvedMembership || !orgName) return { kind: 'partner_no_org' };
 
     return {
         kind: 'partner',
         destination: orgName,
-        partnerHouseholdId18: activeMembership.householdId18,
+        partnerHouseholdId18: resolvedMembership.householdId18,
     };
 }
 

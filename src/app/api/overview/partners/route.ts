@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import prisma from '~/lib/prisma';
 import { normalizeDestinationName } from '~/lib/destinationNameFilter';
+import { getUserPartnerContexts } from '@/lib/admin';
 import { getOverviewScope, overviewScopeErrorResponse } from '~/lib/overviewAccess';
 import {
     destinationStatusIncludedCondition,
@@ -28,6 +30,32 @@ export async function GET() {
         if (scopeErr) return scopeErr;
 
         if (scope.kind === 'partner') {
+            const { userId } = await auth();
+            const contexts = userId ? await getUserPartnerContexts(userId) : [];
+            const unique = new Map<string, PartnerOrgCard>();
+            for (const c of contexts) {
+                const householdId18 = c.householdId18?.trim() ?? '';
+                const name = c.organizationName?.trim() ?? '';
+                if (!householdId18 || !name) continue;
+                unique.set(householdId18, {
+                    id: `p-${householdId18}`,
+                    name,
+                    householdId18,
+                    location: '',
+                    type: 'Partner',
+                });
+            }
+            if (unique.size > 0) {
+                return NextResponse.json({
+                    partners: [...unique.values()].sort((a, b) =>
+                        a.name.localeCompare(b.name, undefined, {
+                            sensitivity: 'base',
+                            numeric: true,
+                        })
+                    ),
+                    partnerDashboard: true,
+                });
+            }
             return NextResponse.json({
                 partners: [
                     {
@@ -167,14 +195,24 @@ export async function GET() {
                 .map(partner => [partner.householdId18?.trim() ?? '', partner] as const)
                 .filter(([householdId18]) => householdId18.length > 0)
         );
+        const aliasNormalizedForKnownPartners = new Set<string>();
         const preferredNameByHouseholdId = new Map<string, string>();
         for (const row of observedHouseholdNames) {
             const householdId18 = row.householdId18?.trim();
             const name = row.name?.trim() ?? '';
             if (!householdId18 || !name || isLikelySalesforceId(name)) continue;
+            if (partnerByHouseholdId.has(householdId18)) {
+                aliasNormalizedForKnownPartners.add(normalizeDestinationName(name));
+            }
             if (!preferredNameByHouseholdId.has(householdId18)) {
                 preferredNameByHouseholdId.set(householdId18, name);
             }
+        }
+
+        for (const partner of partnerRows) {
+            const partnerName = partner.organizationName?.trim() ?? '';
+            if (!partnerName || isLikelySalesforceId(partnerName)) continue;
+            aliasNormalizedForKnownPartners.add(normalizeDestinationName(partnerName));
         }
 
         for (const row of observedHouseholdNames) {
@@ -183,7 +221,11 @@ export async function GET() {
             if (!householdId18 || !observedName || isLikelySalesforceId(observedName)) continue;
             const partner = partnerByHouseholdId.get(householdId18);
             const partnerName = partner?.organizationName?.trim() ?? '';
-            const name = (preferredNameByHouseholdId.get(householdId18) ?? observedName).trim();
+            const name = (
+                (!isLikelySalesforceId(partnerName) ? partnerName : '') ||
+                preferredNameByHouseholdId.get(householdId18) ||
+                observedName
+            ).trim();
             if (!name || isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
             if (byNormalized.has(key)) continue;
@@ -201,6 +243,7 @@ export async function GET() {
             if (!name) continue;
             if (isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
+            if (aliasNormalizedForKnownPartners.has(key)) continue;
             if (byNormalized.has(key)) continue;
             byNormalized.set(key, {
                 id: `d-${key}`,
