@@ -86,6 +86,17 @@ export async function DELETE(
 
         const { organizationId } = await params;
         const client = await clerkClient();
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: organizationId },
+            select: { householdId18: true },
+        });
+
+        if (!partner) {
+            return NextResponse.json(
+                { error: 'Organization partner record not found in Neon' },
+                { status: 404 }
+            );
+        }
 
         const memberships = await client.organizations.getOrganizationMembershipList({
             organizationId,
@@ -96,47 +107,45 @@ export async function DELETE(
             .map(membership => membership.publicUserData?.userId)
             .filter((id): id is string => Boolean(id));
 
+        const adminUsers = await prisma.user.findMany({
+            where: {
+                clerkId: { in: memberUserIds },
+                role: 'ADMIN',
+            },
+            select: { clerkId: true },
+        });
+
+        const adminUserIds = new Set(adminUsers.map(admin => admin.clerkId));
+
+        // Never delete the currently signed-in admin account or any admin accounts.
+        const clerkUserIdsToDelete = memberUserIds.filter(
+            id => id !== userId && !adminUserIds.has(id)
+        );
+
+        for (const clerkUserId of clerkUserIdsToDelete) {
+            await client.users.deleteUser(clerkUserId);
+        }
+
+        await client.organizations.deleteOrganization(organizationId);
+
         await prisma.$transaction(async tx => {
-            const partner = await tx.partner.findUnique({
-                where: { clerkOrganizationId: organizationId },
-                select: { householdId18: true },
-            });
-
-            if (!partner) {
-                return;
-            }
-
-            const adminUsers = await tx.user.findMany({
-                where: {
-                    clerkId: { in: memberUserIds },
-                    role: 'ADMIN',
-                },
-                select: { clerkId: true },
-            });
-
-            const adminUserIds = new Set(adminUsers.map(admin => admin.clerkId));
-
-            // Never delete the currently signed-in admin account or any admin accounts.
-            const clerkUserIdsToDelete = memberUserIds.filter(
-                id => id !== userId && !adminUserIds.has(id)
-            );
-
-            for (const clerkUserId of clerkUserIdsToDelete) {
-                await client.users.deleteUser(clerkUserId);
-            }
-
             await tx.user.deleteMany({
                 where: {
                     clerkId: { in: clerkUserIdsToDelete },
                 },
             });
 
-            await tx.partner.delete({
-                where: { householdId18: partner.householdId18 },
+            const deletedPartners = await tx.partner.deleteMany({
+                where: {
+                    clerkOrganizationId: organizationId,
+                    householdId18: partner.householdId18,
+                },
             });
-        });
 
-        await client.organizations.deleteOrganization(organizationId);
+            if (deletedPartners.count === 0) {
+                throw new Error('Failed to delete organization partner record from Neon');
+            }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

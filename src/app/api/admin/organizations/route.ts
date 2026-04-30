@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { Prisma } from '@prisma/client';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 
@@ -94,7 +95,9 @@ export async function POST(req: NextRequest) {
             householdId18?: string | null;
         };
 
-        if (!name) {
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
+
+        if (!trimmedName) {
             return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
         }
 
@@ -102,21 +105,58 @@ export async function POST(req: NextRequest) {
             typeof householdId18 === 'string' && householdId18.trim() ? householdId18.trim() : null;
         const syntheticHouseholdId18 = trimmedId ?? `pending-${randomUUID().replace(/-/g, '')}`;
 
-        const client = await clerkClient();
+        if (trimmedId) {
+            const existingPartner = await prisma.partner.findUnique({
+                where: { householdId18: trimmedId },
+                select: { organizationName: true },
+            });
+            if (existingPartner) {
+                return NextResponse.json(
+                    {
+                        error: `Household ID already exists for organization "${existingPartner.organizationName}"`,
+                    },
+                    { status: 409 }
+                );
+            }
+        }
 
+        const client = await clerkClient();
         const organization = await client.organizations.createOrganization({
-            name,
+            name: trimmedName,
             createdBy: userId,
             publicMetadata: trimmedId ? { householdId18: trimmedId } : {},
         });
 
-        await prisma.partner.create({
-            data: {
-                householdId18: syntheticHouseholdId18,
-                organizationName: name,
-                clerkOrganizationId: organization.id,
-            },
-        });
+        try {
+            await prisma.partner.create({
+                data: {
+                    householdId18: syntheticHouseholdId18,
+                    organizationName: trimmedName,
+                    clerkOrganizationId: organization.id,
+                },
+            });
+        } catch (dbError) {
+            try {
+                await client.organizations.deleteOrganization(organization.id);
+            } catch (rollbackError) {
+                console.error(
+                    `Failed to rollback Clerk organization ${organization.id} after DB error:`,
+                    rollbackError
+                );
+            }
+
+            if (
+                dbError instanceof Prisma.PrismaClientKnownRequestError &&
+                dbError.code === 'P2002'
+            ) {
+                return NextResponse.json(
+                    { error: 'Household ID or organization mapping already exists' },
+                    { status: 409 }
+                );
+            }
+
+            throw dbError;
+        }
 
         return NextResponse.json({
             organization: {
