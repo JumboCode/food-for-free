@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useRef, useState, useLayoutEffect } from 'react';
+import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export interface PoundsData {
@@ -60,6 +61,8 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
     const hasData = displayData.some(d => Number(d.pounds) > 0);
 
     const barCount = chartData.length;
+    const rangeStartMs = dateRange?.start?.getTime();
+    const rangeEndMs = dateRange?.end?.getTime();
     const minBarWidth = 48;
     const minChartWidth = Math.max(barCount * minBarWidth, 320);
     const needsScrolling = barCount > 8;
@@ -89,7 +92,14 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
     };
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const hasAutoScrolledToEndRef = useRef(false);
     const [chartWidth, setChartWidth] = useState(minChartWidth);
+    const [scrollUI, setScrollUI] = useState({
+        hasOverflow: false,
+        canScrollLeft: false,
+        canScrollRight: false,
+    });
 
     useLayoutEffect(() => {
         const el = containerRef.current;
@@ -102,6 +112,65 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
         setChartWidth(Math.max(el.getBoundingClientRect().width, minChartWidth));
         return () => ro.disconnect();
     }, [minChartWidth]);
+
+    const updateScrollUI = useCallback(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const hasOverflow = el.scrollWidth - el.clientWidth > 12;
+        const canScrollLeft = el.scrollLeft > 1;
+        const canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+        setScrollUI({ hasOverflow, canScrollLeft, canScrollRight });
+    }, []);
+
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+
+        const onScroll = () => {
+            updateScrollUI();
+        };
+
+        updateScrollUI();
+        el.addEventListener('scroll', onScroll, { passive: true });
+        const ro = new ResizeObserver(() => updateScrollUI());
+        ro.observe(el);
+
+        return () => {
+            el.removeEventListener('scroll', onScroll);
+            ro.disconnect();
+        };
+    }, [chartWidth, updateScrollUI]);
+
+    useEffect(() => {
+        hasAutoScrolledToEndRef.current = false;
+    }, [barCount, rangeStartMs, rangeEndMs]);
+
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el || hasAutoScrolledToEndRef.current) return;
+        const hasOverflow = el.scrollWidth - el.clientWidth > 1;
+        if (!hasOverflow || !needsScrolling) {
+            updateScrollUI();
+            return;
+        }
+        el.scrollLeft = el.scrollWidth;
+        hasAutoScrolledToEndRef.current = true;
+        updateScrollUI();
+    }, [chartWidth, needsScrolling, updateScrollUI]);
+
+    const scrollRight = () => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const step = Math.max(180, Math.round(el.clientWidth * 0.55));
+        el.scrollBy({ left: step, behavior: 'smooth' });
+    };
+
+    const scrollLeft = () => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const step = Math.max(180, Math.round(el.clientWidth * 0.55));
+        el.scrollBy({ left: -step, behavior: 'smooth' });
+    };
 
     const renderTooltip = (props: unknown) => {
         const { active, payload, label } = (props || {}) as {
@@ -135,7 +204,7 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
                             </p>
                         </div>
                     )}
-                    <div className="overflow-x-auto min-w-0">
+                    <div ref={scrollContainerRef} className="overflow-x-auto min-w-0">
                         <div style={{ width: chartWidth, minWidth: chartWidth }}>
                             <BarChart
                                 width={chartWidth}
@@ -175,6 +244,32 @@ export const PoundsByMonthChart: React.FC<PoundsByMonthChartProps> = ({
                             </BarChart>
                         </div>
                     </div>
+                    {needsScrolling && scrollUI.hasOverflow && scrollUI.canScrollLeft ? (
+                        <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-16 bg-linear-to-r from-white via-white/95 to-transparent" />
+                    ) : null}
+                    {needsScrolling && scrollUI.hasOverflow && scrollUI.canScrollRight ? (
+                        <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-16 bg-linear-to-l from-white via-white/95 to-transparent" />
+                    ) : null}
+                    {needsScrolling && scrollUI.canScrollLeft ? (
+                        <button
+                            type="button"
+                            onClick={scrollLeft}
+                            className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-[#B7D7BD] bg-white/95 p-1.5 text-gray-600 shadow-sm transition-colors hover:bg-[#F4FAF5] hover:text-[#3E6C49]"
+                            aria-label="Scroll chart left"
+                        >
+                            <ChevronLeft className="h-4 w-4" aria-hidden />
+                        </button>
+                    ) : null}
+                    {needsScrolling && scrollUI.canScrollRight ? (
+                        <button
+                            type="button"
+                            onClick={scrollRight}
+                            className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-[#B7D7BD] bg-white/95 p-1.5 text-gray-600 shadow-sm transition-colors hover:bg-[#F4FAF5] hover:text-[#3E6C49]"
+                            aria-label="Scroll chart right"
+                        >
+                            <ChevronRight className="h-4 w-4" aria-hidden />
+                        </button>
+                    ) : null}
                 </div>
             </CardContent>
         </Card>
