@@ -28,7 +28,7 @@ export async function GET(
             createdAt: Date;
         };
 
-        let users = await prisma.$queryRaw<OrganizationUserRow[]>`
+        const users = await prisma.$queryRaw<OrganizationUserRow[]>`
             SELECT DISTINCT
                 u."id",
                 u."clerkId",
@@ -42,22 +42,6 @@ export async function GET(
             WHERE p."clerkOrganizationId" = ${organizationId}
             ORDER BY u."createdAt" DESC
         `;
-
-        if (users.length === 0) {
-            users = await prisma.$queryRaw<OrganizationUserRow[]>`
-                SELECT
-                    u."id",
-                    u."clerkId",
-                    u."role"::text as "role",
-                    u."name",
-                    u."email",
-                    u."createdAt"
-                FROM "User" u
-                INNER JOIN "Partner" p ON p."householdId18" = u."partnerId"
-                WHERE p."clerkOrganizationId" = ${organizationId}
-                ORDER BY u."createdAt" DESC
-            `;
-        }
 
         const invitations = await client.organizations.getOrganizationInvitationList({
             organizationId,

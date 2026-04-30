@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { X, User, Mail, BarChart3 } from 'lucide-react';
 import { CautionDialogBody } from '@/components/ui/CautionDialogBody';
+import { InviteUserModal } from '@/components/admin/InviteUserModal';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 interface Organization {
@@ -71,8 +72,6 @@ export function OrganizationDetailModal({
     const [isLoading, setIsLoading] = useState(true);
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
     const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
-    const [newUserName, setNewUserName] = useState('');
-    const [newUserEmail, setNewUserEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
@@ -146,57 +145,13 @@ export function OrganizationDetailModal({
         setOrganizationNameDraft(organization.name);
     }, [organization.name]);
 
-    const handleAddUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-
-        if (!newUserEmail.trim()) {
-            setError('Email is required');
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newUserEmail)) {
-            setError('Please enter a valid email address');
-            return;
-        }
-
-        try {
-            setIsSubmitting(true);
-            const response = await fetch('/api/admin/invitations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: newUserEmail.trim(),
-                    name: newUserName.trim(),
-                    organizationId: organization.id,
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to invite user');
-            }
-
-            await fetchOrganizationUsers();
-            await onUpdate();
-            setIsAddUserModalOpen(false);
-            setNewUserName('');
-            setNewUserEmail('');
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Failed to invite user');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
     const handleResendInvitation = async (invId: string, email: string) => {
         setResendEmail(email);
         setShowInvitationSent(true);
         setTimeout(() => {
             setShowInvitationSent(false);
             setResendEmail(null);
-        }, 3000);
+        }, 4500);
 
         try {
             const response = await fetch(
@@ -409,7 +364,7 @@ export function OrganizationDetailModal({
                     </div>
                 ) : null}
 
-                {/* Users header + Add User Button */}
+                {/* Users header + Invite */}
                 <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:items-center sm:px-6 lg:px-8 lg:pt-5">
                     <div className="min-w-0 flex-1 pr-2">
                         <h3 className="text-sm font-semibold text-gray-800">
@@ -418,7 +373,7 @@ export function OrganizationDetailModal({
                         <p className="mt-1 text-xs text-gray-500">
                             {isDistributorOrg
                                 ? 'Invite and manage admins within Food For Free.'
-                                : 'Invite and manage people with access to this partner.'}
+                                : 'Use this section to manage access to this organization. Removing a user here ends their membership in this organization only.'}
                         </p>
                     </div>
                     <button
@@ -426,7 +381,7 @@ export function OrganizationDetailModal({
                         onClick={() => setIsAddUserModalOpen(true)}
                         className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4d7155]"
                     >
-                        {isDistributorOrg ? 'Add admin' : 'Add user'}
+                        {isDistributorOrg ? 'Invite admin' : 'Add user'}
                     </button>
                 </div>
 
@@ -455,7 +410,7 @@ export function OrganizationDetailModal({
                         </div>
                     ) : users.length === 0 ? (
                         <div className="px-4 py-10 text-center text-gray-500 sm:px-6 lg:px-8">
-                            No users yet. Invite someone to get started.
+                            <p>No users yet.</p>
                         </div>
                     ) : (
                         <table className="w-full min-w-[580px] table-fixed divide-y divide-gray-200">
@@ -474,7 +429,9 @@ export function OrganizationDetailModal({
                                         Status
                                     </th>
                                     <th className="w-[19%] py-3 pl-2 pr-4 text-left text-xs font-medium text-gray-700 sm:pl-3 sm:pr-6 sm:text-sm lg:pr-8">
-                                        Actions
+                                        <span title="Edit name, resend invite, or remove from this partner only">
+                                            Actions
+                                        </span>
                                     </th>
                                 </tr>
                             </thead>
@@ -543,6 +500,11 @@ export function OrganizationDetailModal({
                                                     {activeMenuUserId === user.id && (
                                                         <UserActionsMenu
                                                             triggerRef={menuTriggerRef}
+                                                            removeActionLabel={
+                                                                isDistributorOrg
+                                                                    ? 'Remove'
+                                                                    : 'Remove from this partner organization'
+                                                            }
                                                             onEdit={() => {
                                                                 startEditUser(user);
                                                                 setActiveMenuUserId(null);
@@ -588,7 +550,11 @@ export function OrganizationDetailModal({
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
                         <CautionDialogBody
-                            title="Delete User"
+                            title={
+                                isDistributorOrg
+                                    ? 'Remove admin'
+                                    : 'Remove from this partner organization'
+                            }
                             actions={
                                 <>
                                     <button
@@ -602,103 +568,37 @@ export function OrganizationDetailModal({
                                         className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
                                         style={{ backgroundColor: THEME_ORANGE }}
                                     >
-                                        Confirm
+                                        Remove
                                     </button>
                                 </>
                             }
                         >
-                            Are you sure you want to remove {deleteConfirmUser.name} from{' '}
-                            {organization.name}?
+                            <p className="text-sm text-gray-700">
+                                Remove <span className="font-medium">{deleteConfirmUser.name}</span>{' '}
+                                from <span className="font-medium">{organization.name}</span>? Other
+                                organization memberships for this user are unchanged.
+                            </p>
                         </CautionDialogBody>
                     </div>
                 </div>
             )}
 
-            {/* Add User Modal */}
-            {isAddUserModalOpen && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-60 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
-                        <div className="flex justify-between items-start px-6 pt-5 pb-3 border-b border-gray-100">
-                            <div>
-                                <h3 className="text-base font-semibold text-gray-900">
-                                    Add user to {organization.name}
-                                </h3>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    We&apos;ll email them an invitation to set up access.
-                                </p>
-                            </div>
-                            <User className="h-5 w-5 text-gray-400" />
-                        </div>
-
-                        <form onSubmit={handleAddUser} className="px-6 pb-6 pt-4">
-                            <div className="space-y-4">
-                                <div>
-                                    <input
-                                        type="text"
-                                        id="name"
-                                        value={newUserName}
-                                        onChange={e => setNewUserName(e.target.value)}
-                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
-                                        placeholder="Name (first and last)"
-                                        disabled={isSubmitting}
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        value={newUserEmail}
-                                        onChange={e => setNewUserEmail(e.target.value)}
-                                        className="w-full h-9 px-3 pr-10 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
-                                        placeholder="Email address"
-                                        disabled={isSubmitting}
-                                    />
-                                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                </div>
-                                {isDistributorPartnerOrgName(organization.name) && (
-                                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                                        <p className="text-xs text-amber-900">
-                                            Users invited to Food For Free are granted admin
-                                            privileges (including Admin Console access) after
-                                            accepting and signing in.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {error && (
-                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                        <p className="text-sm text-red-600">{error}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="mt-6 flex gap-3 justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsAddUserModalOpen(false);
-                                        setError(null);
-                                        setNewUserName('');
-                                        setNewUserEmail('');
-                                    }}
-                                    className="px-4 h-9 text-sm text-gray-700 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors"
-                                    disabled={isSubmitting}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 h-9 text-sm font-medium text-gray-800 rounded-lg border border-[#9fc5a9] hover:bg-[#9fc5a9]/80 disabled:opacity-50 transition-colors"
-                                    style={{ backgroundColor: THEME_GREEN }}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? 'Sending…' : 'Send invite'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <InviteUserModal
+                open={isAddUserModalOpen}
+                onClose={() => {
+                    setIsAddUserModalOpen(false);
+                    setError(null);
+                }}
+                onSuccess={async () => {
+                    await fetchOrganizationUsers();
+                    await onUpdate();
+                }}
+                anchorOrganization={
+                    isDistributorOrg ? null : { id: organization.id, name: organization.name }
+                }
+                lockedOrganizationId={isDistributorOrg ? organization.id : undefined}
+                lockedOrganizationName={isDistributorOrg ? organization.name : undefined}
+            />
 
             {/* Invitation Sent Modal */}
             {showInvitationSent && (
@@ -710,9 +610,10 @@ export function OrganizationDetailModal({
                             </h3>
                             <Mail className="h-5 w-5 text-[#608D6A]" />
                         </div>
-                        <p className="text-sm text-gray-600 mb-6">
-                            We sent a message to {resendEmail ?? (newUserEmail || 'the user')} with
-                            a link for them to join {organization.name}.
+                        <p className="mb-6 text-sm text-gray-600">
+                            A new invitation was sent to{' '}
+                            <span className="font-medium">{resendEmail ?? 'the recipient'}</span>{' '}
+                            for {organization.name}.
                         </p>
                         <button
                             onClick={() => setShowInvitationSent(false)}
@@ -790,19 +691,21 @@ const MENU_WIDTH = 192; // w-48
 const MENU_ITEM_HEIGHT = 40;
 const MENU_PADDING = 8;
 
-// User Actions Menu Component – renders in a portal below the trigger so it doesn't affect card layout
+// User actions menu: portal so it doesn't affect card layout
 function UserActionsMenu({
     triggerRef,
     onEdit,
     onResendInvitation,
     onDelete,
     onClose,
+    removeActionLabel = 'Remove',
 }: {
     triggerRef: React.RefObject<HTMLDivElement | null>;
     onEdit?: () => void;
     onResendInvitation?: () => void;
     onDelete?: () => void;
     onClose: () => void;
+    removeActionLabel?: string;
 }) {
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
@@ -845,7 +748,7 @@ function UserActionsMenu({
 
     const menu = (
         <div
-            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+            className="fixed min-w-48 max-w-[14rem] bg-white rounded-lg shadow-lg border border-gray-200 py-2"
             style={{ zIndex: 9999, top: position.top, left: position.left }}
             onClick={e => e.stopPropagation()}
             onMouseLeave={onClose}
@@ -863,7 +766,7 @@ function UserActionsMenu({
                     onClick={onDelete}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
-                    Delete
+                    {removeActionLabel}
                 </button>
             )}
             {onResendInvitation && (

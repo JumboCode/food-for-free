@@ -33,44 +33,19 @@ export async function GET() {
 
         const memberCountByOrgId = new Map<string, number>();
         if (clerkOrgIds.length > 0) {
-            try {
-                const membershipCounts = await prisma.$queryRaw<
-                    { clerkOrganizationId: string; membersCount: bigint | number }[]
-                >`
-                    SELECT
-                        p."clerkOrganizationId",
-                        COUNT(DISTINCT upm."userId") AS "membersCount"
-                    FROM "Partner" p
-                    LEFT JOIN "UserPartnerMembership" upm ON upm."partnerId" = p."householdId18"
-                    GROUP BY p."clerkOrganizationId"
-                `;
-                for (const row of membershipCounts) {
-                    if (clerkOrgIds.includes(row.clerkOrganizationId)) {
-                        memberCountByOrgId.set(
-                            row.clerkOrganizationId,
-                            Number(row.membersCount ?? 0)
-                        );
-                    }
-                }
-            } catch {
-                // Legacy fallback for environments that still use User.partnerId.
-                const legacyCounts = await prisma.$queryRaw<
-                    { clerkOrganizationId: string; membersCount: bigint | number }[]
-                >`
-                    SELECT
-                        p."clerkOrganizationId",
-                        COUNT(DISTINCT u."id") AS "membersCount"
-                    FROM "Partner" p
-                    LEFT JOIN "User" u ON u."partnerId" = p."householdId18"
-                    GROUP BY p."clerkOrganizationId"
-                `;
-                for (const row of legacyCounts) {
-                    if (clerkOrgIds.includes(row.clerkOrganizationId)) {
-                        memberCountByOrgId.set(
-                            row.clerkOrganizationId,
-                            Number(row.membersCount ?? 0)
-                        );
-                    }
+            const membershipCounts = await prisma.$queryRaw<
+                { clerkOrganizationId: string; membersCount: bigint | number }[]
+            >`
+                SELECT
+                    p."clerkOrganizationId",
+                    COUNT(DISTINCT upm."userId") AS "membersCount"
+                FROM "Partner" p
+                LEFT JOIN "UserPartnerMembership" upm ON upm."partnerId" = p."householdId18"
+                GROUP BY p."clerkOrganizationId"
+            `;
+            for (const row of membershipCounts) {
+                if (clerkOrgIds.includes(row.clerkOrganizationId)) {
+                    memberCountByOrgId.set(row.clerkOrganizationId, Number(row.membersCount ?? 0));
                 }
             }
         }

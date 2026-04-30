@@ -92,9 +92,11 @@ export function AddPartnerModal({
                 {/* Header */}
                 <div className="px-6 pt-5 pb-3 border-b border-gray-100 flex items-start justify-between">
                     <div>
-                        <h3 className="text-base font-semibold text-gray-900">Manage partners</h3>
+                        <h3 className="text-base font-semibold text-gray-900">
+                            Manage organizations
+                        </h3>
                         <p className="mt-1 text-xs text-gray-500">
-                            Create or delete partner organizations.
+                            Create or delete recipient partner organizations.
                         </p>
                     </div>
                     <button
@@ -166,7 +168,7 @@ export function AddPartnerModal({
                                     htmlFor="householdId18"
                                     className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5 uppercase tracking-wide"
                                 >
-                                    Salesforce household ID (optional)
+                                    Salesforce household ID (recommended)
                                     <span className="relative inline-flex group">
                                         <button
                                             type="button"
@@ -224,7 +226,7 @@ export function AddPartnerModal({
                     <div className="px-6 pb-6 pt-4">
                         <div className="space-y-3">
                             <label className="block text-xs font-medium text-gray-700 uppercase tracking-wide">
-                                Select partner to delete
+                                Select organization to delete
                             </label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -232,7 +234,7 @@ export function AddPartnerModal({
                                     type="text"
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    placeholder="Search partner name..."
+                                    placeholder="Search organization name…"
                                     className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] focus:border-[#B7D7BD]"
                                     disabled={isSubmitting}
                                 />
@@ -317,7 +319,7 @@ export function AddPartnerModal({
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-[#B7D7BD]">
                         <CautionDialogBody
-                            title="Delete Partner"
+                            title="Delete organization"
                             actions={
                                 <>
                                     <button
@@ -334,7 +336,7 @@ export function AddPartnerModal({
                                         className="px-4 py-2 text-sm font-medium rounded-lg border border-[#F3CBCB] bg-[#FFF5F5] text-[#B34747] hover:bg-[#FFECEC] disabled:opacity-50"
                                         disabled={isSubmitting}
                                     >
-                                        {isSubmitting ? 'Deleting…' : 'Delete partner and users'}
+                                        {isSubmitting ? 'Deleting…' : 'Delete organization'}
                                     </button>
                                 </>
                             }

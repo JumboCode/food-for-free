@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Settings2, ShieldCheck } from 'lucide-react';
+import { Building2, Mail, Search, Settings2, ShieldCheck, Users } from 'lucide-react';
 import { AddPartnerModal } from '@/components/ui/AddPartnerModal';
 import PartnerOrganizationTable from '@/components/PartnerOrganizationTable';
 import { OrganizationDetailModal } from '@/components/admin/OrganizationDetailModal';
+import { InviteUserModal } from '@/components/admin/InviteUserModal';
+import { AdminPeoplePanel } from '@/components/admin/AdminPeoplePanel';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 interface Organization {
@@ -17,6 +19,7 @@ interface Organization {
 }
 
 type OrganizationSortOrder = 'nameAsc' | 'nameDesc' | 'usersAsc' | 'usersDesc';
+type AdminMainTab = 'organizations' | 'people';
 
 function compareOrgName(a: string, b: string): number {
     return a.localeCompare(b, undefined, { sensitivity: 'base' });
@@ -42,6 +45,8 @@ const AdminConsolePage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [organizationSort, setOrganizationSort] = useState<OrganizationSortOrder>('nameAsc');
     const [isManagePartnerModalOpen, setIsManagePartnerModalOpen] = useState(false);
+    const [invitePartnerModalOpen, setInvitePartnerModalOpen] = useState(false);
+    const [mainTab, setMainTab] = useState<AdminMainTab>('organizations');
 
     useEffect(() => {
         fetchOrganizations();
@@ -119,7 +124,7 @@ const AdminConsolePage: React.FC = () => {
         }
     };
 
-    /** Receiving partners only — excludes the internal Food For Free Clerk org from the table and counts. */
+    /** Receiving partners only; drops the internal Food For Free Clerk org from the table and counts. */
     const partnerOrganizations = useMemo(
         () => organizations.filter(org => !isDistributorPartnerOrgName(org.name)),
         [organizations]
@@ -204,78 +209,129 @@ const AdminConsolePage: React.FC = () => {
                     ) : null}
                 </div>
 
-                {/* Partner Organizations Section — spaced below page title via parent space-y */}
-                <section className="min-w-0 space-y-4">
-                    <div className="min-w-0 space-y-1 sm:mt-4">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-800">
-                            Partner organizations
-                        </h2>
-                        <p className="text-xs text-gray-500">
-                            View and edit organizations connected to Food For Free.
-                        </p>
-                    </div>
-
-                    {/* Search + manage */}
-                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                        <div className="relative min-w-0 flex-1 md:min-w-[200px]">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search by name…"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white pl-9 pr-[6.75rem] text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] sm:pr-[8.25rem]"
-                                autoComplete="off"
-                            />
-                            <span
-                                className="pointer-events-none absolute right-2.5 top-1/2 max-w-[45%] -translate-y-1/2 truncate text-right text-[11px] leading-none text-gray-400 tabular-nums sm:right-3 sm:max-w-[40%] sm:text-xs"
-                                title={
-                                    searchActive
-                                        ? `${filteredOrganizations.length} matching of ${partnerOrganizations.length} partner organizations`
-                                        : `${partnerOrganizations.length} partner organizations`
-                                }
-                            >
-                                {partnerCountHint} {partnerCountHint === 1 ? 'partner' : 'partners'}
-                            </span>
-                        </div>
+                <div className="sm:mt-2">
+                    <div
+                        className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1"
+                        role="tablist"
+                        aria-label="Admin sections"
+                    >
                         <button
                             type="button"
-                            onClick={() => setIsManagePartnerModalOpen(true)}
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4d7155] sm:w-auto sm:shrink-0"
+                            role="tab"
+                            aria-selected={mainTab === 'organizations'}
+                            onClick={() => setMainTab('organizations')}
+                            className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
+                                mainTab === 'organizations'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
                         >
-                            <Settings2 className="h-4 w-4 shrink-0" />
-                            Manage partners
+                            <Building2 className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                            Organizations
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={mainTab === 'people'}
+                            onClick={() => setMainTab('people')}
+                            className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
+                                mainTab === 'people'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <Users className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                            People
                         </button>
                     </div>
+                </div>
 
-                    {/* Partner Organizations Table */}
-                    <div className="mt-2 overflow-x-auto rounded-xl border border-[#B7D7BD] bg-white shadow-sm">
-                        {isLoading ? (
-                            <div className="p-8 text-center text-gray-500 text-sm">
-                                Loading organizations…
-                            </div>
-                        ) : sortedFilteredOrganizations.length > 0 ? (
-                            <div className="p-4 sm:p-6">
-                                <PartnerOrganizationTable
-                                    data={tableData}
-                                    nameSort={nameSortActive ? nameSortDir : 'asc'}
-                                    nameSortActive={nameSortActive}
-                                    onNameSortToggle={toggleNameSort}
-                                    usersSort={usersSortActive ? usersSortDir : 'asc'}
-                                    usersSortActive={usersSortActive}
-                                    onUsersSortToggle={toggleUsersSort}
+                {mainTab === 'organizations' ? (
+                    <section className="min-w-0 space-y-4">
+                        <div className="min-w-0 space-y-1">
+                            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-800">
+                                Partner organizations
+                            </h2>
+                            <p className="text-xs text-gray-500">
+                                Search partner organizations by name. Use Invite user to send
+                                invitations for one or more organizations together. Open an
+                                organization to view or update its member list.
+                            </p>
+                        </div>
+
+                        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                            <div className="relative min-w-0 flex-1 md:min-w-[200px]">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name…"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white pl-9 pr-[6.75rem] text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#B7D7BD] focus:outline-none focus:ring-2 focus:ring-[#B7D7BD] sm:pr-[8.25rem]"
+                                    autoComplete="off"
                                 />
+                                <span
+                                    className="pointer-events-none absolute right-2.5 top-1/2 max-w-[45%] -translate-y-1/2 truncate text-right text-[11px] leading-none text-gray-400 tabular-nums sm:right-3 sm:max-w-[40%] sm:text-xs"
+                                    title={
+                                        searchActive
+                                            ? `${filteredOrganizations.length} matching of ${partnerOrganizations.length} organizations`
+                                            : `${partnerOrganizations.length} organizations`
+                                    }
+                                >
+                                    {partnerCountHint}{' '}
+                                    {partnerCountHint === 1 ? 'organization' : 'organizations'}
+                                </span>
                             </div>
-                        ) : (
-                            <div className="p-8 text-center text-gray-400 text-sm">
-                                No organizations match your search.
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setInvitePartnerModalOpen(true)}
+                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#9fc5a9] bg-[#B7D7BD] px-4 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-[#a7c7ad] sm:w-auto"
+                                >
+                                    <Mail className="h-4 w-4 shrink-0" aria-hidden />
+                                    Invite user
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsManagePartnerModalOpen(true)}
+                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#608D6A] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4d7155] sm:w-auto"
+                                >
+                                    <Settings2 className="h-4 w-4 shrink-0" />
+                                    Manage organizations
+                                </button>
                             </div>
-                        )}
-                    </div>
-                </section>
+                        </div>
+
+                        <div className="mt-2 overflow-x-auto rounded-xl border border-[#B7D7BD] bg-white shadow-sm">
+                            {isLoading ? (
+                                <div className="p-8 text-center text-gray-500 text-sm">
+                                    Loading organizations…
+                                </div>
+                            ) : sortedFilteredOrganizations.length > 0 ? (
+                                <div className="p-4 sm:p-6">
+                                    <PartnerOrganizationTable
+                                        data={tableData}
+                                        nameSort={nameSortActive ? nameSortDir : 'asc'}
+                                        nameSortActive={nameSortActive}
+                                        onNameSortToggle={toggleNameSort}
+                                        usersSort={usersSortActive ? usersSortDir : 'asc'}
+                                        usersSortActive={usersSortActive}
+                                        onUsersSortToggle={toggleUsersSort}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="p-8 text-center text-gray-400 text-sm">
+                                    No organizations match your search.
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                ) : (
+                    <AdminPeoplePanel />
+                )}
             </div>
 
-            {/* Manage Partners Modal */}
+            {/* Manage organizations modal */}
             {isManagePartnerModalOpen && (
                 <AddPartnerModal
                     organizations={sortedOrganizationsForModal.map(org => ({
@@ -297,6 +353,13 @@ const AdminConsolePage: React.FC = () => {
                     onUpdate={fetchOrganizations}
                 />
             )}
+
+            <InviteUserModal
+                open={invitePartnerModalOpen}
+                onClose={() => setInvitePartnerModalOpen(false)}
+                onSuccess={fetchOrganizations}
+                initialSelectedOrgIds={[]}
+            />
         </div>
     );
 };

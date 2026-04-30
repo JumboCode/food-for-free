@@ -9,12 +9,11 @@ export type UserPartnerContext = {
 };
 
 /**
- * Load partner memberships for a user in a schema-compatible way.
- * Supports both current membership join table and legacy User.partner relation.
+ * Load partner memberships for a user via `UserPartnerMembership`.
  */
 export async function getUserPartnerContexts(clerkId: string): Promise<UserPartnerContext[]> {
     try {
-        const memberships = await prisma.$queryRaw<UserPartnerContext[]>`
+        return await prisma.$queryRaw<UserPartnerContext[]>`
             SELECT
                 p."householdId18",
                 p."organizationName",
@@ -25,23 +24,6 @@ export async function getUserPartnerContexts(clerkId: string): Promise<UserPartn
             WHERE u."clerkId" = ${clerkId}
             ORDER BY upm."createdAt" ASC
         `;
-        if (memberships.length > 0) return memberships;
-    } catch {
-        // Ignore and fall back to legacy single-partner shape.
-    }
-
-    try {
-        const legacy = await prisma.$queryRaw<UserPartnerContext[]>`
-            SELECT
-                p."householdId18",
-                p."organizationName",
-                p."clerkOrganizationId"
-            FROM "User" u
-            INNER JOIN "Partner" p ON p."householdId18" = u."partnerId"
-            WHERE u."clerkId" = ${clerkId}
-            LIMIT 1
-        `;
-        return legacy;
     } catch {
         return [];
     }

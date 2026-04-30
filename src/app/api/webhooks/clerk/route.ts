@@ -4,6 +4,7 @@ import { clerkClient, WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '~/lib/prisma';
 import { syncUserPartnerFromClerkOrgMemberships } from '~/lib/syncUserPartnerFromClerk';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
+import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -306,6 +307,7 @@ export async function POST(req: Request) {
                             },
                         });
                     }
+                    await syncNeonUserRoleFromClerkOrgs(userId);
                 }
             }
         }

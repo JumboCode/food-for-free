@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
 
 export async function PATCH(
     req: NextRequest,
@@ -71,7 +72,7 @@ export async function DELETE(
 
         const client = await clerkClient();
 
-        // Remove from Clerk org — ignore 404 if they're not an active member
+        // Remove from this organization only (user may still belong to other orgs).
         try {
             await client.organizations.deleteOrganizationMembership({
                 organizationId,
@@ -82,16 +83,21 @@ export async function DELETE(
             if (status !== 404) throw clerkErr;
         }
 
-        // Delete Clerk account as requested. Ignore 404 if already removed.
-        try {
-            await client.users.deleteUser(user.clerkId);
-        } catch (clerkErr) {
-            const status = (clerkErr as { status?: number }).status;
-            if (status !== 404) throw clerkErr;
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: organizationId },
+            select: { householdId18: true },
+        });
+
+        if (partner) {
+            await prisma.userPartnerMembership.deleteMany({
+                where: {
+                    userId: user.id,
+                    partnerId: partner.householdId18,
+                },
+            });
         }
 
-        // Remove Neon user row after Clerk deletion
-        await prisma.user.delete({ where: { id: memberId } });
+        await syncNeonUserRoleFromClerkOrgs(user.clerkId);
 
         return NextResponse.json({ success: true });
     } catch (error) {
