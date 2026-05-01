@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 import { Prisma, Role } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
+import { ensureDbAdminsInOrganization } from '~/lib/syncDbAdminsToClerkOrgs';
 
 function extractClerkErrorMessage(error: unknown): string | null {
     if (!error || typeof error !== 'object') return null;
@@ -47,6 +48,10 @@ async function createInvitationForOrganization(opts: {
             organizationId: targetOrganizationId,
         });
         const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
+
+        // Keep DB admins present in every partner org so Clerk invitation calls don't
+        // get blocked by "current user is not a member".
+        await ensureDbAdminsInOrganization(targetOrganizationId, 'org:member');
 
         const normalizedEmail = emailRaw.trim().toLowerCase();
         if (!isDistributorPartnerOrgName(org.name)) {

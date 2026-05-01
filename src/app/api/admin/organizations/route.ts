@@ -4,6 +4,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { Prisma } from '@prisma/client';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { ensureDbAdminsInOrganization } from '~/lib/syncDbAdminsToClerkOrgs';
 
 // GET - List all organizations
 export async function GET() {
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest) {
                     clerkOrganizationId: organization.id,
                 },
             });
+            await ensureDbAdminsInOrganization(organization.id, 'org:member');
         } catch (dbError) {
             try {
                 await client.organizations.deleteOrganization(organization.id);
