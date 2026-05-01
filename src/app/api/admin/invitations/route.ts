@@ -5,6 +5,25 @@ import { Prisma, Role } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
+function extractClerkErrorMessage(error: unknown): string | null {
+    if (!error || typeof error !== 'object') return null;
+    const obj = error as {
+        message?: unknown;
+        errors?: Array<{ message?: unknown; longMessage?: unknown; code?: unknown }>;
+    };
+    if (typeof obj.message === 'string' && obj.message.trim()) return obj.message.trim();
+    if (Array.isArray(obj.errors) && obj.errors.length > 0) {
+        const first = obj.errors[0];
+        const longMessage = typeof first.longMessage === 'string' ? first.longMessage.trim() : '';
+        if (longMessage) return longMessage;
+        const message = typeof first.message === 'string' ? first.message.trim() : '';
+        if (message) return message;
+        const code = typeof first.code === 'string' ? first.code.trim() : '';
+        if (code) return `Clerk error: ${code}`;
+    }
+    return null;
+}
+
 async function createInvitationForOrganization(opts: {
     client: Awaited<ReturnType<typeof clerkClient>>;
     inviterUserId: string;
@@ -114,6 +133,10 @@ async function createInvitationForOrganization(opts: {
                 ok: false,
                 error: 'Organization mapping conflict detected. Check Household ID mapping for this organization.',
             };
+        }
+        const clerkMsg = extractClerkErrorMessage(error);
+        if (clerkMsg) {
+            return { ok: false, error: clerkMsg };
         }
         if (error instanceof Error) {
             const msg = error.message.toLowerCase();
@@ -253,6 +276,10 @@ export async function POST(req: NextRequest) {
                 { error: 'Organization mapping conflict detected. Check Household ID mapping.' },
                 { status: 409 }
             );
+        }
+        const clerkMsg = extractClerkErrorMessage(error);
+        if (clerkMsg) {
+            return NextResponse.json({ error: clerkMsg }, { status: 400 });
         }
 
         return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 });
