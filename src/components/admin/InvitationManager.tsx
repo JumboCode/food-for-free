@@ -32,9 +32,7 @@ export default function InvitationManager() {
             if (res.ok) {
                 setInvitations(data.invitations || []);
             }
-        } catch (err) {
-            console.error('Error fetching invitations:', err);
-        }
+        } catch (err) {}
     };
 
     const handleSendInvitation = async (e: React.FormEvent) => {
@@ -74,7 +72,6 @@ export default function InvitationManager() {
             }
         } catch (err) {
             setError('Failed to send invitation');
-            console.error(err);
         } finally {
             setLoading(false);
         }

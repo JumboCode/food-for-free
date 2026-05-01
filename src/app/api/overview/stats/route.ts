@@ -348,7 +348,6 @@ export async function GET(request: NextRequest) {
             justEatsTotalDeliveries: Number(justEats.justEatsTotalDeliveries ?? 0),
         });
     } catch (err: unknown) {
-        console.error('Overview stats error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load overview stats' },
             { status: 500 }

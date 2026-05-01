@@ -263,7 +263,6 @@ export async function GET() {
             partnerDashboard: false,
         });
     } catch (err: unknown) {
-        console.error('Overview partners error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load partners' },
             { status: 500 }

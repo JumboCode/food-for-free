@@ -20,7 +20,6 @@ export async function GET() {
             partnerHouseholdId18: user.partner?.householdId18 ?? null,
         });
     } catch (error) {
-        console.error('GET /api/user/context:', error);
         return NextResponse.json({ error: 'Failed to load context' }, { status: 500 });
     }
 }

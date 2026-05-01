@@ -345,7 +345,6 @@ function DistributionContent() {
                 setAvailableProductTypes([...all]);
             } catch (err) {
                 if (err instanceof Error && err.name === 'AbortError') return;
-                console.error(err);
             }
         }
         void fetchFilterOptions();
@@ -389,7 +388,6 @@ function DistributionContent() {
                 setData([...deduped.values()]);
             } catch (err) {
                 if (err instanceof Error && err.name === 'AbortError') return;
-                console.error(err);
             } finally {
                 if (!ac.signal.aborted) setLoading(false);
             }
@@ -742,7 +740,6 @@ function DistributionContent() {
             });
             doc.save(`${exportFilenameBase}.pdf`);
         } catch (err: unknown) {
-            console.error('Export error:', err);
             alert(err instanceof Error ? err.message : 'Export failed');
         } finally {
             setExporting(false);
@@ -770,7 +767,6 @@ function DistributionContent() {
                 setFoodTypeColorLookup(foodTypeColorLookupFromComposition(list));
             } catch (err) {
                 if (err instanceof Error && err.name === 'AbortError') return;
-                console.error(err);
             }
         }
         void fetchCompositionColors();

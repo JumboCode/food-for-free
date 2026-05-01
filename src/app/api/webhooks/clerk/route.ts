@@ -167,7 +167,6 @@ export async function POST(req: Request) {
             'svix-signature': svix_signature,
         }) as WebhookEvent;
     } catch (err) {
-        console.error('Webhook verification failed:', err);
         return new Response('Invalid signature', { status: 400 });
     }
 
@@ -214,7 +213,6 @@ export async function POST(req: Request) {
             const d = evt.data as { id?: string };
             const deletedClerkUserId = d.id;
             if (!deletedClerkUserId) {
-                console.error('user.deleted: missing id', JSON.stringify(d));
             } else {
                 await prisma.user.deleteMany({
                     where: { clerkId: deletedClerkUserId },
@@ -232,18 +230,8 @@ export async function POST(req: Request) {
             const userId = d.user_id;
             const organizationId = d.organization_id;
             const invitedEmail = normalizeEmail(d.email_address);
-            if (!userId || !organizationId) {
-                console.error(
-                    'organizationInvitation.accepted: missing user_id or organization_id',
-                    JSON.stringify(d)
-                );
-            } else {
-                if (!invitedEmail) {
-                    console.error(
-                        'organizationInvitation.accepted: missing invited email address',
-                        JSON.stringify(d)
-                    );
-                } else {
+            if (userId && organizationId) {
+                if (invitedEmail) {
                     const hasInviteEmail = await userHasVerifiedEmail(userId, invitedEmail);
                     if (!hasInviteEmail) {
                         await rollbackMembershipForEmailMismatch(userId, organizationId);
@@ -268,7 +256,6 @@ export async function POST(req: Request) {
             const userId = public_user_data?.user_id;
 
             if (!userId || !organization?.id) {
-                console.error('organizationMembership.created: missing userId or organization');
                 return new Response('Missing data', { status: 400 });
             }
 
@@ -339,7 +326,6 @@ export async function POST(req: Request) {
             }
         }
     } catch (err) {
-        console.error(`Clerk webhook handler error (${eventType}):`, err);
         return new Response('Handler error', { status: 500 });
     }
 

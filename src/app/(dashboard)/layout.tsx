@@ -23,9 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 shouldShowOrgChooser = true;
             }
         }
-    } catch (err) {
-        console.error('[dashboard layout] viewer context failed', err);
-    }
+    } catch (err) {}
     return (
         <FilterProvider>
             <ViewerProvider

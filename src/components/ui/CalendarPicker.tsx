@@ -59,6 +59,12 @@ export function MyCalendar({
 
     const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(initialRange);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [supportsNativeDialog, setSupportsNativeDialog] = useState(true);
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+        setSupportsNativeDialog(Boolean(dialog && typeof dialog.showModal === 'function'));
+    }, []);
 
     // Sync internal state when external range changes (e.g., from quick filters)
     useEffect(() => {
@@ -72,12 +78,15 @@ export function MyCalendar({
 
     const toggleDialog = () => {
         const dialog = dialogRef.current;
-        if (!dialog) return;
         if (isDialogOpen) {
-            dialog.close();
+            if (dialog?.open && supportsNativeDialog) {
+                dialog.close();
+            }
             setIsDialogOpen(false);
         } else {
-            dialog.showModal();
+            if (dialog && supportsNativeDialog) {
+                dialog.showModal();
+            }
             setIsDialogOpen(true);
         }
     };
@@ -219,7 +228,7 @@ export function MyCalendar({
                 ref={dialogRef}
                 id={dialogId}
                 onClick={e => {
-                    if (e.target === e.currentTarget) toggleDialog();
+                    if (e.target === e.currentTarget && supportsNativeDialog) toggleDialog();
                 }}
                 className="fixed left-1/2 top-1/2 w-full max-w-[min(95vw,44rem)] -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent p-0 backdrop:bg-black/30"
             >
@@ -306,6 +315,98 @@ export function MyCalendar({
                     </div>
                 </div>
             </dialog>
+
+            {!supportsNativeDialog && isDialogOpen ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3 sm:p-4"
+                    onClick={e => {
+                        if (e.target === e.currentTarget) toggleDialog();
+                    }}
+                >
+                    <div className="calendar-picker-compact max-h-[90vh] w-full max-w-[min(95vw,44rem)] overflow-auto rounded-xl border border-slate-100 bg-white p-3 shadow-2xl sm:p-4">
+                        <div className="mb-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Custom date range
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
+                                    Period start
+                                </p>
+                                <DayPicker
+                                    mode="single"
+                                    month={leftMonth}
+                                    onMonthChange={month => setLeftMonth(normalizeMonth(month))}
+                                    selected={selectedRange?.from}
+                                    onSelect={handleLeftSelect}
+                                    captionLayout="dropdown"
+                                    startMonth={startMonth}
+                                    endMonth={endMonth}
+                                    disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
+                                    modifiers={{ inRange: isInRange }}
+                                    modifiersStyles={{
+                                        inRange: { backgroundColor: 'var(--fff-orange-soft)' },
+                                    }}
+                                    className="text-slate-900"
+                                />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1 text-center">
+                                    Period end
+                                </p>
+                                <DayPicker
+                                    mode="single"
+                                    month={rightMonth}
+                                    onMonthChange={month => setRightMonth(normalizeMonth(month))}
+                                    selected={selectedRange?.to}
+                                    onSelect={handleRightSelect}
+                                    captionLayout="dropdown"
+                                    startMonth={startMonth}
+                                    endMonth={endMonth}
+                                    disabled={{ before: MIN_FILTER_DATE, after: todayStart }}
+                                    modifiers={{ inRange: isInRange }}
+                                    modifiersStyles={{
+                                        inRange: { backgroundColor: 'var(--fff-orange-soft)' },
+                                    }}
+                                    className="text-slate-900"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-xs text-slate-500">
+                                {selectedRange?.from && selectedRange?.to ? (
+                                    <span>
+                                        {format(selectedRange.from, 'MMM d, yyyy')} -{' '}
+                                        {format(selectedRange.to, 'MMM d, yyyy')}
+                                    </span>
+                                ) : (
+                                    <span>Select a period start and end date.</span>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleClear}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                >
+                                    Reset
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDone}
+                                    className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-black hover:opacity-90 transition-opacity"
+                                    style={{ backgroundColor: themeAccent }}
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }

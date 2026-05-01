@@ -68,8 +68,6 @@ export async function GET() {
             total: organizationsResponse.totalCount,
         });
     } catch (error) {
-        console.error('Error fetching organizations:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }
@@ -138,12 +136,7 @@ export async function POST(req: NextRequest) {
         } catch (dbError) {
             try {
                 await client.organizations.deleteOrganization(organization.id);
-            } catch (rollbackError) {
-                console.error(
-                    `Failed to rollback Clerk organization ${organization.id} after DB error:`,
-                    rollbackError
-                );
-            }
+            } catch {}
 
             if (
                 dbError instanceof Prisma.PrismaClientKnownRequestError &&
@@ -168,8 +161,6 @@ export async function POST(req: NextRequest) {
             },
         });
     } catch (error) {
-        console.error('Error creating organization:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

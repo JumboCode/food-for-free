@@ -33,8 +33,6 @@ export async function PATCH(
 
         return NextResponse.json({ user: updated });
     } catch (error) {
-        console.error('Error updating member:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }
@@ -101,8 +99,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error removing member:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

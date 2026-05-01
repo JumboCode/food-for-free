@@ -229,7 +229,6 @@ export async function GET(request: NextRequest) {
             })),
         });
     } catch (err: unknown) {
-        console.error('Delivery detail error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load delivery detail' },
             { status: 500 }

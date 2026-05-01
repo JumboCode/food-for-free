@@ -132,7 +132,6 @@ export function OrganizationDetailModal({
 
             setUsers([...activeUsers, ...invitedUsers]);
         } catch (error) {
-            console.error('Error fetching organization users:', error);
             setUsers([]);
         } finally {
             setIsLoading(false);
@@ -166,9 +165,7 @@ export function OrganizationDetailModal({
             );
             if (!response.ok) throw new Error('Failed to resend invitation');
             await fetchOrganizationUsers();
-        } catch (error) {
-            console.error('Error resending invitation:', error);
-        }
+        } catch (error) {}
     };
 
     const startEditUser = (user: User) => {
@@ -311,7 +308,6 @@ export function OrganizationDetailModal({
             await fetchOrganizationUsers();
             await onUpdate();
         } catch (error) {
-            console.error('Error deleting user:', error);
             setError(error instanceof Error ? error.message : 'Failed to remove user');
         }
     };

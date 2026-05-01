@@ -18,7 +18,7 @@ interface SideNavBarProps {
     items?: NavItem[];
     /**
      * When provided (e.g. from server layout), Admin visibility is known on first paint.
-     * When omitted, falls back to /api/user/context (e.g. sticker-sheet preview).
+     * When omitted, falls back to /api/user/context.
      */
     isAdmin?: boolean;
 }

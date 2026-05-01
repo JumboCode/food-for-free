@@ -93,7 +93,6 @@ export async function isAdmin(userIdOverride?: string | null): Promise<boolean> 
         }
         return true;
     } catch (error) {
-        console.error('[isAdmin] fallback membership check failed', error);
         return false;
     }
 }

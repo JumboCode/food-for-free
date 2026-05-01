@@ -61,8 +61,6 @@ export async function PATCH(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error updating organization:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }
@@ -149,8 +147,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting organization:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

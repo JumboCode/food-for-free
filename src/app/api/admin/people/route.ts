@@ -173,7 +173,6 @@ export async function GET() {
 
         return NextResponse.json({ people });
     } catch (error) {
-        console.error('admin/people GET:', error);
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

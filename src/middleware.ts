@@ -6,7 +6,6 @@ import { CLERK_SIGN_IN_PATH, CLERK_SIGN_UP_PATH } from '@/lib/clerkAuthPaths';
 const isProtectedRoute = createRouteMatcher([
     '/overview(.*)',
     '/distribution(.*)',
-    '/sticker-sheet(.*)',
     '/admin(.*)',
     '/api/((?!webhooks/clerk).*)',
 ]);

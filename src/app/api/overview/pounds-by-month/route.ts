@@ -396,7 +396,6 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(chartData);
     } catch (err: unknown) {
-        console.error('Pounds-by-month error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load pounds by month' },
             { status: 500 }

@@ -223,7 +223,6 @@ export async function GET(request: NextRequest) {
             processing,
         });
     } catch (err: unknown) {
-        console.error('Overview food-types error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load food types' },
             { status: 500 }

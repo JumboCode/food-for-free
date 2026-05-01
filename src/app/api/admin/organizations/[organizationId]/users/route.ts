@@ -77,8 +77,6 @@ export async function GET(
             })),
         });
     } catch (error) {
-        console.error('Error fetching organization users:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

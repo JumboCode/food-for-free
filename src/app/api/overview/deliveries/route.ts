@@ -462,7 +462,6 @@ export async function GET(request: NextRequest) {
             })),
         });
     } catch (err: unknown) {
-        console.error('Overview deliveries error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load deliveries' },
             { status: 500 }

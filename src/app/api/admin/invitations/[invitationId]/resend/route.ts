@@ -56,8 +56,6 @@ export async function POST(
             },
         });
     } catch (error) {
-        console.error('Error resending invitation:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

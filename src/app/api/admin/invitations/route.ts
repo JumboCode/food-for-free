@@ -220,8 +220,6 @@ export async function POST(req: NextRequest) {
             invitation: invitations[0],
         });
     } catch (error) {
-        console.error('Error creating invitation:', error);
-
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }

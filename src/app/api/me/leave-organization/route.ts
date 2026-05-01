@@ -58,7 +58,6 @@ export async function POST(_req: NextRequest) {
             suggestedActiveOrganizationId,
         });
     } catch (err) {
-        console.error('leave-organization:', err);
         return NextResponse.json({ error: 'Failed to leave organization' }, { status: 500 });
     }
 }

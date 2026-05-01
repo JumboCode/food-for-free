@@ -95,7 +95,6 @@ export async function GET(req: NextRequest) {
             ),
         });
     } catch (err: unknown) {
-        console.error('Distribution filter-options error:', err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : 'Failed to load filter options' },
             { status: 500 }

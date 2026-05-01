@@ -68,7 +68,6 @@ const AdminConsolePage: React.FC = () => {
                 prev ? (nextOrganizations.find(org => org.id === prev.id) ?? null) : prev
             );
         } catch (error) {
-            console.error('Error fetching organizations:', error);
             setOrganizations([]);
         } finally {
             setIsLoading(false);
@@ -92,7 +91,6 @@ const AdminConsolePage: React.FC = () => {
             await fetchOrganizations(); // Refresh the list
             setIsManagePartnerModalOpen(false); // Close modal
         } catch (error) {
-            console.error('Error creating organization:', error);
             throw error;
         }
     };
