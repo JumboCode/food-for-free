@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { hasOrganizationInvitationHandshake } from '@/lib/clerkOrganizationInvitation';
 import { CLERK_SIGN_IN_PATH, CLERK_SIGN_UP_PATH } from '@/lib/clerkAuthPaths';
 
 // Define protected routes
@@ -16,7 +17,8 @@ export default clerkMiddleware(
     async (auth, req) => {
         const { userId } = await auth();
 
-        if (isAuthRoute(req) && userId) {
+        // Allow returning users to finish org invitations (__clerk_ticket) without bouncing to Overview.
+        if (isAuthRoute(req) && userId && !hasOrganizationInvitationHandshake(req)) {
             return NextResponse.redirect(new URL('/overview', req.url));
         }
 

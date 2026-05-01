@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 import { Prisma, Role } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
+import { CLERK_SIGN_IN_PATH } from '@/lib/clerkAuthPaths';
 
 function extractClerkErrorMessage(error: unknown): string | null {
     if (!error || typeof error !== 'object') return null;
@@ -231,7 +232,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const invitationRedirectUrl = new URL('/sign-up', req.nextUrl.origin).toString();
+        const invitationRedirectUrl = new URL(CLERK_SIGN_IN_PATH, req.nextUrl.origin).toString();
 
         const invitations: {
             id: string;

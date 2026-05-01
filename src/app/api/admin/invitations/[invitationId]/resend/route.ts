@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
+import { CLERK_SIGN_IN_PATH } from '@/lib/clerkAuthPaths';
 
 export async function POST(
     req: NextRequest,
@@ -17,7 +18,7 @@ export async function POST(
 
         const { invitationId } = await params;
         const organizationId = req.nextUrl.searchParams.get('organizationId') ?? '';
-        const invitationRedirectUrl = new URL('/sign-up', req.nextUrl.origin).toString();
+        const invitationRedirectUrl = new URL(CLERK_SIGN_IN_PATH, req.nextUrl.origin).toString();
         const client = await clerkClient();
 
         if (!organizationId) {

@@ -182,6 +182,16 @@ const OverviewPageContent: React.FC = () => {
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
     const selectedPartner = selectedPartners[0] ?? null;
     const multipleSelected = selectedPartners.length > 1;
+    const nonAdminPrimaryOrgName = useMemo(() => {
+        if (isAdmin) return null;
+        const selectedName = selectedPartner?.name?.trim();
+        if (selectedName) return selectedName;
+        if (partnerOrganizations.length === 1) {
+            const singleName = partnerOrganizations[0]?.name?.trim();
+            if (singleName) return singleName;
+        }
+        return null;
+    }, [isAdmin, selectedPartner, partnerOrganizations]);
 
     const fetchOverviewData = useCallback(async () => {
         const start = formatDateParam(dateRange.start);
@@ -421,11 +431,11 @@ const OverviewPageContent: React.FC = () => {
                                     </div>
                                 ) : null}
                             </div>
-                        ) : !isAdmin && selectedPartner?.name ? (
+                        ) : !isAdmin && nonAdminPrimaryOrgName ? (
                             <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
                                 Welcome! Here&apos;s your dashboard for{' '}
                                 <span className="font-medium text-gray-900">
-                                    {selectedPartner.name}
+                                    {nonAdminPrimaryOrgName}
                                 </span>
                                 .
                             </p>
