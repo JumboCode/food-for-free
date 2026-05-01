@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export async function GET(
     _req: NextRequest,
@@ -18,6 +19,11 @@ export async function GET(
 
         const { organizationId } = await params;
         const client = await clerkClient();
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: organizationId },
+            select: { organizationName: true },
+        });
+        const isDistributorOrg = isDistributorPartnerOrgName(partner?.organizationName);
 
         type OrganizationUserRow = {
             id: string;
@@ -40,8 +46,45 @@ export async function GET(
             INNER JOIN "UserPartnerMembership" upm ON upm."userId" = u."id"
             INNER JOIN "Partner" p ON p."householdId18" = upm."partnerId"
             WHERE p."clerkOrganizationId" = ${organizationId}
+              AND (${isDistributorOrg} OR u."role" <> 'ADMIN'::"Role")
             ORDER BY u."createdAt" DESC
         `;
+
+        const memberships = await client.organizations.getOrganizationMembershipList({
+            organizationId,
+            limit: 500,
+        });
+
+        const usersByClerkId = new Map(users.map(user => [user.clerkId, user]));
+        const missingClerkIds = memberships.data
+            .map(membership => membership.publicUserData?.userId)
+            .filter((id): id is string => Boolean(id))
+            .filter(id => !usersByClerkId.has(id));
+
+        if (missingClerkIds.length > 0) {
+            const missingUsers = await prisma.user.findMany({
+                where: { clerkId: { in: missingClerkIds } },
+                select: {
+                    id: true,
+                    clerkId: true,
+                    role: true,
+                    name: true,
+                    email: true,
+                    createdAt: true,
+                },
+            });
+            for (const user of missingUsers) {
+                if (!isDistributorOrg && user.role === 'ADMIN') continue;
+                usersByClerkId.set(user.clerkId, {
+                    id: user.id,
+                    clerkId: user.clerkId,
+                    role: user.role,
+                    name: user.name,
+                    email: user.email,
+                    createdAt: user.createdAt,
+                });
+            }
+        }
 
         const invitations = await client.organizations.getOrganizationInvitationList({
             organizationId,
@@ -49,18 +92,20 @@ export async function GET(
             limit: 100,
         });
 
-        const members = users.map(user => ({
-            id: user.id,
-            userId: user.clerkId,
-            organizationId,
-            role: user.role,
-            user: {
+        const members = [...usersByClerkId.values()]
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .map(user => ({
                 id: user.id,
-                firstName: user.name ?? null,
-                lastName: null,
-                email: user.email,
-            },
-        }));
+                userId: user.clerkId,
+                organizationId,
+                role: user.role,
+                user: {
+                    id: user.id,
+                    firstName: user.name ?? null,
+                    lastName: null,
+                    email: user.email,
+                },
+            }));
 
         return NextResponse.json({
             members,

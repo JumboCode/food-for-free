@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
@@ -15,98 +15,123 @@ async function createInvitationForOrganization(opts: {
 }): Promise<
     { ok: true; invitationId: string; organizationId: string } | { ok: false; error: string }
 > {
-    const {
-        client,
-        inviterUserId,
-        emailRaw,
-        trimmedName,
-        targetOrganizationId,
-        invitationRedirectUrl,
-    } = opts;
+    try {
+        const {
+            client,
+            inviterUserId,
+            emailRaw,
+            trimmedName,
+            targetOrganizationId,
+            invitationRedirectUrl,
+        } = opts;
 
-    const org = await client.organizations.getOrganization({
-        organizationId: targetOrganizationId,
-    });
-    const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
-
-    const normalizedEmail = emailRaw.trim().toLowerCase();
-    if (!isDistributorPartnerOrgName(org.name)) {
-        const existingUser = await prisma.user.findFirst({
-            where: {
-                email: { equals: normalizedEmail, mode: 'insensitive' },
-            },
-            select: { role: true },
+        const org = await client.organizations.getOrganization({
+            organizationId: targetOrganizationId,
         });
-        if (existingUser?.role === Role.ADMIN) {
+        const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
+
+        const normalizedEmail = emailRaw.trim().toLowerCase();
+        if (!isDistributorPartnerOrgName(org.name)) {
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    email: { equals: normalizedEmail, mode: 'insensitive' },
+                },
+                select: { role: true },
+            });
+            if (existingUser?.role === Role.ADMIN) {
+                return {
+                    ok: false,
+                    error: 'This email belongs to a Food For Free administrator. Partner invitations are sent to partner accounts only.',
+                };
+            }
+        }
+        const metadataHouseholdId18 =
+            typeof org.publicMetadata?.householdId18 === 'string'
+                ? org.publicMetadata.householdId18.trim()
+                : '';
+        const partner = await prisma.partner.findUnique({
+            where: { clerkOrganizationId: org.id },
+            select: { householdId18: true },
+        });
+        const householdId18 = metadataHouseholdId18 || partner?.householdId18?.trim() || '';
+
+        if (!householdId18) {
+            return { ok: false, error: 'This organization is missing a Household Id 18.' };
+        }
+
+        if (!metadataHouseholdId18) {
+            try {
+                await client.organizations.updateOrganizationMetadata(org.id, {
+                    publicMetadata: { ...org.publicMetadata, householdId18 },
+                });
+            } catch {
+                // Non-blocking metadata backfill; invitation can proceed without this update.
+            }
+        }
+
+        await prisma.partner.upsert({
+            where: { clerkOrganizationId: org.id },
+            update: { organizationName: org.name, householdId18 },
+            create: {
+                householdId18,
+                organizationName: org.name,
+                clerkOrganizationId: org.id,
+            },
+        });
+
+        const existingInvitations = await client.organizations.getOrganizationInvitationList({
+            organizationId: targetOrganizationId,
+            status: ['pending'],
+            limit: 100,
+        });
+        const duplicatePendingInvite = existingInvitations.data.some(
+            invitation => invitation.emailAddress.trim().toLowerCase() === normalizedEmail
+        );
+        if (duplicatePendingInvite) {
             return {
                 ok: false,
-                error: 'This email belongs to a Food For Free administrator. Partner invitations are sent to partner accounts only.',
+                error: 'A pending invitation already exists for this email in this organization.',
             };
         }
-    }
-    const metadataHouseholdId18 =
-        typeof org.publicMetadata?.householdId18 === 'string'
-            ? org.publicMetadata.householdId18.trim()
-            : '';
-    const partner = await prisma.partner.findUnique({
-        where: { clerkOrganizationId: org.id },
-        select: { householdId18: true },
-    });
-    const householdId18 = metadataHouseholdId18 || partner?.householdId18?.trim() || '';
 
-    if (!householdId18) {
-        return { ok: false, error: 'This organization is missing a Household Id 18.' };
-    }
+        const invitation = await client.organizations.createOrganizationInvitation({
+            organizationId: targetOrganizationId,
+            emailAddress: emailRaw.trim(),
+            inviterUserId,
+            role: inviteRole,
+            publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
+            redirectUrl: invitationRedirectUrl,
+        });
 
-    if (!metadataHouseholdId18) {
-        try {
-            await client.organizations.updateOrganizationMetadata(org.id, {
-                publicMetadata: { ...org.publicMetadata, householdId18 },
-            });
-        } catch {
-            // Non-blocking metadata backfill; invitation can proceed without this update.
-        }
-    }
-
-    await prisma.partner.upsert({
-        where: { clerkOrganizationId: org.id },
-        update: { organizationName: org.name, householdId18 },
-        create: {
-            householdId18,
-            organizationName: org.name,
-            clerkOrganizationId: org.id,
-        },
-    });
-
-    const existingInvitations = await client.organizations.getOrganizationInvitationList({
-        organizationId: targetOrganizationId,
-        status: ['pending'],
-        limit: 100,
-    });
-    const duplicatePendingInvite = existingInvitations.data.some(
-        invitation => invitation.emailAddress.trim().toLowerCase() === normalizedEmail
-    );
-    if (duplicatePendingInvite) {
         return {
-            ok: false,
-            error: 'A pending invitation already exists for this email in this organization.',
+            ok: true,
+            invitationId: invitation.id,
+            organizationId: invitation.organizationId,
         };
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return {
+                ok: false,
+                error: 'Organization mapping conflict detected. Check Household ID mapping for this organization.',
+            };
+        }
+        if (error instanceof Error) {
+            const msg = error.message.toLowerCase();
+            if (
+                msg.includes('already') &&
+                (msg.includes('invitation') || msg.includes('invited'))
+            ) {
+                return {
+                    ok: false,
+                    error: 'A pending invitation already exists for this email in this organization.',
+                };
+            }
+            if (msg.includes('organization') && msg.includes('not found')) {
+                return { ok: false, error: 'Organization not found in Clerk.' };
+            }
+        }
+        return { ok: false, error: 'Failed to create invitation for this organization.' };
     }
-
-    const invitation = await client.organizations.createOrganizationInvitation({
-        organizationId: targetOrganizationId,
-        emailAddress: emailRaw.trim(),
-        inviterUserId,
-        role: inviteRole,
-        publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
-        redirectUrl: invitationRedirectUrl,
-    });
-
-    return {
-        ok: true,
-        invitationId: invitation.id,
-        organizationId: invitation.organizationId,
-    };
 }
 
 export async function POST(req: NextRequest) {
@@ -222,6 +247,12 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
+        }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return NextResponse.json(
+                { error: 'Organization mapping conflict detected. Check Household ID mapping.' },
+                { status: 409 }
+            );
         }
 
         return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 });

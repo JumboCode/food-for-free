@@ -39,9 +39,13 @@ export async function GET() {
             >`
                 SELECT
                     p."clerkOrganizationId",
-                    COUNT(DISTINCT upm."userId") AS "membersCount"
+                    COUNT(DISTINCT upm."userId") FILTER (
+                        WHERE LOWER(TRIM(COALESCE(p."organizationName", ''))) = 'food for free'
+                           OR u."role" <> 'ADMIN'::"Role"
+                    ) AS "membersCount"
                 FROM "Partner" p
                 LEFT JOIN "UserPartnerMembership" upm ON upm."partnerId" = p."householdId18"
+                LEFT JOIN "User" u ON u."id" = upm."userId"
                 GROUP BY p."clerkOrganizationId"
             `;
             for (const row of membershipCounts) {
