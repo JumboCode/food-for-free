@@ -9,7 +9,7 @@ type ClerkRole = 'org:admin' | 'org:member';
  */
 export async function ensureDbAdminsInOrganization(
     organizationId: string,
-    role: ClerkRole = 'org:member'
+    role: ClerkRole = 'org:admin'
 ): Promise<number> {
     const [client, admins] = await Promise.all([
         clerkClient(),
@@ -25,15 +25,30 @@ export async function ensureDbAdminsInOrganization(
         organizationId,
         limit: 500,
     });
-    const existing = new Set(
-        memberships.data
-            .map(membership => membership.publicUserData?.userId)
-            .filter((id): id is string => Boolean(id))
-    );
+    const membershipByUserId = new Map<string, string | null>();
+    for (const membership of memberships.data) {
+        const memberUserId = membership.publicUserData?.userId;
+        if (!memberUserId) continue;
+        membershipByUserId.set(memberUserId, membership.role ?? null);
+    }
 
     let created = 0;
     for (const admin of admins) {
-        if (existing.has(admin.clerkId)) continue;
+        const existingRole = membershipByUserId.get(admin.clerkId);
+        if (existingRole) {
+            if (existingRole !== role) {
+                try {
+                    await client.organizations.updateOrganizationMembership({
+                        organizationId,
+                        userId: admin.clerkId,
+                        role,
+                    });
+                } catch {
+                    // Non-blocking best effort.
+                }
+            }
+            continue;
+        }
         try {
             await client.organizations.createOrganizationMembership({
                 organizationId,
@@ -46,4 +61,24 @@ export async function ensureDbAdminsInOrganization(
         }
     }
     return created;
+}
+
+/**
+ * Ensure every Neon DB ADMIN user is an org member/admin across all partner orgs.
+ * Returns summary counts.
+ */
+export async function ensureDbAdminsAcrossAllOrganizations(
+    role: ClerkRole = 'org:admin'
+): Promise<{ organizationsProcessed: number; membershipsCreated: number }> {
+    const orgIds = await prisma.partner.findMany({
+        select: { clerkOrganizationId: true },
+    });
+    let membershipsCreated = 0;
+    for (const org of orgIds) {
+        membershipsCreated += await ensureDbAdminsInOrganization(org.clerkOrganizationId, role);
+    }
+    return {
+        organizationsProcessed: orgIds.length,
+        membershipsCreated,
+    };
 }

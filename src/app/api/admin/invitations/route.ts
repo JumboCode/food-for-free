@@ -49,10 +49,6 @@ async function createInvitationForOrganization(opts: {
         });
         const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
 
-        // Keep DB admins present in every partner org so Clerk invitation calls don't
-        // get blocked by "current user is not a member".
-        await ensureDbAdminsInOrganization(targetOrganizationId, 'org:member');
-
         const normalizedEmail = emailRaw.trim().toLowerCase();
         if (!isDistributorPartnerOrgName(org.name)) {
             const existingUser = await prisma.user.findFirst({
@@ -247,6 +243,8 @@ export async function POST(req: NextRequest) {
         const errors: { organizationId: string; error: string }[] = [];
 
         for (const targetOrganizationId of uniqueOrgIds) {
+            // Ensure DB admins have Clerk org-admin permission for this specific target org.
+            await ensureDbAdminsInOrganization(targetOrganizationId, 'org:admin');
             const result = await createInvitationForOrganization({
                 client,
                 inviterUserId: userId,

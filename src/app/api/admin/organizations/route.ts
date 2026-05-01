@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
                     clerkOrganizationId: organization.id,
                 },
             });
-            await ensureDbAdminsInOrganization(organization.id, 'org:member');
+            await ensureDbAdminsInOrganization(organization.id, 'org:admin');
         } catch (dbError) {
             try {
                 await client.organizations.deleteOrganization(organization.id);
