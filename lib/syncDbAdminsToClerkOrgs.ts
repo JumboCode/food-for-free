@@ -2,6 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '~/lib/prisma';
 
 type ClerkRole = 'org:admin' | 'org:member';
+type SyncIssue = { organizationId: string; userId?: string; error: string };
 
 /**
  * Ensure every Neon DB ADMIN user is a member of the given Clerk organization.
@@ -10,7 +11,7 @@ type ClerkRole = 'org:admin' | 'org:member';
 export async function ensureDbAdminsInOrganization(
     organizationId: string,
     role: ClerkRole = 'org:admin'
-): Promise<number> {
+): Promise<{ created: number; issues: SyncIssue[] }> {
     const [client, admins] = await Promise.all([
         clerkClient(),
         prisma.user.findMany({
@@ -19,7 +20,7 @@ export async function ensureDbAdminsInOrganization(
         }),
     ]);
 
-    if (admins.length === 0) return 0;
+    if (admins.length === 0) return { created: 0, issues: [] };
 
     const memberships = await client.organizations.getOrganizationMembershipList({
         organizationId,
@@ -33,6 +34,7 @@ export async function ensureDbAdminsInOrganization(
     }
 
     let created = 0;
+    const issues: SyncIssue[] = [];
     for (const admin of admins) {
         const existingRole = membershipByUserId.get(admin.clerkId);
         if (existingRole) {
@@ -44,7 +46,11 @@ export async function ensureDbAdminsInOrganization(
                         role,
                     });
                 } catch {
-                    // Non-blocking best effort.
+                    issues.push({
+                        organizationId,
+                        userId: admin.clerkId,
+                        error: 'Failed to update organization membership role',
+                    });
                 }
             }
             continue;
@@ -56,29 +62,49 @@ export async function ensureDbAdminsInOrganization(
                 role,
             });
             created += 1;
-        } catch {
-            // Non-blocking best effort; invitation/create callers still proceed.
+        } catch (error) {
+            issues.push({
+                organizationId,
+                userId: admin.clerkId,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to create organization membership',
+            });
         }
     }
-    return created;
+    return { created, issues };
 }
 
 /**
  * Ensure every Neon DB ADMIN user is an org member/admin across all partner orgs.
  * Returns summary counts.
  */
-export async function ensureDbAdminsAcrossAllOrganizations(
-    role: ClerkRole = 'org:admin'
-): Promise<{ organizationsProcessed: number; membershipsCreated: number }> {
+export async function ensureDbAdminsAcrossAllOrganizations(role: ClerkRole = 'org:admin'): Promise<{
+    organizationsProcessed: number;
+    membershipsCreated: number;
+    issues: SyncIssue[];
+}> {
     const orgIds = await prisma.partner.findMany({
         select: { clerkOrganizationId: true },
     });
     let membershipsCreated = 0;
+    const issues: SyncIssue[] = [];
     for (const org of orgIds) {
-        membershipsCreated += await ensureDbAdminsInOrganization(org.clerkOrganizationId, role);
+        try {
+            const result = await ensureDbAdminsInOrganization(org.clerkOrganizationId, role);
+            membershipsCreated += result.created;
+            issues.push(...result.issues);
+        } catch (error) {
+            issues.push({
+                organizationId: org.clerkOrganizationId,
+                error: error instanceof Error ? error.message : 'Organization sync failed',
+            });
+        }
     }
     return {
         organizationsProcessed: orgIds.length,
         membershipsCreated,
+        issues,
     };
 }

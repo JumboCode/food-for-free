@@ -20,13 +20,18 @@ export async function POST() {
             success: true,
             organizationsProcessed: result.organizationsProcessed,
             membershipsCreated: result.membershipsCreated,
+            issuesCount: result.issues.length,
+            issues: result.issues.slice(0, 50),
         });
     } catch (error) {
         if (error instanceof Error && error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });
         }
         return NextResponse.json(
-            { error: 'Failed to sync Clerk admin memberships' },
+            {
+                error: 'Failed to sync Clerk admin memberships',
+                detail: error instanceof Error ? error.message : 'Unknown error',
+            },
             { status: 500 }
         );
     }
