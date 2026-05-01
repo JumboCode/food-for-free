@@ -58,6 +58,7 @@ interface OrganizationDetailModalProps {
 
 const THEME_GREEN = '#B7D7BD';
 const THEME_ORANGE = '#FAC87D';
+const PENDING_PARTNER_HOUSEHOLD_PREFIX = 'pending-';
 
 export function OrganizationDetailModal({
     organization,
@@ -131,7 +132,7 @@ export function OrganizationDetailModal({
             }));
 
             setUsers([...activeUsers, ...invitedUsers]);
-        } catch (error) {
+        } catch {
             setUsers([]);
         } finally {
             setIsLoading(false);
@@ -165,7 +166,7 @@ export function OrganizationDetailModal({
             );
             if (!response.ok) throw new Error('Failed to resend invitation');
             await fetchOrganizationUsers();
-        } catch (error) {}
+        } catch {}
     };
 
     const startEditUser = (user: User) => {
@@ -214,6 +215,12 @@ export function OrganizationDetailModal({
     };
 
     const saveOrganizationName = async () => {
+        if (isPendingPartnerOrg) {
+            setError(
+                'Organizations with pending household IDs cannot be renamed. Create a new organization with the updated name.'
+            );
+            return;
+        }
         const nextName = organizationNameDraft.trim();
         if (!nextName) {
             setError('Organization name is required');
@@ -276,6 +283,9 @@ export function OrganizationDetailModal({
     };
 
     const isDistributorOrg = isDistributorPartnerOrgName(organization.name);
+    const isPendingPartnerOrg =
+        !isDistributorOrg &&
+        (organization.householdId18 ?? '').trim().startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX);
     const partnerOverviewHref = organization.householdId18
         ? `/overview?householdId18=${encodeURIComponent(organization.householdId18)}`
         : '/overview';
@@ -355,10 +365,17 @@ export function OrganizationDetailModal({
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        if (isPendingPartnerOrg) return;
                                         setOrganizationNameDraft(organization.name);
                                         setIsEditingOrgName(true);
                                     }}
-                                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={isPendingPartnerOrg}
+                                    title={
+                                        isPendingPartnerOrg
+                                            ? 'Pending household ID organizations cannot be renamed'
+                                            : undefined
+                                    }
                                 >
                                     Edit Name
                                 </button>
@@ -367,6 +384,12 @@ export function OrganizationDetailModal({
                         <p className="mt-1 text-xs text-gray-500">
                             {isDistributorOrg ? 'Admin organization' : 'Partner organization'}
                         </p>
+                        {isPendingPartnerOrg ? (
+                            <p className="mt-1 text-xs text-amber-700">
+                                This organization has a pending household ID. Rename is disabled;
+                                create a new organization if the name changes.
+                            </p>
+                        ) : null}
                         {!isDistributorOrg ? (
                             <div className="mt-2">
                                 {isEditingHouseholdId ? (

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { Prisma } from '@prisma/client';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
+import { PENDING_PARTNER_HOUSEHOLD_PREFIX } from '~/lib/overviewAccess';
+import { orgNamesEqualSql } from '~/lib/inventoryDistributionSql';
 
 export async function PATCH(
     req: NextRequest,
@@ -31,12 +34,27 @@ export async function PATCH(
         const client = await clerkClient();
         const existingPartner = await prisma.partner.findUnique({
             where: { clerkOrganizationId: organizationId },
-            select: { householdId18: true },
+            select: { householdId18: true, organizationName: true },
         });
         if (!existingPartner) {
             return NextResponse.json(
                 { error: 'Organization partner record not found' },
                 { status: 404 }
+            );
+        }
+
+        const isPendingPartner =
+            existingPartner.householdId18?.startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX) ?? false;
+        const isNameChange =
+            typeof nextName === 'string' &&
+            nextName.toLowerCase() !==
+                (existingPartner.organizationName ?? '').trim().toLowerCase();
+        if (isPendingPartner && isNameChange) {
+            return NextResponse.json(
+                {
+                    error: 'Organizations with pending household IDs cannot be renamed. Create a new organization with the updated name.',
+                },
+                { status: 409 }
             );
         }
 
@@ -51,12 +69,30 @@ export async function PATCH(
             });
         }
 
-        await prisma.partner.update({
-            where: { householdId18: existingPartner.householdId18 },
-            data: {
-                ...(nextName ? { organizationName: nextName } : {}),
-                ...(nextHouseholdId18 ? { householdId18: nextHouseholdId18 } : {}),
-            },
+        await prisma.$transaction(async tx => {
+            await tx.partner.update({
+                where: { householdId18: existingPartner.householdId18 },
+                data: {
+                    ...(nextName ? { organizationName: nextName } : {}),
+                    ...(nextHouseholdId18 ? { householdId18: nextHouseholdId18 } : {}),
+                },
+            });
+
+            // Future-safe rename backfill:
+            // For non-pending orgs, keep orphan distribution rows aligned to the canonical org name.
+            if (isNameChange && !isPendingPartner && nextName) {
+                const priorName = (existingPartner.organizationName ?? '').trim();
+                if (priorName.length > 0) {
+                    await tx.$executeRaw`
+                        UPDATE "AllInventoryTransactions" t
+                        SET "destination" = ${nextName}
+                        WHERE TRIM(COALESCE(t."destination", '')) <> ''
+                          AND LOWER(TRIM(COALESCE(t."inventoryType", ''))) = 'distribution'
+                          AND ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${priorName}`)}
+                          AND NOT ${orgNamesEqualSql(Prisma.sql`t."destination"`, Prisma.sql`${nextName}`)}
+                    `;
+                }
+            }
         });
 
         return NextResponse.json({ success: true });
