@@ -8,10 +8,9 @@ import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 function extractClerkErrorMessage(error: unknown): string | null {
     if (!error || typeof error !== 'object') return null;
     const obj = error as {
-        message?: unknown;
         errors?: Array<{ message?: unknown; longMessage?: unknown; code?: unknown }>;
     };
-    if (typeof obj.message === 'string' && obj.message.trim()) return obj.message.trim();
+    // Only parse Clerk-style payloads; avoid leaking internal Prisma/runtime errors.
     if (Array.isArray(obj.errors) && obj.errors.length > 0) {
         const first = obj.errors[0];
         const longMessage = typeof first.longMessage === 'string' ? first.longMessage.trim() : '';
@@ -88,15 +87,19 @@ async function createInvitationForOrganization(opts: {
             }
         }
 
-        await prisma.partner.upsert({
+        // Update existing mapping only.
+        // Some production DBs have extra required Partner columns not represented in Prisma
+        // (e.g. required `id`), so create-path upserts can fail with null-constraint errors.
+        const partnerUpdate = await prisma.partner.updateMany({
             where: { clerkOrganizationId: org.id },
-            update: { organizationName: org.name, householdId18 },
-            create: {
-                householdId18,
-                organizationName: org.name,
-                clerkOrganizationId: org.id,
-            },
+            data: { organizationName: org.name, householdId18 },
         });
+        if (partnerUpdate.count === 0) {
+            return {
+                ok: false,
+                error: 'This organization is not mapped in the database yet. Create it from Manage organizations first.',
+            };
+        }
 
         const existingInvitations = await client.organizations.getOrganizationInvitationList({
             organizationId: targetOrganizationId,
@@ -132,6 +135,12 @@ async function createInvitationForOrganization(opts: {
             return {
                 ok: false,
                 error: 'Organization mapping conflict detected. Check Household ID mapping for this organization.',
+            };
+        }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2011') {
+            return {
+                ok: false,
+                error: 'Organization mapping is missing required fields in the database. Please repair the organization record first.',
             };
         }
         const clerkMsg = extractClerkErrorMessage(error);
