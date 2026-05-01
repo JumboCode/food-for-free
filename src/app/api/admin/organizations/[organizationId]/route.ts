@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 import { PENDING_PARTNER_HOUSEHOLD_PREFIX } from '~/lib/overviewAccess';
 import { orgNamesEqualSql } from '~/lib/inventoryDistributionSql';
+import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
 
 export async function PATCH(
     req: NextRequest,
@@ -136,39 +137,13 @@ export async function DELETE(
             organizationId,
             limit: 500,
         });
-
         const memberUserIds = memberships.data
             .map(membership => membership.publicUserData?.userId)
             .filter((id): id is string => Boolean(id));
 
-        const adminUsers = await prisma.user.findMany({
-            where: {
-                clerkId: { in: memberUserIds },
-                role: 'ADMIN',
-            },
-            select: { clerkId: true },
-        });
-
-        const adminUserIds = new Set(adminUsers.map(admin => admin.clerkId));
-
-        // Never delete the currently signed-in admin account or any admin accounts.
-        const clerkUserIdsToDelete = memberUserIds.filter(
-            id => id !== userId && !adminUserIds.has(id)
-        );
-
-        for (const clerkUserId of clerkUserIdsToDelete) {
-            await client.users.deleteUser(clerkUserId);
-        }
-
         await client.organizations.deleteOrganization(organizationId);
 
         await prisma.$transaction(async tx => {
-            await tx.user.deleteMany({
-                where: {
-                    clerkId: { in: clerkUserIdsToDelete },
-                },
-            });
-
             const deletedPartners = await tx.partner.deleteMany({
                 where: {
                     clerkOrganizationId: organizationId,
@@ -180,6 +155,11 @@ export async function DELETE(
                 throw new Error('Failed to delete organization partner record from Neon');
             }
         });
+
+        // Recompute role for affected users now that one org membership was removed.
+        for (const memberClerkId of memberUserIds) {
+            await syncNeonUserRoleFromClerkOrgs(memberClerkId);
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
