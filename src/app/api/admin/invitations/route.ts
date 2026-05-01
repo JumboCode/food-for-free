@@ -4,7 +4,6 @@ import { requireAdmin } from '@/lib/admin';
 import { Prisma, Role } from '@prisma/client';
 import { prisma } from '~/lib/prisma';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
-import { ensureDbAdminsInOrganization } from '~/lib/syncDbAdminsToClerkOrgs';
 
 function extractClerkErrorMessage(error: unknown): string | null {
     if (!error || typeof error !== 'object') return null;
@@ -243,8 +242,6 @@ export async function POST(req: NextRequest) {
         const errors: { organizationId: string; error: string }[] = [];
 
         for (const targetOrganizationId of uniqueOrgIds) {
-            // Ensure DB admins have Clerk org-admin permission for this specific target org.
-            await ensureDbAdminsInOrganization(targetOrganizationId, 'org:admin');
             const result = await createInvitationForOrganization({
                 client,
                 inviterUserId: userId,
