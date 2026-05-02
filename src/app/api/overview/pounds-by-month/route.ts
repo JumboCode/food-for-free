@@ -7,6 +7,7 @@ import {
     overviewScopeErrorResponse,
     scopeEffectiveHouseholdId18,
     scopeOrganizationNameFilter,
+    scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
 import {
     destinationStatusIncludedCondition,
@@ -64,13 +65,6 @@ function getDefaultRange(): { start: Date; end: Date } {
     return { start, end };
 }
 
-function destinationLabel(scope: OverviewScope): string {
-    if (scope.kind === 'partner' || scope.kind === 'admin') {
-        return scope.destination?.trim() ?? '';
-    }
-    return '';
-}
-
 type DailyRow = { day: string; pounds: number | null };
 
 async function fetchBulkDaily(
@@ -97,7 +91,7 @@ async function fetchBulkDaily(
     }
 
     const hh = scopeEffectiveHouseholdId18(scope);
-    const destLabel = destinationLabel(scope);
+    const destLabel = await scopeOrphanDestinationMatchName(scope);
     if (hh) {
         if (destLabel.length === 0) {
             return prisma.$queryRaw<DailyRow[]>`
@@ -176,7 +170,7 @@ async function fetchOrphanDaily(
     }
 
     const hh = scopeEffectiveHouseholdId18(scope);
-    const destLabel = destinationLabel(scope);
+    const destLabel = await scopeOrphanDestinationMatchName(scope);
     if (hh && destLabel.length > 0) {
         return prisma.$queryRaw<DailyRow[]>`
             SELECT

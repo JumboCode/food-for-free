@@ -7,6 +7,7 @@ import {
     overviewScopeErrorResponse,
     scopeEffectiveHouseholdId18,
     scopeOrganizationNameFilter,
+    scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
 import {
     destinationStatusIncludedCondition,
@@ -57,13 +58,6 @@ type JustEatsStatsRow = {
     justEatsPoundsDelivered: number | null;
     justEatsTotalDeliveries: number;
 };
-
-function destinationLabel(scope: OverviewScope): string {
-    if (scope.kind === 'partner' || scope.kind === 'admin') {
-        return scope.destination?.trim() ?? '';
-    }
-    return '';
-}
 
 async function queryBulkAndRescueStats(
     range: { start: Date; end: Date },
@@ -120,7 +114,7 @@ async function queryBulkAndRescueStats(
     const hh = scopeEffectiveHouseholdId18(scope);
 
     if (hh) {
-        const destLabel = destinationLabel(scope);
+        const destLabel = await scopeOrphanDestinationMatchName(scope);
         const rows =
             destLabel.length > 0
                 ? await prisma.$queryRaw<BulkRescueStatsRow[]>`

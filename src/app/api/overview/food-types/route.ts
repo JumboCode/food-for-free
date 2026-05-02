@@ -7,6 +7,7 @@ import {
     overviewScopeErrorResponse,
     scopeEffectiveHouseholdId18,
     scopeOrganizationNameFilter,
+    scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
 import {
     COMPOSITION_EMPTY_SEGMENT_COLOR,
@@ -14,6 +15,10 @@ import {
     foodTypeFixedHex,
     type FoodTypeCompositionEntry,
 } from '~/lib/chartCompositionColors';
+import {
+    EFFECTIVE_PRODUCT_TYPE_SQL_JOINED,
+    EFFECTIVE_PRODUCT_TYPE_SQL_ORPHAN,
+} from '~/lib/inferredFoodType';
 import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
@@ -54,13 +59,6 @@ function getDefaultRange(): { start: Date; end: Date } {
     return { start, end };
 }
 
-function destinationLabel(scope: OverviewScope): string {
-    if (scope.kind === 'partner' || scope.kind === 'admin') {
-        return scope.destination?.trim() ?? '';
-    }
-    return '';
-}
-
 /**
  * GET /api/overview/food-types?start=...&end=...&destination=...
  * Composition for bulk & recovery includes orphan distribution-only inventory rows.
@@ -78,7 +76,7 @@ export async function GET(request: NextRequest) {
         const range = parseDateRange(searchParams) ?? getDefaultRange();
         const partnerHouseholdId18 = scopeEffectiveHouseholdId18(scope);
         const orgNameOnly = scopeOrganizationNameFilter(scope);
-        const destLabel = destinationLabel(scope);
+        const destLabel = await scopeOrphanDestinationMatchName(scope);
 
         const joinedPartnerClause = partnerHouseholdId18
             ? destLabel.length > 0
@@ -111,7 +109,7 @@ export async function GET(request: NextRequest) {
         const foodTypeGrouped = await prisma.$queryRaw<ProductTypeRow[]>`
             SELECT "productType", SUM("pounds") AS "pounds" FROM (
                 SELECT
-                    t."productType" AS "productType",
+                    ${Prisma.raw(EFFECTIVE_PRODUCT_TYPE_SQL_JOINED)} AS "productType",
                     SUM(COALESCE(p."pantryProductWeightLbs", 0) * COALESCE(p."distributionAmount", 1)) AS "pounds"
                 FROM "AllInventoryTransactions" t
                 INNER JOIN "AllPackagesByItem" p
@@ -124,12 +122,12 @@ export async function GET(request: NextRequest) {
                   AND ${destinationStatusIncludedCondition}
                   ${joinedPartnerClause}
                   ${joinedNameClause}
-                GROUP BY t."productType"
+                GROUP BY ${Prisma.raw(EFFECTIVE_PRODUCT_TYPE_SQL_JOINED)}
 
                 UNION ALL
 
                 SELECT
-                    t."productType" AS "productType",
+                    ${Prisma.raw(EFFECTIVE_PRODUCT_TYPE_SQL_ORPHAN)} AS "productType",
                     SUM(${inventoryTxPoundsSql()}) AS "pounds"
                 FROM "AllInventoryTransactions" t
                 WHERE t."date" >= ${range.start}
@@ -137,7 +135,7 @@ export async function GET(request: NextRequest) {
                   AND ${distributionInventoryTypeCondition}
                   AND ${orphanInventoryCondition}
                   ${orphanScopeClause}
-                GROUP BY t."productType"
+                GROUP BY ${Prisma.raw(EFFECTIVE_PRODUCT_TYPE_SQL_ORPHAN)}
             ) sub
             GROUP BY "productType"
         `;

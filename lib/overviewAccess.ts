@@ -125,6 +125,28 @@ export function scopeToPartnerHouseholdId18(scope: OverviewScope): string | unde
 }
 
 /**
+ * Name used to match orphan `AllInventoryTransactions.destination` when the request is scoped
+ * by Salesforce household id. Uses `scope.destination` first, then `Partner.organizationName`.
+ */
+export async function scopeOrphanDestinationMatchName(scope: OverviewScope): Promise<string> {
+    if (scope.kind === 'partner') {
+        return scope.destination?.trim() ?? '';
+    }
+    if (scope.kind === 'admin') {
+        const d = scope.destination?.trim() ?? '';
+        if (d.length > 0) return d;
+        const hh = scope.destinationHouseholdId18?.trim();
+        if (!hh || hh.startsWith(PENDING_PARTNER_HOUSEHOLD_PREFIX)) return '';
+        const partner = await prisma.partner.findFirst({
+            where: { householdId18: hh },
+            select: { organizationName: true },
+        });
+        return partner?.organizationName?.trim() ?? '';
+    }
+    return '';
+}
+
+/**
  * When true, bulk/rescue metrics come from destination/org name (inventory `destination`,
  * destination tables’ household names), not Salesforce household id joins.
  */

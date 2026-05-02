@@ -6,7 +6,9 @@ import {
     overviewScopeErrorResponse,
     scopeEffectiveHouseholdId18,
     scopeOrganizationNameFilter,
+    scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
+import { bulkJoinedResolvedOrgNameSql } from '~/lib/inventoryDistributionSql';
 import { foodTypeLabelForRow } from '~/lib/chartCompositionColors';
 import {
     distributionInventoryTypeCondition,
@@ -14,7 +16,7 @@ import {
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
 
-type ProductTypeRow = { productType: string | null };
+type ProductTypeRow = { productType: string | null; pantryProductName: string | null };
 
 /**
  * GET /api/distribution/filter-options
@@ -32,10 +34,7 @@ export async function GET(req: NextRequest) {
 
         const hh = scopeEffectiveHouseholdId18(scope);
         const orgNameOnly = scopeOrganizationNameFilter(scope);
-        const destLabel =
-            scope.kind === 'partner' || scope.kind === 'admin'
-                ? (scope.destination?.trim() ?? '')
-                : '';
+        const destLabel = await scopeOrphanDestinationMatchName(scope);
 
         const joinedClause = hh
             ? destLabel.length > 0
@@ -50,7 +49,9 @@ export async function GET(req: NextRequest) {
                   `
                 : Prisma.sql`WHERE d."householdId18" = ${hh}`
             : orgNameOnly
-              ? Prisma.sql`WHERE ${orgNamesEqualSql(Prisma.sql`COALESCE(pt."organizationName", d."householdName")`, Prisma.sql`${orgNameOnly}`)}`
+              ? Prisma.sql`WHERE (
+                    ${orgNamesEqualSql(bulkJoinedResolvedOrgNameSql(), Prisma.sql`${orgNameOnly}`)}
+                  )`
               : Prisma.sql``;
 
         const orphanClause =
@@ -63,9 +64,11 @@ export async function GET(req: NextRequest) {
                     : Prisma.sql``;
 
         const rows = await prisma.$queryRaw<ProductTypeRow[]>`
-            SELECT DISTINCT t."productType" AS "productType"
+            SELECT DISTINCT t."productType" AS "productType", t."pantryProductName" AS "pantryProductName"
             FROM (
-                SELECT t."productType"
+                SELECT
+                    t."productType",
+                    COALESCE(NULLIF(TRIM(p."pantryProductName"), ''), NULLIF(TRIM(t."pantryProductName"), '')) AS "pantryProductName"
                 FROM "AllInventoryTransactions" t
                 INNER JOIN "AllPackagesByItem" p
                     ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
@@ -76,7 +79,7 @@ export async function GET(req: NextRequest) {
 
                 UNION
 
-                SELECT t."productType"
+                SELECT t."productType", NULLIF(TRIM(t."pantryProductName"), '') AS "pantryProductName"
                 FROM "AllInventoryTransactions" t
                 WHERE ${distributionInventoryTypeCondition}
                   AND ${orphanInventoryCondition}
@@ -86,7 +89,7 @@ export async function GET(req: NextRequest) {
 
         const unique = new Set<string>();
         for (const row of rows) {
-            unique.add(foodTypeLabelForRow(row.productType).trim());
+            unique.add(foodTypeLabelForRow(row.productType, row.pantryProductName).trim());
         }
 
         return NextResponse.json({

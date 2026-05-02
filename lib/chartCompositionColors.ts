@@ -1,3 +1,5 @@
+import { inferFoodTypeLabelFromProductName } from '~/lib/inferredFoodType';
+
 /**
  * Colors for overview “Food Types Donated” and “Processing Breakdown” donuts.
  * Keep in sync with usage in `/api/overview/food-types` and distribution tag chips.
@@ -12,6 +14,7 @@ export const FOOD_TYPE_DONUT_COLORS = [
 ] as const;
 
 const FOOD_TYPE_FIXED_COLOR_BY_LABEL: Record<string, string> = {
+    bakery: '#D4A574',
     produce: '#B7D7BD',
     vegetables: '#B7D7BD',
     fruit: '#B7D7BD',
@@ -25,6 +28,8 @@ const FOOD_TYPE_FIXED_COLOR_BY_LABEL: Record<string, string> = {
     'dry goods': '#E7A54E',
     prepared: '#F4A6B8',
     other: '#B39DDB',
+    'non-food': '#94A3B8',
+    'non food': '#94A3B8',
 };
 
 /** Theme colors for overview processing donut. */
@@ -95,16 +100,25 @@ export function foodTypeColorLookupFromComposition(
     return m;
 }
 
-/** Same default label as food-types API when `productType` is null. */
-export function foodTypeLabelForRow(productType: string | null | undefined): string {
-    return productType?.trim() || 'Other';
+/**
+ * Display label for food type: uses `productType` when set, otherwise infers from
+ * pantry / line item name when it matches a known category (see `inferredFoodType`).
+ */
+export function foodTypeLabelForRow(
+    productType: string | null | undefined,
+    productName?: string | null | undefined
+): string {
+    const explicit = productType?.trim();
+    if (explicit) return explicit;
+    return inferFoodTypeLabelFromProductName(productName) ?? 'Other';
 }
 
 export function resolveFoodTypeDonutHex(
     productType: string | null | undefined,
-    lookup: Map<string, string>
+    lookup: Map<string, string>,
+    productName?: string | null | undefined
 ): string {
-    const label = foodTypeLabelForRow(productType);
+    const label = foodTypeLabelForRow(productType, productName);
     return lookup.get(label.toLowerCase()) ?? foodTypeFixedHex(label);
 }
 

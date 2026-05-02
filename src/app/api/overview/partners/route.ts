@@ -76,7 +76,7 @@ export async function GET() {
                 orderBy: { organizationName: 'asc' },
             }),
             prisma.$queryRaw<{ name: string | null }[]>`
-                WITH valid_joined AS (
+                WITH                 valid_joined AS (
                     SELECT
                         TRIM(
                             COALESCE(
@@ -91,7 +91,13 @@ export async function GET() {
                         ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
                     INNER JOIN "AllProductPackageDestinations" d
                         ON d."productPackageId18" = p."productPackageId18"
-                    WHERE TRIM(COALESCE(d."householdName", '')) <> ''
+                    WHERE TRIM(
+                            COALESCE(
+                                NULLIF(TRIM(t."destination"), ''),
+                                NULLIF(TRIM(d."householdName"), ''),
+                                ''
+                            )
+                        ) <> ''
                       AND ${destinationStatusIncludedCondition}
                     GROUP BY TRIM(
                         COALESCE(
@@ -122,6 +128,12 @@ export async function GET() {
                     WHERE TRIM(COALESCE(j."householdName", '')) <> ''
                     GROUP BY TRIM(COALESCE(pt."organizationName", j."householdName"))
                     HAVING SUM(COALESCE(j."numberPickedUp", 1)) > 0
+                ),
+                package_destination_labels AS (
+                    SELECT DISTINCT TRIM(d."householdName") AS name
+                    FROM "AllProductPackageDestinations" d
+                    WHERE TRIM(COALESCE(d."householdName", '')) <> ''
+                      AND ${destinationStatusIncludedCondition}
                 )
                 SELECT DISTINCT TRIM(name) AS "name"
                 FROM (
@@ -130,6 +142,8 @@ export async function GET() {
                     SELECT name FROM valid_orphan
                     UNION
                     SELECT name FROM valid_just_eats
+                    UNION
+                    SELECT name FROM package_destination_labels
                 ) v
                 WHERE TRIM(COALESCE(name, '')) <> ''
                 ORDER BY 1 ASC
@@ -151,8 +165,14 @@ export async function GET() {
                         ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
                     INNER JOIN "AllProductPackageDestinations" d
                         ON d."productPackageId18" = p."productPackageId18"
-                    WHERE TRIM(COALESCE(d."householdName", '')) <> ''
-                      AND TRIM(COALESCE(d."householdId18", '')) <> ''
+                    WHERE TRIM(COALESCE(d."householdId18", '')) <> ''
+                      AND TRIM(
+                            COALESCE(
+                                NULLIF(TRIM(t."destination"), ''),
+                                NULLIF(TRIM(d."householdName"), ''),
+                                ''
+                            )
+                        ) <> ''
                       AND ${destinationStatusIncludedCondition}
                     GROUP BY
                         d."householdId18",
@@ -195,15 +215,11 @@ export async function GET() {
                 .map(partner => [partner.householdId18?.trim() ?? '', partner] as const)
                 .filter(([householdId18]) => householdId18.length > 0)
         );
-        const aliasNormalizedForKnownPartners = new Set<string>();
         const preferredNameByHouseholdId = new Map<string, string>();
         for (const row of observedHouseholdNames) {
             const householdId18 = row.householdId18?.trim();
             const name = row.name?.trim() ?? '';
             if (!householdId18 || !name || isLikelySalesforceId(name)) continue;
-            if (partnerByHouseholdId.has(householdId18)) {
-                aliasNormalizedForKnownPartners.add(normalizeDestinationName(name));
-            }
             if (!preferredNameByHouseholdId.has(householdId18)) {
                 preferredNameByHouseholdId.set(householdId18, name);
             }
@@ -212,7 +228,15 @@ export async function GET() {
         for (const partner of partnerRows) {
             const partnerName = partner.organizationName?.trim() ?? '';
             if (!partnerName || isLikelySalesforceId(partnerName)) continue;
-            aliasNormalizedForKnownPartners.add(normalizeDestinationName(partnerName));
+            const key = normalizeDestinationName(partnerName);
+            if (byNormalized.has(key)) continue;
+            byNormalized.set(key, {
+                id: `p-${partner.householdId18}`,
+                name: partnerName,
+                householdId18: partner.householdId18,
+                location: '',
+                type: 'Partner',
+            });
         }
 
         for (const row of observedHouseholdNames) {
@@ -243,7 +267,6 @@ export async function GET() {
             if (!name) continue;
             if (isLikelySalesforceId(name)) continue;
             const key = normalizeDestinationName(name);
-            if (aliasNormalizedForKnownPartners.has(key)) continue;
             if (byNormalized.has(key)) continue;
             byNormalized.set(key, {
                 id: `d-${key}`,

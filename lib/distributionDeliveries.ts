@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import type { OverviewScope } from '~/lib/overviewAccess';
 import {
+    bulkJoinedResolvedOrgNameSql,
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
@@ -86,7 +87,7 @@ export async function queryDistributionDeliveries(
                   `
                 : Prisma.sql` AND d."householdId18" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`d."householdName"`, Prisma.sql`${params.orgFilter.trim()}`)} `
+              ? Prisma.sql` AND ${orgNamesEqualSql(bulkJoinedResolvedOrgNameSql(), Prisma.sql`${params.orgFilter.trim()}`)} `
               : Prisma.empty;
 
     const orphanSearchClause = search
@@ -103,10 +104,7 @@ export async function queryDistributionDeliveries(
         SELECT * FROM (
             SELECT
                 d."date" AS "date",
-                COALESCE(
-                    NULLIF(BTRIM(pt."organizationName"), ''),
-                    NULLIF(BTRIM(d."householdName"), '')
-                ) AS "organizationName",
+                ${bulkJoinedResolvedOrgNameSql()} AS "organizationName",
                 d."householdId18" AS "householdId18",
                 p."pantryProductName" AS "productName",
                 COALESCE(p."distributionAmount", 1) AS "distributionAmount",
@@ -189,7 +187,10 @@ export async function queryJustEatsDistributionDeliveries(
         params.partnerHouseholdId18 != null && params.partnerHouseholdId18 !== ''
             ? Prisma.sql` AND j."householdId" = ${params.partnerHouseholdId18} `
             : params.orgFilter
-              ? Prisma.sql` AND ${orgNamesEqualSql(Prisma.sql`j."householdName"`, Prisma.sql`${params.orgFilter.trim()}`)} `
+              ? Prisma.sql` AND ${orgNamesEqualSql(
+                    Prisma.sql`COALESCE(NULLIF(BTRIM(pt."organizationName"), ''), NULLIF(BTRIM(j."householdName"), ''))`,
+                    Prisma.sql`${params.orgFilter.trim()}`
+                )} `
               : Prisma.empty;
 
     // Match overview/stats `orgNameOnly` + household-id scope: no EXISTS guard.
@@ -213,6 +214,12 @@ export async function queryJustEatsDistributionDeliveries(
                   FROM "AllInventoryTransactions" t2
                   WHERE TRIM(COALESCE(t2."destination", '')) <> ''
                     AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
+
+                  UNION
+
+                  SELECT LOWER(TRIM(p2."organizationName")) AS org_name
+                  FROM "Partner" p2
+                  WHERE TRIM(COALESCE(p2."organizationName", '')) <> ''
               ) valid_orgs
               WHERE valid_orgs.org_name = LOWER(TRIM(j."householdName"))
           )
