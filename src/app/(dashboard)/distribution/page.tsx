@@ -400,7 +400,7 @@ function DistributionContent() {
         const byKey = new Map<string, string>();
         for (const label of availableProductTypes) byKey.set(label.toLowerCase(), label);
         for (const row of data) {
-            const label = foodTypeLabelForRow(row.productType).trim();
+            const label = foodTypeLabelForRow(row.productType, row.productName).trim();
             byKey.set(label.toLowerCase(), label);
         }
         return [...byKey.values()].sort((a, b) =>
@@ -415,7 +415,9 @@ function DistributionContent() {
         const filtered = data.filter(row => {
             const prog = rowProgram(row);
             if (filterPrograms.length > 0 && !filterPrograms.includes(prog)) return false;
-            const ptKey = foodTypeLabelForRow(row.productType).trim().toLowerCase();
+            const ptKey = foodTypeLabelForRow(row.productType, row.productName)
+                .trim()
+                .toLowerCase();
             if (filterProductTypes.length > 0 && !selectedProductTypeKeys.has(ptKey)) return false;
             const pk = processingKey(row.minimallyProcessedFood);
             if (filterProcessing.length > 0 && !filterProcessing.includes(pk)) return false;
@@ -540,7 +542,7 @@ function DistributionContent() {
                 ? ''
                 : Number(d.unitWeightLbs),
             Number(d.weightLbs ?? 0),
-            foodTypeLabelForRow(d.productType),
+            foodTypeLabelForRow(d.productType, d.productName),
             processingDisplayLabel(d.minimallyProcessedFood),
             programExportLabel(d),
         ]);
@@ -1280,7 +1282,10 @@ function DistributionContent() {
                                     ) : filteredData.length > 0 ? (
                                         paginatedData.map((d, index) => {
                                             const isJustEats = rowProgram(d) === 'just_eats';
-                                            const typeLabel = foodTypeLabelForRow(d.productType);
+                                            const typeLabel = foodTypeLabelForRow(
+                                                d.productType,
+                                                d.productName
+                                            );
                                             const procLabel = processingDisplayLabel(
                                                 d.minimallyProcessedFood
                                             );
@@ -1357,7 +1362,8 @@ function DistributionContent() {
                                                                         style={chipStyleFromDonutHex(
                                                                             resolveFoodTypeDonutHex(
                                                                                 d.productType,
-                                                                                foodTypeColorLookup
+                                                                                foodTypeColorLookup,
+                                                                                d.productName
                                                                             )
                                                                         )}
                                                                     >

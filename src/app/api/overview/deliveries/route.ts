@@ -8,6 +8,7 @@ import {
     overviewScopeErrorResponse,
     scopeEffectiveHouseholdId18,
     scopeOrganizationNameFilter,
+    scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
 import {
     destinationStatusIncludedCondition,
@@ -48,13 +49,6 @@ function getDefaultRange(): { start: Date; end: Date } {
     const start = new Date(end);
     start.setDate(start.getDate() - 29);
     return { start, end };
-}
-
-function destinationLabel(scope: OverviewScope): string {
-    if (scope.kind === 'partner' || scope.kind === 'admin') {
-        return scope.destination?.trim() ?? '';
-    }
-    return '';
 }
 
 type DeliveryOut = {
@@ -224,7 +218,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (hh) {
-            const destLabel = destinationLabel(scope);
+            const destLabel = await scopeOrphanDestinationMatchName(scope);
             const joinedScopedPredicate =
                 destLabel.length > 0
                     ? Prisma.sql`

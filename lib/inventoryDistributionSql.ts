@@ -50,3 +50,14 @@ export function normalizedOrgNameSql(value: Prisma.Sql): Prisma.Sql {
 export function orgNamesEqualSql(left: Prisma.Sql, right: Prisma.Sql): Prisma.Sql {
     return Prisma.sql`${normalizedOrgNameSql(left)} = ${normalizedOrgNameSql(right)}`;
 }
+
+/**
+ * Resolved org label for a joined bulk row: inventory destination, then Partner, then destination household name.
+ */
+export function bulkJoinedResolvedOrgNameSql(): Prisma.Sql {
+    return Prisma.sql`COALESCE(
+        NULLIF(TRIM(t."destination"), ''),
+        NULLIF(BTRIM(pt."organizationName"), ''),
+        NULLIF(BTRIM(d."householdName"), '')
+    )`;
+}

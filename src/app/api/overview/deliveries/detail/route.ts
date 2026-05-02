@@ -14,18 +14,25 @@ import {
     orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
+import { inferFoodTypeLabelFromProductName } from '~/lib/inferredFoodType';
 
 type FoodRow = { productName: string | null; totalWeightLbs: number | null };
 
-type TagRow = { productType: string | null; minimallyProcessedFood: boolean | null };
+type TagRow = {
+    productType: string | null;
+    minimallyProcessedFood: boolean | null;
+    pantryProductName: string | null;
+};
 
 function buildNutritionalTags(rows: TagRow[]): string[] {
     const types = new Set<string>();
     let anyTrue = false;
     let anyFalse = false;
     for (const r of rows) {
-        const pt = r.productType?.trim();
-        if (pt) types.add(pt);
+        const explicit = r.productType?.trim();
+        const inferred = inferFoodTypeLabelFromProductName(r.pantryProductName);
+        if (explicit) types.add(explicit);
+        else if (inferred) types.add(inferred);
         if (r.minimallyProcessedFood === true) anyTrue = true;
         if (r.minimallyProcessedFood === false) anyFalse = true;
     }
@@ -179,7 +186,10 @@ export async function GET(request: NextRequest) {
                 GROUP BY t."productPackageName"
             `,
             prisma.$queryRaw<TagRow[]>`
-                SELECT DISTINCT t."productType", t."minimallyProcessedFood"
+                SELECT DISTINCT
+                    t."productType",
+                    t."minimallyProcessedFood",
+                    COALESCE(NULLIF(TRIM(p."pantryProductName"), ''), NULLIF(TRIM(t."pantryProductName"), '')) AS "pantryProductName"
                 FROM "AllInventoryTransactions" t
                 INNER JOIN "AllPackagesByItem" p ON p."productInventoryRecordId18" = t."productInventoryRecordId18"
                 INNER JOIN "AllProductPackageDestinations" d ON d."productPackageId18" = p."productPackageId18"
@@ -189,7 +199,10 @@ export async function GET(request: NextRequest) {
                   AND ${joinedPartnerPredicate}
             `,
             prisma.$queryRaw<TagRow[]>`
-                SELECT DISTINCT t."productType", t."minimallyProcessedFood"
+                SELECT DISTINCT
+                    t."productType",
+                    t."minimallyProcessedFood",
+                    NULLIF(TRIM(t."pantryProductName"), '') AS "pantryProductName"
                 FROM "AllInventoryTransactions" t
                 WHERE DATE_TRUNC('day', t."date") = DATE_TRUNC('day', ${date})
                   AND ${distributionInventoryTypeCondition}
