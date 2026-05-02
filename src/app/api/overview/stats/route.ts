@@ -12,7 +12,6 @@ import {
     destinationStatusIncludedCondition,
     distributionInventoryTypeCondition,
     inventoryTxPoundsSql,
-    normalizedOrgNameSql,
     orgNamesEqualSql,
     orphanInventoryCondition,
 } from '~/lib/inventoryDistributionSql';
@@ -246,7 +245,7 @@ async function queryJustEatsStats(
                 (
                     COALESCE(
                         SUM(
-                            COALESCE(j."numberPickedUp", 1)
+                            COALESCE(j."numberPickedUp", 0)
                         ),
                         0
                     ) * 25
@@ -268,7 +267,7 @@ async function queryJustEatsStats(
                 (
                     COALESCE(
                         SUM(
-                            COALESCE(j."numberPickedUp", 1)
+                            COALESCE(j."numberPickedUp", 0)
                         ),
                         0
                     ) * 25
@@ -288,7 +287,7 @@ async function queryJustEatsStats(
             (
                 COALESCE(
                     SUM(
-                        COALESCE(j."numberPickedUp", 1)
+                        COALESCE(j."numberPickedUp", 0)
                     ),
                     0
                 ) * 25
@@ -299,22 +298,6 @@ async function queryJustEatsStats(
         WHERE j."pantryVisitDateTime" >= ${range.start}
           AND j."pantryVisitDateTime" <= ${range.end}
           AND TRIM(COALESCE(j."householdName", '')) <> ''
-          AND EXISTS (
-              SELECT 1
-              FROM (
-                  SELECT ${normalizedOrgNameSql(Prisma.sql`d2."householdName"`)} AS org_name
-                  FROM "AllProductPackageDestinations" d2
-                  WHERE TRIM(COALESCE(d2."householdName", '')) <> ''
-
-                  UNION
-
-                  SELECT ${normalizedOrgNameSql(Prisma.sql`t2."destination"`)} AS org_name
-                  FROM "AllInventoryTransactions" t2
-                  WHERE TRIM(COALESCE(t2."destination", '')) <> ''
-                    AND LOWER(TRIM(COALESCE(t2."inventoryType", ''))) = 'distribution'
-              ) valid_orgs
-              WHERE valid_orgs.org_name = ${normalizedOrgNameSql(Prisma.sql`j."householdName"`)}
-          )
     `;
     return rows[0] ?? { justEatsPoundsDelivered: 0, justEatsTotalDeliveries: 0 };
 }
