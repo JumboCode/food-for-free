@@ -55,6 +55,19 @@ export async function GET(
             limit: 500,
         });
 
+        const clerkDisplayByUserId = new Map<
+            string,
+            { firstName: string | null; lastName: string | null }
+        >();
+        for (const m of memberships.data) {
+            const uid = m.publicUserData?.userId;
+            if (!uid) continue;
+            clerkDisplayByUserId.set(uid, {
+                firstName: m.publicUserData?.firstName ?? null,
+                lastName: m.publicUserData?.lastName ?? null,
+            });
+        }
+
         const usersByClerkId = new Map(users.map(user => [user.clerkId, user]));
         const missingClerkIds = memberships.data
             .map(membership => membership.publicUserData?.userId)
@@ -94,18 +107,31 @@ export async function GET(
 
         const members = [...usersByClerkId.values()]
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-            .map(user => ({
-                id: user.id,
-                userId: user.clerkId,
-                organizationId,
-                role: user.role,
-                user: {
+            .map(user => {
+                const neon = user.name?.trim();
+                let firstName: string | null;
+                let lastName: string | null;
+                if (neon) {
+                    firstName = user.name ?? null;
+                    lastName = null;
+                } else {
+                    const c = clerkDisplayByUserId.get(user.clerkId);
+                    firstName = c?.firstName ?? null;
+                    lastName = c?.lastName ?? null;
+                }
+                return {
                     id: user.id,
-                    firstName: user.name ?? null,
-                    lastName: null,
-                    email: user.email,
-                },
-            }));
+                    userId: user.clerkId,
+                    organizationId,
+                    role: user.role,
+                    user: {
+                        id: user.id,
+                        firstName,
+                        lastName,
+                        email: user.email,
+                    },
+                };
+            });
 
         return NextResponse.json({
             members,

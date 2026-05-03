@@ -69,7 +69,7 @@ const OverviewPageContent: React.FC = () => {
         },
         [pathname, router, searchParams]
     );
-    const { isAdmin, partnerOrganizationName, partnerHouseholdId18 } = useViewerContext();
+    const { isAdmin, partnerOrganizationName } = useViewerContext();
 
     const { dateRange } = useFilterContext();
     const [loading, setLoading] = useState(true);
@@ -87,7 +87,6 @@ const OverviewPageContent: React.FC = () => {
         useOrgScopeContext();
 
     useEffect(() => {
-        if (!isAdmin) return;
         const ids = searchParams
             .getAll('householdId18')
             .map(v => v.trim())
@@ -110,7 +109,7 @@ const OverviewPageContent: React.FC = () => {
         if (next.length > 0) {
             setSelectedOrgs(next);
         }
-    }, [isAdmin, searchParams, setSelectedOrgs, partnerOrganizations]);
+    }, [searchParams, setSelectedOrgs, partnerOrganizations]);
 
     useEffect(() => {
         let cancelled = false;
@@ -153,45 +152,63 @@ const OverviewPageContent: React.FC = () => {
 
     useEffect(() => {
         if (isAdmin) return;
+        if (partnerOrganizations.length === 0) return;
         if (selectedOrgs.length > 0) return;
-        if (partnerOrganizations.length <= 1) return;
+        const hasUrlOrg =
+            searchParams.getAll('householdId18').some(v => v.trim()) ||
+            searchParams.getAll('destination').some(v => v.trim()) ||
+            searchParams.getAll('destinationName').some(v => v.trim());
+        if (hasUrlOrg) return;
         setSelectedOrgs(
             partnerOrganizations.map(org => ({
                 name: org.name,
                 householdId18: org.householdId18 ?? null,
             }))
         );
-    }, [isAdmin, partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
+    }, [isAdmin, partnerOrganizations, selectedOrgs.length, searchParams, setSelectedOrgs]);
 
     const isPartnerDashboard = !isAdmin && Boolean(partnerOrganizationName);
-    const selectedPartners: SelectedPartner[] = useMemo(
-        () =>
-            isPartnerDashboard
-                ? partnerOrganizationName
-                    ? [
-                          {
-                              name: partnerOrganizationName,
-                              householdId18: partnerHouseholdId18,
-                          },
-                      ]
-                    : []
-                : selectedOrgs,
-        [isPartnerDashboard, selectedOrgs, partnerHouseholdId18, partnerOrganizationName]
-    );
+    const selectedPartners: SelectedPartner[] = useMemo(() => {
+        if (isAdmin) return selectedOrgs;
+        if (partnerOrganizations.length === 0) return [];
+        if (selectedOrgs.length > 0) return selectedOrgs;
+        return partnerOrganizations.map(org => ({
+            name: org.name,
+            householdId18: org.householdId18 ?? null,
+        }));
+    }, [isAdmin, selectedOrgs, partnerOrganizations]);
 
     const totalDeliveriesAllPrograms = deliveriesCompleted + justEatsTotalDeliveries;
     const selectedPartner = selectedPartners[0] ?? null;
     const multipleSelected = selectedPartners.length > 1;
     const nonAdminPrimaryOrgName = useMemo(() => {
         if (isAdmin) return null;
-        const selectedName = selectedPartner?.name?.trim();
+        if (selectedPartners.length > 1) return null;
+        const selectedName = selectedPartners[0]?.name?.trim();
         if (selectedName) return selectedName;
         if (partnerOrganizations.length === 1) {
-            const singleName = partnerOrganizations[0]?.name?.trim();
-            if (singleName) return singleName;
+            return partnerOrganizations[0]?.name?.trim() ?? null;
         }
-        return null;
-    }, [isAdmin, selectedPartner, partnerOrganizations]);
+        return partnerOrganizationName?.trim() ?? null;
+    }, [isAdmin, selectedPartners, partnerOrganizations, partnerOrganizationName]);
+
+    const replaceUrlWithSelectedOrgs = useCallback(
+        (orgs: SelectedPartner[]) => {
+            replaceSearchParams(params => {
+                params.delete('householdId18');
+                params.delete('destination');
+                params.delete('destinationName');
+                for (const s of orgs) {
+                    if (s.householdId18?.trim()) {
+                        params.append('householdId18', s.householdId18.trim());
+                    } else if (s.name?.trim()) {
+                        params.append('destinationName', s.name.trim());
+                    }
+                }
+            });
+        },
+        [replaceSearchParams]
+    );
 
     const fetchOverviewData = useCallback(async () => {
         const start = formatDateParam(dateRange.start);
@@ -345,11 +362,9 @@ const OverviewPageContent: React.FC = () => {
                             <div className="mt-2 mb-2">
                                 <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
                                     Partner view:{' '}
-                                    <span className="font-medium text-gray-900">
-                                        {multipleSelected
-                                            ? `${selectedPartners.length} organizations selected`
-                                            : selectedPartner?.name}
-                                    </span>
+                                    {multipleSelected
+                                        ? `${selectedPartners.length} organizations selected`
+                                        : selectedPartner?.name}
                                     <span className="mx-2 text-gray-300">·</span>
                                     <button
                                         type="button"
@@ -431,13 +446,67 @@ const OverviewPageContent: React.FC = () => {
                                     </div>
                                 ) : null}
                             </div>
+                        ) : !isAdmin &&
+                          partnerOrganizations.length > 1 &&
+                          selectedPartners.length > 0 ? (
+                            <div className="mt-2 mb-2">
+                                <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                    Showing data for{' '}
+                                    {selectedPartners.length >= partnerOrganizations.length
+                                        ? partnerOrganizations.length === 2
+                                            ? 'both of your organizations'
+                                            : `all ${partnerOrganizations.length} of your organizations`
+                                        : selectedPartners.length === 1
+                                          ? selectedPartners[0]?.name
+                                          : `${selectedPartners.length} organizations selected`}
+                                    {selectedPartners.length < partnerOrganizations.length ? (
+                                        <>
+                                            <span className="mx-2 text-gray-300">·</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const all = partnerOrganizations.map(org => ({
+                                                        name: org.name,
+                                                        householdId18: org.householdId18 ?? null,
+                                                    }));
+                                                    setSelectedOrgs(all);
+                                                    replaceUrlWithSelectedOrgs(all);
+                                                }}
+                                                className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                            >
+                                                Show all my organizations
+                                            </button>
+                                        </>
+                                    ) : null}
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {selectedPartners.map(p => {
+                                        const key = selectedPartnerKey(p);
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                className="inline-flex items-center gap-1 rounded-full bg-[#e8f4eb] px-2 py-1 text-xs text-[#1C5E2C]"
+                                                onClick={() => {
+                                                    toggleSelectedOrg(p);
+                                                    const next = selectedPartners.filter(
+                                                        s =>
+                                                            selectedPartnerKey(s) !==
+                                                            selectedPartnerKey(p)
+                                                    );
+                                                    replaceUrlWithSelectedOrgs(next);
+                                                }}
+                                            >
+                                                <span className="max-w-44 truncate">{p.name}</span>
+                                                <span aria-hidden="true">×</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ) : !isAdmin && nonAdminPrimaryOrgName ? (
                             <p className="mt-2 mb-2 text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
-                                Welcome! Here&apos;s your dashboard for{' '}
-                                <span className="font-medium text-gray-900">
-                                    {nonAdminPrimaryOrgName}
-                                </span>
-                                .
+                                Welcome! Here&apos;s your dashboard for {nonAdminPrimaryOrgName}.
                             </p>
                         ) : null}
                     </div>
@@ -447,39 +516,36 @@ const OverviewPageContent: React.FC = () => {
                                 organizations={partnerOrganizations}
                                 selectedPartners={selectedPartners}
                                 showSelectedChips={false}
+                                placeholder="Filter organizations"
                                 onTogglePartner={partner => {
                                     toggleSelectedOrg(partner);
-                                    const next = (() => {
-                                        const key = selectedPartnerKey(partner);
-                                        const exists = selectedPartners.some(
-                                            p => selectedPartnerKey(p) === key
-                                        );
-                                        return exists
-                                            ? selectedPartners.filter(
-                                                  p => selectedPartnerKey(p) !== key
-                                              )
-                                            : [...selectedPartners, partner];
-                                    })();
-                                    replaceSearchParams(p => {
-                                        p.delete('householdId18');
-                                        p.delete('destination');
-                                        p.delete('destinationName');
-                                        for (const s of next) {
-                                            if (s.householdId18?.trim()) {
-                                                p.append('householdId18', s.householdId18.trim());
-                                            } else if (s.name?.trim()) {
-                                                p.append('destinationName', s.name.trim());
-                                            }
-                                        }
-                                    });
+                                    const key = selectedPartnerKey(partner);
+                                    const exists = selectedPartners.some(
+                                        p => selectedPartnerKey(p) === key
+                                    );
+                                    const next = exists
+                                        ? selectedPartners.filter(
+                                              p => selectedPartnerKey(p) !== key
+                                          )
+                                        : [...selectedPartners, partner];
+                                    replaceUrlWithSelectedOrgs(next);
                                 }}
                                 onClearAllPartners={() => {
-                                    clearSelectedOrgs();
-                                    replaceSearchParams(p => {
-                                        p.delete('householdId18');
-                                        p.delete('destination');
-                                        p.delete('destinationName');
-                                    });
+                                    if (isAdmin) {
+                                        clearSelectedOrgs();
+                                        replaceSearchParams(p => {
+                                            p.delete('householdId18');
+                                            p.delete('destination');
+                                            p.delete('destinationName');
+                                        });
+                                    } else {
+                                        const all = partnerOrganizations.map(org => ({
+                                            name: org.name,
+                                            householdId18: org.householdId18 ?? null,
+                                        }));
+                                        setSelectedOrgs(all);
+                                        replaceUrlWithSelectedOrgs(all);
+                                    }
                                 }}
                             />
                         </div>

@@ -61,6 +61,24 @@ export async function GET() {
             const orgId = p.clerkOrganizationId;
             const orgName = p.organizationName;
 
+            const membershipNameByClerkId = new Map<string, string>();
+            try {
+                const membershipList = await client.organizations.getOrganizationMembershipList({
+                    organizationId: orgId,
+                    limit: 500,
+                });
+                for (const m of membershipList.data) {
+                    const uid = m.publicUserData?.userId;
+                    if (!uid) continue;
+                    const fn = m.publicUserData?.firstName ?? '';
+                    const ln = m.publicUserData?.lastName ?? '';
+                    const full = `${fn} ${ln}`.trim();
+                    if (full) membershipNameByClerkId.set(uid, full);
+                }
+            } catch {
+                // Skip when membership list is unavailable
+            }
+
             const users = await prisma.$queryRaw<OrgUserRow[]>`
                 SELECT
                     u."id",
@@ -77,8 +95,10 @@ export async function GET() {
             `;
 
             for (const u of users) {
+                const resolvedName =
+                    u.name?.trim() || membershipNameByClerkId.get(u.clerkId) || null;
                 flat.push({
-                    name: u.name,
+                    name: resolvedName,
                     email: u.email,
                     organizationId: orgId,
                     organizationName: orgName,
@@ -113,6 +133,25 @@ export async function GET() {
                 }
             } catch {
                 // Skip orgs where invitation list is unavailable
+            }
+
+            try {
+                const companionRows = await prisma.invitationCompanionOrganizations.findMany({
+                    where: { companionClerkOrganizationIds: { has: orgId } },
+                    select: { normalizedInviteeEmail: true },
+                });
+                for (const row of companionRows) {
+                    flat.push({
+                        name: null,
+                        email: row.normalizedInviteeEmail,
+                        organizationId: orgId,
+                        organizationName: orgName,
+                        role: 'org:member',
+                        status: 'Invited',
+                    });
+                }
+            } catch {
+                // ignore
             }
         }
 
