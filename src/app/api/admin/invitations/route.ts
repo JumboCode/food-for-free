@@ -1,171 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
-import { Prisma, Role } from '@prisma/client';
-import { prisma } from '~/lib/prisma';
-import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
+import { Prisma } from '@prisma/client';
+import { upsertInvitationCompanionOrganizations } from '~/lib/companionInvitationOrgs';
+import {
+    addMembershipForOrganization,
+    createInvitationForOrganization,
+    extractClerkErrorMessage,
+    resolveExistingPartnerClerkUserId,
+} from '~/lib/partnerInvitationMembership';
 import { CLERK_SIGN_IN_PATH } from '@/lib/clerkAuthPaths';
-
-function extractClerkErrorMessage(error: unknown): string | null {
-    if (!error || typeof error !== 'object') return null;
-    const obj = error as {
-        errors?: Array<{ message?: unknown; longMessage?: unknown; code?: unknown }>;
-    };
-    // Only parse Clerk-style payloads; avoid leaking internal Prisma/runtime errors.
-    if (Array.isArray(obj.errors) && obj.errors.length > 0) {
-        const first = obj.errors[0];
-        const longMessage = typeof first.longMessage === 'string' ? first.longMessage.trim() : '';
-        if (longMessage) return longMessage;
-        const message = typeof first.message === 'string' ? first.message.trim() : '';
-        if (message) return message;
-        const code = typeof first.code === 'string' ? first.code.trim() : '';
-        if (code) return `Clerk error: ${code}`;
-    }
-    return null;
-}
-
-async function createInvitationForOrganization(opts: {
-    client: Awaited<ReturnType<typeof clerkClient>>;
-    inviterUserId: string;
-    emailRaw: string;
-    trimmedName: string;
-    targetOrganizationId: string;
-    invitationRedirectUrl: string;
-}): Promise<
-    { ok: true; invitationId: string; organizationId: string } | { ok: false; error: string }
-> {
-    try {
-        const {
-            client,
-            inviterUserId,
-            emailRaw,
-            trimmedName,
-            targetOrganizationId,
-            invitationRedirectUrl,
-        } = opts;
-
-        const org = await client.organizations.getOrganization({
-            organizationId: targetOrganizationId,
-        });
-        const inviteRole = isDistributorPartnerOrgName(org.name) ? 'org:admin' : 'org:member';
-
-        const normalizedEmail = emailRaw.trim().toLowerCase();
-        if (!isDistributorPartnerOrgName(org.name)) {
-            const existingUser = await prisma.user.findFirst({
-                where: {
-                    email: { equals: normalizedEmail, mode: 'insensitive' },
-                },
-                select: { role: true },
-            });
-            if (existingUser?.role === Role.ADMIN) {
-                return {
-                    ok: false,
-                    error: 'This email belongs to a Food For Free administrator. Partner invitations are sent to partner accounts only.',
-                };
-            }
-        }
-        const metadataHouseholdId18 =
-            typeof org.publicMetadata?.householdId18 === 'string'
-                ? org.publicMetadata.householdId18.trim()
-                : '';
-        const partner = await prisma.partner.findUnique({
-            where: { clerkOrganizationId: org.id },
-            select: { householdId18: true },
-        });
-        const householdId18 = metadataHouseholdId18 || partner?.householdId18?.trim() || '';
-
-        if (!householdId18) {
-            return { ok: false, error: 'This organization is missing a Household Id 18.' };
-        }
-
-        if (!metadataHouseholdId18) {
-            try {
-                await client.organizations.updateOrganizationMetadata(org.id, {
-                    publicMetadata: { ...org.publicMetadata, householdId18 },
-                });
-            } catch {
-                // Non-blocking metadata backfill; invitation can proceed without this update.
-            }
-        }
-
-        // Update existing mapping only.
-        // Some production DBs have extra required Partner columns not represented in Prisma
-        // (e.g. required `id`), so create-path upserts can fail with null-constraint errors.
-        const partnerUpdate = await prisma.partner.updateMany({
-            where: { clerkOrganizationId: org.id },
-            data: { organizationName: org.name, householdId18 },
-        });
-        if (partnerUpdate.count === 0) {
-            return {
-                ok: false,
-                error: 'This organization is not mapped in the database yet. Create it from Manage organizations first.',
-            };
-        }
-
-        const existingInvitations = await client.organizations.getOrganizationInvitationList({
-            organizationId: targetOrganizationId,
-            status: ['pending'],
-            limit: 100,
-        });
-        const duplicatePendingInvite = existingInvitations.data.some(
-            invitation => invitation.emailAddress.trim().toLowerCase() === normalizedEmail
-        );
-        if (duplicatePendingInvite) {
-            return {
-                ok: false,
-                error: 'A pending invitation already exists for this email in this organization.',
-            };
-        }
-
-        const invitation = await client.organizations.createOrganizationInvitation({
-            organizationId: targetOrganizationId,
-            emailAddress: emailRaw.trim(),
-            inviterUserId,
-            role: inviteRole,
-            publicMetadata: trimmedName ? { inviteeName: trimmedName } : undefined,
-            redirectUrl: invitationRedirectUrl,
-        });
-
-        return {
-            ok: true,
-            invitationId: invitation.id,
-            organizationId: invitation.organizationId,
-        };
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            return {
-                ok: false,
-                error: 'Organization mapping conflict detected. Check Household ID mapping for this organization.',
-            };
-        }
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2011') {
-            return {
-                ok: false,
-                error: 'Organization mapping is missing required fields in the database. Please repair the organization record first.',
-            };
-        }
-        const clerkMsg = extractClerkErrorMessage(error);
-        if (clerkMsg) {
-            return { ok: false, error: clerkMsg };
-        }
-        if (error instanceof Error) {
-            const msg = error.message.toLowerCase();
-            if (
-                msg.includes('already') &&
-                (msg.includes('invitation') || msg.includes('invited'))
-            ) {
-                return {
-                    ok: false,
-                    error: 'A pending invitation already exists for this email in this organization.',
-                };
-            }
-            if (msg.includes('organization') && msg.includes('not found')) {
-                return { ok: false, error: 'Organization not found in Clerk.' };
-            }
-        }
-        return { ok: false, error: 'Failed to create invitation for this organization.' };
-    }
-}
 
 export async function POST(req: NextRequest) {
     try {
@@ -232,6 +76,12 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const normalizedEmailLower = email.trim().toLowerCase();
+        const existingClerkUserId = await resolveExistingPartnerClerkUserId(
+            client,
+            normalizedEmailLower
+        );
+
         const invitationRedirectUrl = new URL(CLERK_SIGN_IN_PATH, req.nextUrl.origin).toString();
 
         const invitations: {
@@ -239,32 +89,87 @@ export async function POST(req: NextRequest) {
             emailAddress: string;
             organizationId: string;
             status: string;
+            bundledOrganizationIds?: string[];
         }[] = [];
-        const errors: { organizationId: string; error: string }[] = [];
+        const membershipsAdded: {
+            organizationId: string;
+            skippedAlreadyMember?: boolean;
+        }[] = [];
 
-        for (const targetOrganizationId of uniqueOrgIds) {
+        const errors: { organizationId: string; error: string }[] = [];
+        let companionBundleWarning: string | undefined;
+
+        if (existingClerkUserId) {
+            for (const targetOrganizationId of uniqueOrgIds) {
+                const m = await addMembershipForOrganization({
+                    client,
+                    targetOrganizationId,
+                    clerkUserId: existingClerkUserId,
+                    emailRaw: email,
+                });
+                if (m.ok) {
+                    membershipsAdded.push({
+                        organizationId: m.organizationId,
+                        skippedAlreadyMember: m.skippedAlreadyMember,
+                    });
+                } else {
+                    errors.push({ organizationId: targetOrganizationId, error: m.error });
+                }
+            }
+        } else {
+            /** Preserve the order from the dashboard (checkbox order → first listed org receives the Clerk email). */
+            const bundleOrgIds = uniqueOrgIds;
+            const primaryId = bundleOrgIds[0]!;
+            const companionIds = bundleOrgIds.slice(1);
+
             const result = await createInvitationForOrganization({
                 client,
                 inviterUserId: userId,
                 emailRaw: email,
                 trimmedName,
-                targetOrganizationId,
+                targetOrganizationId: primaryId,
                 invitationRedirectUrl,
             });
 
-            if (result.ok) {
+            if (!result.ok) {
+                errors.push({ organizationId: primaryId, error: result.error });
+                for (const cid of companionIds) {
+                    errors.push({
+                        organizationId: cid,
+                        error: 'Not included until the invitation for the primary organization succeeds.',
+                    });
+                }
+            } else {
+                let bundleCompanionWriteFailed = false;
+                if (companionIds.length > 0) {
+                    try {
+                        await upsertInvitationCompanionOrganizations(
+                            normalizedEmailLower,
+                            primaryId,
+                            companionIds
+                        );
+                    } catch {
+                        bundleCompanionWriteFailed = true;
+                        companionBundleWarning =
+                            'Invitation email was sent for the primary organization only. Extra organizations could not be bundled—try inviting them separately.';
+                    }
+                }
+
                 invitations.push({
                     id: result.invitationId,
                     emailAddress: email.trim(),
                     organizationId: result.organizationId,
                     status: 'pending',
+                    bundledOrganizationIds:
+                        companionIds.length > 0 && !bundleCompanionWriteFailed
+                            ? bundleOrgIds
+                            : undefined,
                 });
-            } else {
-                errors.push({ organizationId: targetOrganizationId, error: result.error });
             }
         }
 
-        if (invitations.length === 0) {
+        const successCount = invitations.length + membershipsAdded.length;
+        if (successCount === 0) {
             const firstError = errors[0]?.error ?? 'Failed to create invitations';
             return NextResponse.json(
                 { error: firstError, errors },
@@ -272,10 +177,22 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const firstInvitation = invitations[0];
+        const singleEmailBundleCount =
+            !existingClerkUserId &&
+            firstInvitation?.bundledOrganizationIds &&
+            firstInvitation.bundledOrganizationIds.length > 1
+                ? firstInvitation.bundledOrganizationIds.length
+                : undefined;
+
         return NextResponse.json({
             invitations,
+            membershipsAdded: membershipsAdded.length > 0 ? membershipsAdded : undefined,
+            usedExistingAccount: Boolean(existingClerkUserId),
+            singleInvitationEmailCoveringOrganizations: singleEmailBundleCount,
+            warning: companionBundleWarning,
             errors: errors.length > 0 ? errors : undefined,
-            invitation: invitations[0],
+            invitation: firstInvitation,
         });
     } catch (error) {
         if (error instanceof Error && error.message.includes('Unauthorized')) {

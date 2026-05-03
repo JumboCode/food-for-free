@@ -40,6 +40,24 @@ model UserPartnerMembership {
   @@index([partnerId])
 }
 
+/**
+ * Clerk sends one invitation email for `primaryClerkOrganizationId`; after acceptance the webhook
+ * adds memberships for companion org ids (single-email multi-org).
+ */
+model InvitationCompanionOrganizations {
+  id                              String   @id @default(cuid())
+  normalizedInviteeEmail          String   @map("normalized_invitee_email")
+  primaryClerkOrganizationId      String   @map("primary_clerk_organization_id")
+  companionClerkOrganizationIds   String[] @default([]) @map("companion_clerk_organization_ids")
+  attemptCount                    Int      @default(0) @map("attempt_count")
+  lastAttemptAt                   DateTime? @map("last_attempt_at")
+  lastError                       String?  @map("last_error")
+  createdAt                       DateTime @default(now()) @map("created_at")
+  updatedAt                       DateTime @updatedAt @map("updated_at")
+
+  @@unique([normalizedInviteeEmail, primaryClerkOrganizationId], map: "invitation_companion_email_primary_uidx")
+}
+
 model AllInventoryTransactions {
   date                       DateTime
   location                   String

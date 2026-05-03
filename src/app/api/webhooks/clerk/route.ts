@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { clerkClient, WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '~/lib/prisma';
+import { applyInvitationCompanionOrganizations } from '~/lib/companionInvitationOrgs';
 import { syncUserPartnerFromClerkOrgMemberships } from '~/lib/syncUserPartnerFromClerk';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
@@ -244,6 +245,24 @@ export async function POST(req: Request) {
                         where: { clerkId: userId },
                         data: { role: 'ADMIN' },
                     });
+                }
+                /** Multi-org bundles: Clerk emails once for primary org; Neon stores companion Clerk org ids */
+                let companionEmail = invitedEmail;
+                if (!companionEmail) {
+                    const client = await clerkClient();
+                    const cu = await client.users.getUser(userId);
+                    const verified = cu.emailAddresses.find(
+                        addr => addr.verification?.status === 'verified'
+                    );
+                    companionEmail = normalizeEmail(verified?.emailAddress);
+                }
+                if (companionEmail) {
+                    await applyInvitationCompanionOrganizations(
+                        userId,
+                        companionEmail,
+                        organizationId,
+                        d.email_address?.trim()?.length ? d.email_address.trim() : companionEmail
+                    );
                 }
             }
         }

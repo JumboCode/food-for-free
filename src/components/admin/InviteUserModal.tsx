@@ -14,6 +14,16 @@ type PartnerOrgOption = {
     householdId18: string | null;
 };
 
+type CompanionBundleStatus = {
+    id: string;
+    primaryOrganizationName: string;
+    remainingCompanionOrganizationNames: string[];
+    attemptCount: number;
+    lastAttemptAt: string | null;
+    lastError: string | null;
+    status: 'awaiting_acceptance' | 'needs_attention';
+};
+
 export type InviteUserModalProps = {
     open: boolean;
     onClose: () => void;
@@ -57,7 +67,15 @@ export function InviteUserModal({
     const [step, setStep] = useState<'form' | 'success'>('form');
     const [successEmail, setSuccessEmail] = useState('');
     const [successSentCount, setSuccessSentCount] = useState(0);
+    const [successMembershipCount, setSuccessMembershipCount] = useState(0);
     const [successWarnings, setSuccessWarnings] = useState<string | null>(null);
+    const [successBundleWarning, setSuccessBundleWarning] = useState<string | null>(null);
+    const [successBundleOrgTotal, setSuccessBundleOrgTotal] = useState<number | null>(null);
+    const [bundleStatuses, setBundleStatuses] = useState<CompanionBundleStatus[]>([]);
+    const [bundleStatusError, setBundleStatusError] = useState<string | null>(null);
+    const [bundleStatusLoading, setBundleStatusLoading] = useState(false);
+    const [bundleRetryLoading, setBundleRetryLoading] = useState(false);
+    const [bundleRetryNotice, setBundleRetryNotice] = useState<string | null>(null);
     const wasOpenRef = useRef(false);
 
     const isLockedSingleOrg = Boolean(lockedOrganizationId);
@@ -95,6 +113,14 @@ export function InviteUserModal({
         setName('');
         setEmail('');
         setSuccessWarnings(null);
+        setSuccessBundleWarning(null);
+        setSuccessBundleOrgTotal(null);
+        setSuccessMembershipCount(0);
+        setBundleStatuses([]);
+        setBundleStatusError(null);
+        setBundleStatusLoading(false);
+        setBundleRetryLoading(false);
+        setBundleRetryNotice(null);
         if (isLockedSingleOrg && lockedOrganizationId) {
             setSelectedOrgIds(new Set([lockedOrganizationId]));
         } else if (isAnchoredPartner && anchorOrganization) {
@@ -194,27 +220,44 @@ export function InviteUserModal({
 
             const payload = (await response.json()) as {
                 error?: string;
+                warning?: string;
                 invitations?: { organizationId?: string }[];
+                membershipsAdded?: { organizationId?: string }[];
+                singleInvitationEmailCoveringOrganizations?: number;
                 errors?: { organizationId: string; error: string }[];
             };
 
-            if (!response.ok && !payload.invitations?.length) {
+            const inviteDone = payload.invitations?.length ?? 0;
+            const membershipDone = payload.membershipsAdded?.length ?? 0;
+            if (!response.ok && inviteDone === 0 && membershipDone === 0) {
                 throw new Error(payload.error || 'Failed to send invitations');
             }
 
             await onSuccess();
 
-            const sent = payload.invitations?.length ?? orgIds.length;
             const partial = payload.errors ?? [];
             setSuccessEmail(trimmedEmail);
-            setSuccessSentCount(sent);
+            setSuccessSentCount(inviteDone);
+            setSuccessMembershipCount(membershipDone);
+            setSuccessBundleWarning(
+                typeof payload.warning === 'string' && payload.warning.trim()
+                    ? payload.warning.trim()
+                    : null
+            );
+            const bundleN =
+                typeof payload.singleInvitationEmailCoveringOrganizations === 'number' &&
+                payload.singleInvitationEmailCoveringOrganizations >= 2
+                    ? payload.singleInvitationEmailCoveringOrganizations
+                    : null;
+            setSuccessBundleOrgTotal(bundleN);
+
             if (partial.length > 0) {
                 const summary = partial
                     .slice(0, 4)
                     .map(err => err.error)
                     .join(' ');
                 setSuccessWarnings(
-                    `${partial.length} invitation${partial.length === 1 ? '' : 's'} could not be sent. ${summary}`.trim()
+                    `${partial.length} update${partial.length === 1 ? '' : 's'} could not be completed. ${summary}`.trim()
                 );
             } else {
                 setSuccessWarnings(null);
@@ -226,6 +269,75 @@ export function InviteUserModal({
             setIsSubmitting(false);
         }
     };
+
+    const loadBundleStatuses = useCallback(async (emailToCheck: string) => {
+        const normalized = emailToCheck.trim().toLowerCase();
+        if (!normalized) return;
+        setBundleStatusLoading(true);
+        setBundleStatusError(null);
+        try {
+            const res = await fetch(
+                `/api/admin/invitations/bundles?email=${encodeURIComponent(normalized)}`
+            );
+            const data = (await res.json()) as {
+                statuses?: CompanionBundleStatus[];
+                error?: string;
+            };
+            if (!res.ok) throw new Error(data.error || 'Failed to load bundle status');
+            setBundleStatuses(Array.isArray(data.statuses) ? data.statuses : []);
+        } catch (e) {
+            setBundleStatuses([]);
+            setBundleStatusError(e instanceof Error ? e.message : 'Failed to load bundle status');
+        } finally {
+            setBundleStatusLoading(false);
+        }
+    }, []);
+
+    const handleRetryBundleStatuses = useCallback(async () => {
+        const normalized = successEmail.trim().toLowerCase();
+        if (!normalized) return;
+        setBundleRetryLoading(true);
+        setBundleStatusError(null);
+        setBundleRetryNotice(null);
+        try {
+            const res = await fetch('/api/admin/invitations/bundles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: normalized }),
+            });
+            const data = (await res.json()) as {
+                resolvedCount?: number;
+                stillFailingCount?: number;
+                waitingForAcceptanceCount?: number;
+                warning?: string;
+                error?: string;
+            };
+            if (!res.ok) throw new Error(data.error || 'Retry failed');
+
+            const resolved = data.resolvedCount ?? 0;
+            const failing = data.stillFailingCount ?? 0;
+            const waiting = data.waitingForAcceptanceCount ?? 0;
+            if (data.warning) {
+                setBundleRetryNotice(data.warning);
+            } else {
+                setBundleRetryNotice(
+                    `${resolved} bundle${resolved === 1 ? '' : 's'} fixed. ${failing} still need attention. ${waiting} still waiting for acceptance.`
+                );
+            }
+            await loadBundleStatuses(normalized);
+        } catch (e) {
+            setBundleStatusError(e instanceof Error ? e.message : 'Retry failed');
+        } finally {
+            setBundleRetryLoading(false);
+        }
+    }, [loadBundleStatuses, successEmail]);
+
+    useEffect(() => {
+        if (step !== 'success') return;
+        if (successBundleOrgTotal == null || successBundleOrgTotal <= 1) return;
+        if (!successEmail.trim()) return;
+        void loadBundleStatuses(successEmail);
+    }, [loadBundleStatuses, step, successBundleOrgTotal, successEmail]);
 
     const handleDone = () => {
         onClose();
@@ -265,9 +377,9 @@ export function InviteUserModal({
                                     </>
                                 ) : (
                                     <>
-                                        Select the organizations to include, then enter the
-                                        recipient&apos;s name and email. Each selected organization
-                                        receives its own invitation.
+                                        Select organizations, then enter name and email. Existing
+                                        users are added with no emails. New users get one invitation
+                                        email that covers every selected partner organization.
                                     </>
                                 )
                             ) : (
@@ -452,7 +564,7 @@ export function InviteUserModal({
                                       ? isAnchoredPartner
                                           ? 'Send invitation'
                                           : 'Send invite'
-                                      : `Send ${inviteCount} invitations`}
+                                      : 'Send invitation (1 email)'}
                             </button>
                         </div>
                     </form>
@@ -466,22 +578,141 @@ export function InviteUserModal({
                                 <Mail className="h-6 w-6 text-[#608D6A]" aria-hidden />
                             </div>
                         </div>
-                        <p className="text-center text-sm text-gray-700">
-                            <span className="font-semibold tabular-nums">{successSentCount}</span>{' '}
-                            invitation{successSentCount === 1 ? '' : 's'} sent to{' '}
-                            <span className="font-medium">{successEmail}</span>.
-                        </p>
+                        {successMembershipCount > 0 ? (
+                            <p className="text-center text-sm text-gray-700">
+                                <span className="font-semibold tabular-nums">
+                                    {successMembershipCount}
+                                </span>{' '}
+                                organization{successMembershipCount === 1 ? '' : 's'} updated for{' '}
+                                <span className="font-medium">{successEmail}</span> They already had
+                                an account, so no invitation emails were sent. They should see each
+                                organization in the sidebar (refresh if needed).
+                            </p>
+                        ) : successBundleOrgTotal != null &&
+                          successSentCount > 0 &&
+                          successBundleOrgTotal > 1 ? (
+                            <p className="text-center text-sm text-gray-700">
+                                <span className="font-semibold tabular-nums">1</span> invitation
+                                email sent to <span className="font-medium">{successEmail}</span>,
+                                covering{' '}
+                                <span className="font-semibold tabular-nums">
+                                    {successBundleOrgTotal}
+                                </span>{' '}
+                                organizations. After they accept, they&apos;ll appear in each one;
+                                switching happens from the sidebar.
+                            </p>
+                        ) : (
+                            <p className="text-center text-sm text-gray-700">
+                                <span className="font-semibold tabular-nums">
+                                    {successSentCount}
+                                </span>{' '}
+                                invitation{successSentCount === 1 ? '' : 's'} sent to{' '}
+                                <span className="font-medium">{successEmail}</span>.
+                            </p>
+                        )}
                         {successWarnings ? (
                             <p className="mt-3 text-center text-xs text-amber-900">
                                 {successWarnings}
                             </p>
-                        ) : (
-                            <p className="mt-3 text-center text-xs text-gray-500">
-                                {successSentCount > 1
-                                    ? 'Each recipient must accept the corresponding invitation to join that organization.'
-                                    : 'The recipient must accept the invitation to complete access.'}
+                        ) : null}
+                        {successBundleWarning ? (
+                            <p className="mt-3 text-center text-xs text-amber-900">
+                                {successBundleWarning}
                             </p>
-                        )}
+                        ) : null}
+                        {!successWarnings && !successBundleWarning ? (
+                            <>
+                                {successSentCount === 1 &&
+                                successMembershipCount === 0 &&
+                                successBundleOrgTotal == null ? (
+                                    <p className="mt-3 text-center text-xs text-gray-500">
+                                        The recipient must accept the invitation to complete access.
+                                    </p>
+                                ) : null}
+                                {successMembershipCount > 0 && successSentCount === 0 ? (
+                                    <p className="mt-3 text-center text-xs text-gray-500">
+                                        Existing users are added to selected organizations without
+                                        invitation emails. Users who are not in Clerk yet still
+                                        receive invitation emails.
+                                    </p>
+                                ) : null}
+                            </>
+                        ) : null}
+                        {successBundleOrgTotal != null && successBundleOrgTotal > 1 ? (
+                            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-700">
+                                        Bundled Access Status
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void loadBundleStatuses(successEmail)}
+                                            className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white disabled:opacity-50"
+                                            disabled={bundleStatusLoading || bundleRetryLoading}
+                                        >
+                                            {bundleStatusLoading ? 'Checking…' : 'Refresh'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleRetryBundleStatuses()}
+                                            className="rounded border border-[#9fc5a9] px-2 py-1 text-xs font-medium text-gray-800 hover:bg-[#9fc5a9]/40 disabled:opacity-50"
+                                            disabled={bundleRetryLoading || bundleStatusLoading}
+                                        >
+                                            {bundleRetryLoading ? 'Retrying…' : 'Retry now'}
+                                        </button>
+                                    </div>
+                                </div>
+                                {bundleStatusError ? (
+                                    <p className="mt-2 text-xs text-red-700">{bundleStatusError}</p>
+                                ) : null}
+                                {bundleRetryNotice ? (
+                                    <p className="mt-2 text-xs text-amber-900">
+                                        {bundleRetryNotice}
+                                    </p>
+                                ) : null}
+                                {bundleStatuses.length === 0 && !bundleStatusLoading ? (
+                                    <p className="mt-2 text-xs text-gray-600">
+                                        All bundled organizations are complete for this recipient.
+                                    </p>
+                                ) : null}
+                                {bundleStatuses.length > 0 ? (
+                                    <div className="mt-2 space-y-2">
+                                        {bundleStatuses.map(bundle => (
+                                            <div
+                                                key={bundle.id}
+                                                className="rounded border border-gray-200 bg-white px-2 py-2"
+                                            >
+                                                <p className="text-xs font-medium text-gray-800">
+                                                    Primary: {bundle.primaryOrganizationName}
+                                                </p>
+                                                <p className="mt-1 text-xs text-gray-700">
+                                                    Remaining:{' '}
+                                                    {bundle.remainingCompanionOrganizationNames.join(
+                                                        ', '
+                                                    )}
+                                                </p>
+                                                <p className="mt-1 text-xs text-gray-600">
+                                                    {bundle.status === 'awaiting_acceptance'
+                                                        ? 'Waiting for the recipient to accept the invitation email.'
+                                                        : 'Needs attention: automatic retries have run, but some organizations still failed.'}
+                                                </p>
+                                                {bundle.lastError ? (
+                                                    <p className="mt-1 text-xs text-amber-900">
+                                                        Last error: {bundle.lastError}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                        <p className="text-xs text-gray-500">
+                                            If a bundle stays in &quot;Needs attention&quot;, click
+                                            Retry now. If it still fails, contact your technical
+                                            admin with the last error shown above.
+                                        </p>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
                         <div className="mt-6 flex justify-end">
                             <button
                                 type="button"
