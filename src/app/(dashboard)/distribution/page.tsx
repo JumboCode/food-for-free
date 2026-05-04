@@ -237,15 +237,20 @@ function DistributionContent() {
 
     useEffect(() => {
         if (isAdmin) return;
+        if (partnerOrganizations.length === 0) return;
         if (selectedOrgs.length > 0) return;
-        if (partnerOrganizations.length <= 1) return;
+        const hasUrlOrg =
+            searchParams.getAll('householdId18').some(v => v.trim()) ||
+            searchParams.getAll('destination').some(v => v.trim()) ||
+            searchParams.getAll('destinationName').some(v => v.trim());
+        if (hasUrlOrg) return;
         setSelectedOrgs(
             partnerOrganizations.map(org => ({
                 name: org.name,
                 householdId18: org.householdId18 ?? null,
             }))
         );
-    }, [isAdmin, partnerOrganizations, selectedOrgs.length, setSelectedOrgs]);
+    }, [isAdmin, partnerOrganizations, selectedOrgs.length, searchParams, setSelectedOrgs]);
 
     // Sync selected org into URL
     const handleSelectOrg = (org: { name: string; householdId18?: string | null }) => {
@@ -269,11 +274,26 @@ function DistributionContent() {
     };
 
     const handleClearOrg = () => {
-        clearSelectedOrgs();
         const params = new URLSearchParams(searchParams.toString());
         params.delete('householdId18');
         params.delete('destination');
         params.delete('destinationName');
+        if (isAdmin) {
+            clearSelectedOrgs();
+        } else {
+            const all = partnerOrganizations.map(org => ({
+                name: org.name,
+                householdId18: org.householdId18 ?? null,
+            }));
+            setSelectedOrgs(all);
+            for (const s of all) {
+                if (s.householdId18?.trim()) {
+                    params.append('householdId18', s.householdId18.trim());
+                } else if (s.name?.trim()) {
+                    params.append('destinationName', s.name.trim());
+                }
+            }
+        }
         router.push(`?${params.toString()}`);
     };
 
@@ -809,12 +829,10 @@ function DistributionContent() {
                             {isAdmin && selectedOrgs.length > 0 ? (
                                 <div className="mt-1">
                                     <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
-                                        Showing deliveries for:{' '}
-                                        <span className="font-medium text-gray-900">
-                                            {selectedOrgs.length > 1
-                                                ? `${selectedOrgs.length} organizations selected`
-                                                : selectedOrgs[0]?.name}
-                                        </span>
+                                        Showing deliveries for{' '}
+                                        {selectedOrgs.length > 1
+                                            ? `${selectedOrgs.length} organizations selected`
+                                            : selectedOrgs[0]?.name}
                                         <span className="mx-2 text-gray-300">·</span>
                                         <button
                                             type="button"
@@ -848,11 +866,51 @@ function DistributionContent() {
                                                     <span className="max-w-44 truncate">
                                                         {p.name}
                                                     </span>
-                                                    <span aria-hidden="true">x</span>
+                                                    <span aria-hidden="true">×</span>
                                                 </button>
                                             ))}
                                         </div>
                                     ) : null}
+                                </div>
+                            ) : !isAdmin && selectedOrgs.length > 0 ? (
+                                <div className="mt-1">
+                                    <p className="text-base leading-snug text-gray-600 sm:text-[1.0625rem]">
+                                        Showing deliveries for{' '}
+                                        {partnerOrganizations.length > 1 &&
+                                        selectedOrgs.length >= partnerOrganizations.length
+                                            ? partnerOrganizations.length === 2
+                                                ? 'both of your organizations'
+                                                : `all ${partnerOrganizations.length} of your organizations`
+                                            : selectedOrgs.length > 1
+                                              ? `${selectedOrgs.length} organizations selected`
+                                              : selectedOrgs[0]?.name}
+                                        {partnerOrganizations.length > 1 &&
+                                        selectedOrgs.length < partnerOrganizations.length ? (
+                                            <>
+                                                <span className="mx-2 text-gray-300">·</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleClearOrg}
+                                                    className="text-sm text-[#1C5E2C] font-medium underline underline-offset-2 hover:text-[#164a22]"
+                                                >
+                                                    Show all my organizations
+                                                </button>
+                                            </>
+                                        ) : null}
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {selectedOrgs.map(p => (
+                                            <button
+                                                key={selectedPartnerKey(p)}
+                                                type="button"
+                                                className="inline-flex items-center gap-1 rounded-full bg-[#e8f4eb] px-2 py-1 text-xs text-[#1C5E2C]"
+                                                onClick={() => handleSelectOrg(p)}
+                                            >
+                                                <span className="max-w-44 truncate">{p.name}</span>
+                                                <span aria-hidden="true">×</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             ) : (
                                 <p className="mt-1 text-sm text-gray-500">
@@ -868,7 +926,7 @@ function DistributionContent() {
                                     selectedPartners={selectedOrgs}
                                     showSelectedChips={false}
                                     onClearAllPartners={handleClearOrg}
-                                    placeholder="Search organizations"
+                                    placeholder="Filter organizations"
                                 />
                             </div>
                         ) : null}

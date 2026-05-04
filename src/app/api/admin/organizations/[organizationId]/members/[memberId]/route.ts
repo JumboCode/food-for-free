@@ -4,6 +4,13 @@ import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
 
+function splitDisplayName(fullName: string): { firstName: string; lastName: string } {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ organizationId: string; memberId: string }> }
@@ -24,6 +31,21 @@ export async function PATCH(
         if (!nextName) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
+
+        const existing = await prisma.user.findUnique({
+            where: { id: memberId },
+            select: { id: true, clerkId: true },
+        });
+        if (!existing) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        const { firstName, lastName } = splitDisplayName(nextName);
+        const client = await clerkClient();
+        await client.users.updateUser(existing.clerkId, {
+            firstName,
+            lastName,
+        });
 
         const updated = await prisma.user.update({
             where: { id: memberId },

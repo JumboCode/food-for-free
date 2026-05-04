@@ -3,10 +3,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { ChartLine, Gift, Users } from 'lucide-react';
-import { UserButton, useOrganizationList } from '@clerk/nextjs';
-import OrganizationSelect from './OrganizationSelect';
+import { UserButton } from '@clerk/nextjs';
 
 type NavItem = {
     label: string;
@@ -33,13 +32,7 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
     items: itemsProp,
     isAdmin: isAdminFromServer,
 }) => {
-    const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const { isLoaded: orgsLoaded, userMemberships } = useOrganizationList({
-        userMemberships: { infinite: true },
-    });
-    const canSwitchOrganizations = (userMemberships.data?.length ?? 0) > 1;
     const [isAdminFetched, setIsAdminFetched] = useState<boolean | null>(null);
     const profileRef = useRef<HTMLDivElement>(null);
 
@@ -104,31 +97,6 @@ const SideNavBar: React.FC<SideNavBarProps> = ({
             </nav>
 
             <div className="px-2 lg:px-3 pb-5 pt-3 border-t border-gray-100 mt-auto">
-                {orgsLoaded && canSwitchOrganizations && isAdminResolved === false ? (
-                    <>
-                        <div className="lg:hidden mb-2 flex justify-center">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const params = new URLSearchParams(searchParams.toString());
-                                    params.set('chooseOrg', '1');
-                                    const qs = params.toString();
-                                    router.replace(qs ? `${pathname}?${qs}` : pathname);
-                                }}
-                                className="h-9 w-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50"
-                                title="Switch organization"
-                            >
-                                <Users className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <div className="hidden lg:block mb-3 px-1">
-                            <p className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">
-                                Organization
-                            </p>
-                            <OrganizationSelect />
-                        </div>
-                    </>
-                ) : null}
                 <div
                     ref={profileRef}
                     onClick={handleProfileAreaClick}
