@@ -27,7 +27,7 @@ export async function ensureDbAdminsInOrganization(
         limit: 500,
     });
     const membershipByUserId = new Map<string, string | null>();
-    for (const membership of memberships.data) {
+    for (const membership of memberships.data ?? []) {
         const memberUserId = membership.publicUserData?.userId;
         if (!memberUserId) continue;
         membershipByUserId.set(memberUserId, membership.role ?? null);

@@ -37,6 +37,16 @@ function sortOrganizations<T extends { name: string; membersCount: number }>(
     return copy;
 }
 
+/** API routes may return both `error` and `detail` (e.g. Clerk long message). */
+function formatApiErrorJson(payload: unknown, fallback: string): string {
+    if (!payload || typeof payload !== 'object') return fallback;
+    const o = payload as { error?: unknown; detail?: unknown };
+    const parts = [o.error, o.detail]
+        .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+        .map(s => s.trim());
+    return parts.length > 0 ? parts.join(' — ') : fallback;
+}
+
 //main Admin Console Page
 const AdminConsolePage: React.FC = () => {
     const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -58,7 +68,7 @@ const AdminConsolePage: React.FC = () => {
             const response = await fetch('/api/admin/organizations');
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
-                throw new Error(payload?.error || 'Failed to fetch organizations');
+                throw new Error(formatApiErrorJson(payload, 'Failed to fetch organizations'));
             }
 
             const data = await response.json();
@@ -85,7 +95,7 @@ const AdminConsolePage: React.FC = () => {
 
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(payload?.error || 'Failed to create organization');
+                throw new Error(formatApiErrorJson(payload, 'Failed to create organization'));
             }
 
             await fetchOrganizations(); // Refresh the list
@@ -107,7 +117,7 @@ const AdminConsolePage: React.FC = () => {
 
             const data = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(data?.error || 'Failed to delete organization');
+                throw new Error(formatApiErrorJson(data, 'Failed to delete organization'));
             }
 
             if (selectedOrganization?.id === organizationId) {
