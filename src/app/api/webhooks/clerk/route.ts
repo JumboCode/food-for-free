@@ -6,6 +6,7 @@ import { applyInvitationCompanionOrganizations } from '~/lib/companionInvitation
 import { syncUserPartnerFromClerkOrgMemberships } from '~/lib/syncUserPartnerFromClerk';
 import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
+import { ensureUserAcrossAllOrganizations } from '~/lib/syncDbAdminsToClerkOrgs';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -245,6 +246,7 @@ export async function POST(req: Request) {
                         where: { clerkId: userId },
                         data: { role: 'ADMIN' },
                     });
+                    await ensureUserAcrossAllOrganizations(userId, 'org:admin');
                 }
                 /** Multi-org bundles: Clerk emails once for primary org; Neon stores companion Clerk org ids */
                 let companionEmail = invitedEmail;

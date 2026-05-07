@@ -108,3 +108,67 @@ export async function ensureDbAdminsAcrossAllOrganizations(role: ClerkRole = 'or
         issues,
     };
 }
+
+/**
+ * Ensure one Clerk user is org admin/member across all partner organizations.
+ * Useful for newly accepted distributor admin invites, including older pending invites.
+ */
+export async function ensureUserAcrossAllOrganizations(
+    clerkUserId: string,
+    role: ClerkRole = 'org:admin'
+): Promise<{
+    organizationsProcessed: number;
+    membershipsCreated: number;
+    issues: SyncIssue[];
+}> {
+    const [client, orgIds] = await Promise.all([
+        clerkClient(),
+        prisma.partner.findMany({ select: { clerkOrganizationId: true } }),
+    ]);
+
+    let membershipsCreated = 0;
+    const issues: SyncIssue[] = [];
+
+    for (const org of orgIds) {
+        try {
+            const memberships = await client.organizations.getOrganizationMembershipList({
+                organizationId: org.clerkOrganizationId,
+                limit: 500,
+            });
+            const existing = memberships.data.find(m => m.publicUserData?.userId === clerkUserId);
+
+            if (existing) {
+                if (existing.role !== role) {
+                    await client.organizations.updateOrganizationMembership({
+                        organizationId: org.clerkOrganizationId,
+                        userId: clerkUserId,
+                        role,
+                    });
+                }
+                continue;
+            }
+
+            await client.organizations.createOrganizationMembership({
+                organizationId: org.clerkOrganizationId,
+                userId: clerkUserId,
+                role,
+            });
+            membershipsCreated += 1;
+        } catch (error) {
+            issues.push({
+                organizationId: org.clerkOrganizationId,
+                userId: clerkUserId,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to ensure user membership role',
+            });
+        }
+    }
+
+    return {
+        organizationsProcessed: orgIds.length,
+        membershipsCreated,
+        issues,
+    };
+}
