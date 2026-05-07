@@ -3,6 +3,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { prisma } from '~/lib/prisma';
 import { syncNeonUserRoleFromClerkOrgs } from '~/lib/syncNeonUserRoleFromClerkOrgs';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 function splitDisplayName(fullName: string): { firstName: string; lastName: string } {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -105,7 +106,7 @@ export async function DELETE(
 
         const partner = await prisma.partner.findUnique({
             where: { clerkOrganizationId: organizationId },
-            select: { householdId18: true },
+            select: { householdId18: true, organizationName: true },
         });
 
         if (partner) {
@@ -115,6 +116,52 @@ export async function DELETE(
                     partnerId: partner.householdId18,
                 },
             });
+        }
+
+        if (partner && isDistributorPartnerOrgName(partner.organizationName)) {
+            // Removing from the distributor/admin org should revoke access to non-distributor orgs too.
+            const memberships = await client.users.getOrganizationMembershipList({
+                userId: user.clerkId,
+                limit: 500,
+            });
+            const candidateOrgIds = memberships.data
+                .map(m => m.organization.id)
+                .filter(id => id !== organizationId);
+
+            if (candidateOrgIds.length > 0) {
+                const partnerRows = await prisma.partner.findMany({
+                    where: { clerkOrganizationId: { in: candidateOrgIds } },
+                    select: {
+                        clerkOrganizationId: true,
+                        organizationName: true,
+                        householdId18: true,
+                    },
+                });
+                const nonDistributorPartners = partnerRows.filter(
+                    p => !isDistributorPartnerOrgName(p.organizationName)
+                );
+
+                for (const p of nonDistributorPartners) {
+                    try {
+                        await client.organizations.deleteOrganizationMembership({
+                            organizationId: p.clerkOrganizationId,
+                            userId: user.clerkId,
+                        });
+                    } catch (clerkErr) {
+                        const status = (clerkErr as { status?: number }).status;
+                        if (status !== 404) throw clerkErr;
+                    }
+                }
+
+                if (nonDistributorPartners.length > 0) {
+                    await prisma.userPartnerMembership.deleteMany({
+                        where: {
+                            userId: user.id,
+                            partnerId: { in: nonDistributorPartners.map(p => p.householdId18) },
+                        },
+                    });
+                }
+            }
         }
 
         await syncNeonUserRoleFromClerkOrgs(user.clerkId);

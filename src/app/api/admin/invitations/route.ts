@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/admin';
 import { Prisma } from '@prisma/client';
+import { prisma } from '~/lib/prisma';
 import { upsertInvitationCompanionOrganizations } from '~/lib/companionInvitationOrgs';
 import {
     addMembershipForOrganization,
@@ -10,6 +11,7 @@ import {
     resolveExistingPartnerClerkUserId,
 } from '~/lib/partnerInvitationMembership';
 import { CLERK_SIGN_IN_PATH } from '@/lib/clerkAuthPaths';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 export async function POST(req: NextRequest) {
     try {
@@ -65,16 +67,35 @@ export async function POST(req: NextRequest) {
                   ? [organizationId]
                   : [];
 
-        const uniqueOrgIds = [
+        const requestedOrgIds = [
             ...new Set(rawIds.map(id => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)),
         ];
 
-        if (uniqueOrgIds.length === 0) {
+        if (requestedOrgIds.length === 0) {
             return NextResponse.json(
                 { error: 'At least one organization ID is required' },
                 { status: 400 }
             );
         }
+
+        const requestedPartners = await prisma.partner.findMany({
+            where: { clerkOrganizationId: { in: requestedOrgIds } },
+            select: { clerkOrganizationId: true, organizationName: true },
+        });
+        const requestedNameByOrgId = new Map(
+            requestedPartners.map(p => [p.clerkOrganizationId, p.organizationName] as const)
+        );
+        const requestedIncludesDistributor = requestedOrgIds.some(id =>
+            isDistributorPartnerOrgName(requestedNameByOrgId.get(id))
+        );
+        const uniqueOrgIds = requestedIncludesDistributor
+            ? (
+                  await prisma.partner.findMany({
+                      select: { clerkOrganizationId: true },
+                      orderBy: { organizationName: 'asc' },
+                  })
+              ).map(p => p.clerkOrganizationId)
+            : requestedOrgIds;
 
         const normalizedEmailLower = email.trim().toLowerCase();
         const existingClerkUserId = await resolveExistingPartnerClerkUserId(
@@ -100,12 +121,14 @@ export async function POST(req: NextRequest) {
         let companionBundleWarning: string | undefined;
 
         if (existingClerkUserId) {
+            const roleOverride = requestedIncludesDistributor ? 'org:admin' : undefined;
             for (const targetOrganizationId of uniqueOrgIds) {
                 const m = await addMembershipForOrganization({
                     client,
                     targetOrganizationId,
                     clerkUserId: existingClerkUserId,
                     emailRaw: email,
+                    roleOverride,
                 });
                 if (m.ok) {
                     membershipsAdded.push({
@@ -119,8 +142,12 @@ export async function POST(req: NextRequest) {
         } else {
             /** Preserve the order from the dashboard (checkbox order → first listed org receives the Clerk email). */
             const bundleOrgIds = uniqueOrgIds;
-            const primaryId = bundleOrgIds[0]!;
-            const companionIds = bundleOrgIds.slice(1);
+            const distributorOrgId = requestedIncludesDistributor
+                ? requestedPartners.find(p => isDistributorPartnerOrgName(p.organizationName))
+                      ?.clerkOrganizationId
+                : undefined;
+            const primaryId = distributorOrgId ?? bundleOrgIds[0]!;
+            const companionIds = bundleOrgIds.filter(id => id !== primaryId);
 
             const result = await createInvitationForOrganization({
                 client,

@@ -4,6 +4,7 @@ import {
     addMembershipForOrganization,
     resolveExistingPartnerClerkUserId,
 } from '~/lib/partnerInvitationMembership';
+import { isDistributorPartnerOrgName } from '~/lib/distributorPartner';
 
 type PendingBundleRow = {
     id: string;
@@ -61,6 +62,13 @@ async function tryApplyCompanionBundle(opts: {
         invitationEmailRaw?.trim()?.length > 0
             ? invitationEmailRaw.trim()
             : pending.normalizedInviteeEmail;
+    const primaryPartner = await prisma.partner.findUnique({
+        where: { clerkOrganizationId: pending.primaryClerkOrganizationId },
+        select: { organizationName: true },
+    });
+    const roleOverride = isDistributorPartnerOrgName(primaryPartner?.organizationName)
+        ? 'org:admin'
+        : undefined;
 
     const failedCompanions: string[] = [];
     const failureMessages: string[] = [];
@@ -71,6 +79,7 @@ async function tryApplyCompanionBundle(opts: {
             targetOrganizationId: companionOrgId,
             clerkUserId,
             emailRaw: emailForPrep,
+            roleOverride,
         });
         if (!result.ok) {
             failedCompanions.push(companionOrgId);

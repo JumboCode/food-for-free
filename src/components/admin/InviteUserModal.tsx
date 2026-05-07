@@ -366,8 +366,8 @@ export function InviteUserModal({
                             {step === 'form' ? (
                                 isLockedSingleOrg ? (
                                     <>
-                                        After they accept, they receive the organization
-                                        administrator role in Clerk for this organization.
+                                        After they accept, they receive organization administrator
+                                        access across all existing organizations in Clerk.
                                     </>
                                 ) : isAnchoredPartner && anchorOrganization ? (
                                     <>

@@ -154,11 +154,12 @@ export async function addMembershipForOrganization(opts: {
     targetOrganizationId: string;
     clerkUserId: string;
     emailRaw: string;
+    roleOverride?: 'org:admin' | 'org:member';
 }): Promise<
     | { ok: true; organizationId: string; skippedAlreadyMember?: boolean }
     | { ok: false; error: string }
 > {
-    const { client, targetOrganizationId, clerkUserId, emailRaw } = opts;
+    const { client, targetOrganizationId, clerkUserId, emailRaw, roleOverride } = opts;
 
     const prep = await preparePartnerInviteForOrganization(client, targetOrganizationId, emailRaw);
     if (!prep.ok) {
@@ -170,8 +171,18 @@ export async function addMembershipForOrganization(opts: {
             organizationId: targetOrganizationId,
             limit: 500,
         });
-        const alreadyMember = memberships.data.some(m => m.publicUserData?.userId === clerkUserId);
-        if (alreadyMember) {
+        const existingMembership = memberships.data.find(
+            m => m.publicUserData?.userId === clerkUserId
+        );
+        const roleToApply = roleOverride ?? prep.inviteRole;
+        if (existingMembership) {
+            if (existingMembership.role !== roleToApply) {
+                await client.organizations.updateOrganizationMembership({
+                    organizationId: targetOrganizationId,
+                    userId: clerkUserId,
+                    role: roleToApply,
+                });
+            }
             return {
                 ok: true,
                 organizationId: targetOrganizationId,
@@ -182,7 +193,7 @@ export async function addMembershipForOrganization(opts: {
         await client.organizations.createOrganizationMembership({
             organizationId: targetOrganizationId,
             userId: clerkUserId,
-            role: prep.inviteRole,
+            role: roleToApply,
         });
 
         return { ok: true, organizationId: targetOrganizationId };

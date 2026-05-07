@@ -62,6 +62,7 @@ export async function GET() {
             const orgName = p.organizationName;
 
             const membershipNameByClerkId = new Map<string, string>();
+            const partnerMemberClerkIds = new Set<string>();
             try {
                 const membershipList = await client.organizations.getOrganizationMembershipList({
                     organizationId: orgId,
@@ -70,6 +71,9 @@ export async function GET() {
                 for (const m of membershipList.data) {
                     const uid = m.publicUserData?.userId;
                     if (!uid) continue;
+                    if (m.role === 'org:member') {
+                        partnerMemberClerkIds.add(uid);
+                    }
                     const fn = m.publicUserData?.firstName ?? '';
                     const ln = m.publicUserData?.lastName ?? '';
                     const full = `${fn} ${ln}`.trim();
@@ -95,6 +99,9 @@ export async function GET() {
             `;
 
             for (const u of users) {
+                // Only show true partner members in Manage People.
+                // Admin memberships can leave broad Neon partner links that should not appear here.
+                if (!partnerMemberClerkIds.has(u.clerkId)) continue;
                 const resolvedName =
                     u.name?.trim() || membershipNameByClerkId.get(u.clerkId) || null;
                 flat.push({
