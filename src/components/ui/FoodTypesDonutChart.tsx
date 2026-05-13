@@ -100,10 +100,11 @@ export function FoodTypesDonutChart({
     data = DEFAULT_DATA,
     title = 'Food Types Donated',
 }: FoodTypesDonutChartProps) {
-    const total = data.reduce((sum, d) => sum + d.value, 0);
-    const maxValue = data.reduce((max, d) => Math.max(max, Number(d.value) || 0), 0);
-    const hasData = data.some(d => Number(d.value) > 0);
-    const dataWithTotal = data.map(d => ({ ...d, total }));
+    const displayData = data.filter(d => Number(d.value) > 0);
+    const total = displayData.reduce((sum, d) => sum + d.value, 0);
+    const maxValue = displayData.reduce((max, d) => Math.max(max, Number(d.value) || 0), 0);
+    const hasData = displayData.length > 0;
+    const dataWithTotal = displayData.map(d => ({ ...d, total }));
     const useCompactLegendNumbers = maxValue >= 1_000_000;
     const centerTotalDisplay =
         Math.abs(total) >= 1_000_000_000 ? formatCompactValue(total) : total.toLocaleString();
@@ -132,7 +133,7 @@ export function FoodTypesDonutChart({
                                     paddingAngle={1}
                                     activeShape={renderActiveShape}
                                 >
-                                    {data.map((entry, index) => (
+                                    {displayData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
@@ -163,7 +164,7 @@ export function FoodTypesDonutChart({
                     </div>
 
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1.5 pr-1 sm:gap-2">
-                        {data.map((item, index) => {
+                        {displayData.map((item, index) => {
                             const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                             return (
                                 <div
@@ -200,7 +201,7 @@ export function FoodTypesDonutChart({
             ) : (
                 <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
                     <p className="px-3 py-2 text-center text-sm text-slate-500">
-                        No data available for the selected date range
+                        Nothing to show for bulk & recovery in this date range.
                     </p>
                 </div>
             )}

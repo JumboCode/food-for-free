@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '~/lib/prisma';
-import type { OverviewScope } from '~/lib/overviewAccess';
 import {
     getOverviewScope,
     overviewScopeErrorResponse,
@@ -10,7 +9,6 @@ import {
     scopeOrphanDestinationMatchName,
 } from '~/lib/overviewAccess';
 import {
-    COMPOSITION_EMPTY_SEGMENT_COLOR,
     PROCESSING_OVERVIEW_COLOR_BY_LABEL,
     foodTypeFixedHex,
     type FoodTypeCompositionEntry,
@@ -200,21 +198,6 @@ export async function GET(request: NextRequest) {
             })
             .filter(entry => entry.value > 0)
             .sort((a, b) => b.value - a.value);
-
-        if (foodTypes.length === 0) {
-            foodTypes.push({
-                label: 'No data',
-                value: 0,
-                color: COMPOSITION_EMPTY_SEGMENT_COLOR,
-            });
-        }
-        if (processing.length === 0) {
-            processing.push({
-                label: 'No data',
-                value: 0,
-                color: COMPOSITION_EMPTY_SEGMENT_COLOR,
-            });
-        }
 
         return NextResponse.json({
             foodTypes,
